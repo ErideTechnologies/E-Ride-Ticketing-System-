@@ -1,18 +1,33 @@
 import { Router, type IRouter } from "express";
+import multer from "multer";
 import { and, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
 import {
   db,
   generateSupportTicketReference,
   supportOrganisationsTable,
   supportProductsTable,
+  supportTicketAttachmentsTable,
   supportTicketInternalNotesTable,
   supportTicketStatusHistoryTable,
   supportTicketsTable,
   type SupportTicket,
+  type SupportTicketAttachment,
   type TicketCategory,
   type TicketPriority,
   type TicketSeverity,
 } from "@workspace/db";
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  buildStoragePath,
+  ensureStorageReady,
+  removeStored,
+  statStored,
+  streamStored,
+  validateAttachment,
+  validateAttachmentContent,
+} from "../lib/attachmentStorage";
+import { writeFile } from "node:fs/promises";
 import {
   CreateSupportTicketBody,
   CreateSupportTicketNoteBody,
@@ -273,6 +288,7 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
   }
 
   res.status(201).json({
+    id: ticket.id,
     ticketReference: ticket.ticketReference,
     publicStatus: ticket.publicStatus,
     productName: product.productName,
@@ -517,6 +533,241 @@ router.get(
     res.json(
       rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })),
     );
+  },
+);
+
+// ─── Attachments ────────────────────────────────────────────────────────────
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) cb(null, true);
+    else cb(null, false);
+  },
+});
+
+void ensureStorageReady().catch(() => {
+  /* will retry per-upload */
+});
+
+function attachmentViewUrl(
+  ticketId: string,
+  attachmentId: string,
+): string {
+  return `/api/support/tickets/${ticketId}/attachments/${attachmentId}`;
+}
+
+function serializeAttachment(a: SupportTicketAttachment) {
+  return {
+    id: a.id,
+    supportTicketId: a.supportTicketId,
+    fileName: a.fileName,
+    originalFileName: a.originalFileName,
+    fileType: a.fileType,
+    mimeType: a.mimeType,
+    fileSize: a.fileSize,
+    uploadedByName: a.uploadedByName,
+    uploadedByEmail: a.uploadedByEmail,
+    uploadedByRole: a.uploadedByRole,
+    createdAt: a.createdAt.toISOString(),
+    viewUrl: attachmentViewUrl(a.supportTicketId, a.id),
+  };
+}
+
+router.get(
+  "/support/tickets/:id/attachments",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(supportTicketAttachmentsTable)
+      .where(
+        eq(supportTicketAttachmentsTable.supportTicketId, existing.ticket.id),
+      )
+      .orderBy(desc(supportTicketAttachmentsTable.createdAt));
+    res.json(rows.map(serializeAttachment));
+  },
+);
+
+router.post(
+  "/support/tickets/:id/attachments",
+  upload.single("file"),
+  async (req, res): Promise<void> => {
+    const ticketId = String(req.params.id ?? "");
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({
+        error:
+          "No file accepted. Use PNG, JPG, WEBP, PDF, MP4, or MOV under the size limit.",
+      });
+      return;
+    }
+    const validation = validateAttachment({
+      mimeType: file.mimetype,
+      originalFileName: file.originalname,
+      size: file.size,
+    });
+    if (!validation.ok) {
+      res.status(400).json({ error: validation.reason });
+      return;
+    }
+
+    const contentCheck = validateAttachmentContent({
+      declaredMimeType: validation.allowed.mimeType,
+      buffer: file.buffer,
+    });
+    if (!contentCheck.ok) {
+      res.status(400).json({ error: contentCheck.reason });
+      return;
+    }
+
+    const existing = await loadErideTicket(ticketId);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    await ensureStorageReady();
+    const stored = await buildStoragePath(
+      existing.ticket.id,
+      validation.allowed.extension,
+    );
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const trimmed = (k: string): string | null => {
+      const v = body[k];
+      if (typeof v !== "string") return null;
+      const t = v.trim();
+      return t.length === 0 ? null : t.slice(0, 200);
+    };
+
+    let wroteFile = false;
+    try {
+      await writeFile(stored.storagePath, file.buffer);
+      wroteFile = true;
+
+      const [row] = await db
+        .insert(supportTicketAttachmentsTable)
+        .values({
+          supportTicketId: existing.ticket.id,
+          fileName: stored.fileName,
+          originalFileName: file.originalname.slice(0, 255),
+          fileType: validation.allowed.fileType,
+          mimeType: validation.allowed.mimeType,
+          fileSize: file.size,
+          storagePath: stored.storagePath,
+          uploadedByName: trimmed("uploadedByName"),
+          uploadedByEmail: trimmed("uploadedByEmail"),
+          uploadedByRole: trimmed("uploadedByRole"),
+        })
+        .returning();
+
+      if (!row) {
+        await removeStored(stored.storagePath);
+        res.status(500).json({ error: "Could not save attachment" });
+        return;
+      }
+
+      res.status(201).json(serializeAttachment(row));
+    } catch (err) {
+      if (wroteFile) await removeStored(stored.storagePath);
+      req.log.error({ err }, "Failed to save attachment");
+      res.status(500).json({ error: "Could not save attachment" });
+    }
+  },
+);
+
+router.get(
+  "/support/tickets/:id/attachments/:attachmentId",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const attachmentId = req.params.attachmentId;
+    if (!UUID_RE.test(attachmentId)) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+    const att = await db.query.supportTicketAttachmentsTable.findFirst({
+      where: and(
+        eq(supportTicketAttachmentsTable.id, attachmentId),
+        eq(supportTicketAttachmentsTable.supportTicketId, existing.ticket.id),
+      ),
+    });
+    if (!att) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+    const stat = await statStored(att.storagePath);
+    if (!stat) {
+      res.status(404).json({ error: "Attachment file missing" });
+      return;
+    }
+    res.setHeader("Content-Type", att.mimeType);
+    res.setHeader("Content-Length", String(stat.size));
+    res.setHeader("Cache-Control", "private, max-age=300");
+    const disposition = req.query["download"] === "1" ? "attachment" : "inline";
+    res.setHeader(
+      "Content-Disposition",
+      `${disposition}; filename="${att.originalFileName.replace(/"/g, "")}"`,
+    );
+    streamStored(att.storagePath).on("error", () => res.end()).pipe(res);
+  },
+);
+
+router.delete(
+  "/support/tickets/:id/attachments/:attachmentId",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const attachmentId = req.params.attachmentId;
+    if (!UUID_RE.test(attachmentId)) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+    const att = await db.query.supportTicketAttachmentsTable.findFirst({
+      where: and(
+        eq(supportTicketAttachmentsTable.id, attachmentId),
+        eq(supportTicketAttachmentsTable.supportTicketId, existing.ticket.id),
+      ),
+    });
+    if (!att) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+    await db
+      .delete(supportTicketAttachmentsTable)
+      .where(eq(supportTicketAttachmentsTable.id, attachmentId));
+    await removeStored(att.storagePath);
+    res.status(204).end();
+  },
+);
+
+// Multer error handler (file too large, etc.)
+router.use(
+  (
+    err: Error & { code?: string },
+    _req: import("express").Request,
+    res: import("express").Response,
+    next: import("express").NextFunction,
+  ) => {
+    if (err && err.code === "LIMIT_FILE_SIZE") {
+      res.status(400).json({
+        error: "File is too large. Videos up to 50MB, PDFs 15MB, images 10MB.",
+      });
+      return;
+    }
+    next(err);
   },
 );
 

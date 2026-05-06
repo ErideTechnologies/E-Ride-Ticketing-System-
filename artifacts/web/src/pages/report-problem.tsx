@@ -24,11 +24,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Loader2, Paperclip } from "lucide-react";
 import {
   CATEGORY_OPTIONS,
   REPORTER_TYPE_OPTIONS,
 } from "@/lib/supportOptions";
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_HELP_TEXT,
+  formatFileSize,
+  validateAttachmentFile,
+} from "@/lib/attachmentRules";
 
 type FormState = {
   productId: string;
@@ -69,6 +75,7 @@ const EMPTY_FORM: FormState = {
 type Confirmation = {
   ticketReference: string;
   productName: string;
+  attachmentUploadFailed?: boolean;
 };
 
 export default function ReportProblemPage() {
@@ -81,6 +88,23 @@ export default function ReportProblemPage() {
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+
+  function handleSelectAttachment(file: File | null) {
+    setAttachmentError(null);
+    if (!file) {
+      setAttachment(null);
+      return;
+    }
+    const err = validateAttachmentFile(file);
+    if (err) {
+      setAttachment(null);
+      setAttachmentError(err);
+      return;
+    }
+    setAttachment(file);
+  }
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -131,9 +155,28 @@ export default function ReportProblemPage() {
           canContact: form.canContact,
         },
       });
+      let attachmentUploadFailed = false;
+      if (attachment) {
+        try {
+          const fd = new FormData();
+          fd.append("file", attachment);
+          fd.append("uploadedByName", form.reporterName.trim() || "Reporter");
+          if (form.reporterEmail.trim())
+            fd.append("uploadedByEmail", form.reporterEmail.trim());
+          fd.append("uploadedByRole", "reporter");
+          const resp = await fetch(
+            `/api/support/tickets/${result.id}/attachments`,
+            { method: "POST", body: fd },
+          );
+          if (!resp.ok) attachmentUploadFailed = true;
+        } catch {
+          attachmentUploadFailed = true;
+        }
+      }
       setConfirmation({
         ticketReference: result.ticketReference,
         productName: result.productName,
+        attachmentUploadFailed,
       });
     } catch (err) {
       console.error(err);
@@ -148,6 +191,8 @@ export default function ReportProblemPage() {
     setErrors({});
     setSubmitError(null);
     setConfirmation(null);
+    setAttachment(null);
+    setAttachmentError(null);
   }
 
   if (confirmation) {
@@ -180,6 +225,19 @@ export default function ReportProblemPage() {
                   Product: {confirmation.productName}
                 </p>
               </div>
+              {confirmation.attachmentUploadFailed && (
+                <Alert
+                  variant="destructive"
+                  data-testid="alert-attachment-failed"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Your ticket was created, but the attachment could not be
+                    uploaded. Reference: {confirmation.ticketReference}. You
+                    can send the screenshot to support later.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                 <Button
                   onClick={startNewReport}
@@ -434,10 +492,32 @@ export default function ReportProblemPage() {
                 </Label>
               </div>
 
+              <Field
+                label="Upload a screenshot or short screen recording"
+                hint={`Optional. ${ATTACHMENT_HELP_TEXT} Please do not upload sensitive documents unless support asks for them.`}
+                error={attachmentError ?? undefined}
+              >
+                <Input
+                  type="file"
+                  accept={ATTACHMENT_ACCEPT}
+                  onChange={(e) =>
+                    handleSelectAttachment(e.target.files?.[0] ?? null)
+                  }
+                  data-testid="input-attachment"
+                />
+                {attachment && (
+                  <p
+                    className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"
+                    data-testid="text-attachment-selected"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    {attachment.name} · {formatFileSize(attachment.size)}
+                  </p>
+                )}
+              </Field>
+
               <p className="text-xs text-muted-foreground">
-                Please do not upload or include sensitive documents unless
-                requested by support. Do not include passwords or payment card
-                details.
+                Please do not include passwords or payment card details.
               </p>
 
               {submitError && (

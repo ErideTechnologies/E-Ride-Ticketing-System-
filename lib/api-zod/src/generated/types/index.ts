@@ -14,6 +14,8 @@ export * from "./listSupportTicketsParams";
 export * from "./publicSupportProduct";
 export * from "./publicSupportTicketStatus";
 export * from "./supportReporterType";
+export * from "./supportTicketAttachment";
+export * from "./supportTicketAttachmentUpload";
 export * from "./supportTicketCategory";
 export * from "./supportTicketDetail";
 export * from "./supportTicketListItem";

@@ -22,6 +22,8 @@ import type {
   HealthStatus,
   ListSupportTicketsParams,
   PublicSupportProduct,
+  SupportTicketAttachment,
+  SupportTicketAttachmentUpload,
   SupportTicketDetail,
   SupportTicketListItem,
   SupportTicketNote,
@@ -640,6 +642,405 @@ export function useListSupportTicketStatusHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List attachments for a support ticket (newest first)
+ */
+export const getListSupportTicketAttachmentsUrl = (id: string) => {
+  return `/api/support/tickets/${id}/attachments`;
+};
+
+export const listSupportTicketAttachments = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupportTicketAttachment[]> => {
+  return customFetch<SupportTicketAttachment[]>(
+    getListSupportTicketAttachmentsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSupportTicketAttachmentsQueryKey = (id: string) => {
+  return [`/api/support/tickets/${id}/attachments`] as const;
+};
+
+export const getListSupportTicketAttachmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupportTicketAttachments>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTicketAttachments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupportTicketAttachmentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupportTicketAttachments>>
+  > = ({ signal }) =>
+    listSupportTicketAttachments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupportTicketAttachments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupportTicketAttachmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupportTicketAttachments>>
+>;
+export type ListSupportTicketAttachmentsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List attachments for a support ticket (newest first)
+ */
+
+export function useListSupportTicketAttachments<
+  TData = Awaited<ReturnType<typeof listSupportTicketAttachments>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTicketAttachments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupportTicketAttachmentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upload an attachment to a support ticket
+ */
+export const getUploadSupportTicketAttachmentUrl = (id: string) => {
+  return `/api/support/tickets/${id}/attachments`;
+};
+
+export const uploadSupportTicketAttachment = async (
+  id: string,
+  supportTicketAttachmentUpload: SupportTicketAttachmentUpload,
+  options?: RequestInit,
+): Promise<SupportTicketAttachment> => {
+  const formData = new FormData();
+  formData.append(`file`, supportTicketAttachmentUpload.file);
+  if (supportTicketAttachmentUpload.uploadedByName !== undefined) {
+    formData.append(
+      `uploadedByName`,
+      supportTicketAttachmentUpload.uploadedByName,
+    );
+  }
+  if (supportTicketAttachmentUpload.uploadedByEmail !== undefined) {
+    formData.append(
+      `uploadedByEmail`,
+      supportTicketAttachmentUpload.uploadedByEmail,
+    );
+  }
+  if (supportTicketAttachmentUpload.uploadedByRole !== undefined) {
+    formData.append(
+      `uploadedByRole`,
+      supportTicketAttachmentUpload.uploadedByRole,
+    );
+  }
+
+  return customFetch<SupportTicketAttachment>(
+    getUploadSupportTicketAttachmentUrl(id),
+    {
+      ...options,
+      method: "POST",
+      body: formData,
+    },
+  );
+};
+
+export const getUploadSupportTicketAttachmentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadSupportTicketAttachment>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketAttachmentUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadSupportTicketAttachment>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketAttachmentUpload> },
+  TContext
+> => {
+  const mutationKey = ["uploadSupportTicketAttachment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadSupportTicketAttachment>>,
+    { id: string; data: BodyType<SupportTicketAttachmentUpload> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return uploadSupportTicketAttachment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadSupportTicketAttachmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadSupportTicketAttachment>>
+>;
+export type UploadSupportTicketAttachmentMutationBody =
+  BodyType<SupportTicketAttachmentUpload>;
+export type UploadSupportTicketAttachmentMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upload an attachment to a support ticket
+ */
+export const useUploadSupportTicketAttachment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadSupportTicketAttachment>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketAttachmentUpload> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadSupportTicketAttachment>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketAttachmentUpload> },
+  TContext
+> => {
+  return useMutation(getUploadSupportTicketAttachmentMutationOptions(options));
+};
+
+/**
+ * @summary Stream/download an attachment
+ */
+export const getGetSupportTicketAttachmentUrl = (
+  id: string,
+  attachmentId: string,
+) => {
+  return `/api/support/tickets/${id}/attachments/${attachmentId}`;
+};
+
+export const getSupportTicketAttachment = async (
+  id: string,
+  attachmentId: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetSupportTicketAttachmentUrl(id, attachmentId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupportTicketAttachmentQueryKey = (
+  id: string,
+  attachmentId: string,
+) => {
+  return [`/api/support/tickets/${id}/attachments/${attachmentId}`] as const;
+};
+
+export const getGetSupportTicketAttachmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportTicketAttachment>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  attachmentId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportTicketAttachment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetSupportTicketAttachmentQueryKey(id, attachmentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportTicketAttachment>>
+  > = ({ signal }) =>
+    getSupportTicketAttachment(id, attachmentId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && attachmentId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportTicketAttachment>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportTicketAttachmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportTicketAttachment>>
+>;
+export type GetSupportTicketAttachmentQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Stream/download an attachment
+ */
+
+export function useGetSupportTicketAttachment<
+  TData = Awaited<ReturnType<typeof getSupportTicketAttachment>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  attachmentId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportTicketAttachment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportTicketAttachmentQueryOptions(
+    id,
+    attachmentId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete an attachment
+ */
+export const getDeleteSupportTicketAttachmentUrl = (
+  id: string,
+  attachmentId: string,
+) => {
+  return `/api/support/tickets/${id}/attachments/${attachmentId}`;
+};
+
+export const deleteSupportTicketAttachment = async (
+  id: string,
+  attachmentId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(
+    getDeleteSupportTicketAttachmentUrl(id, attachmentId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteSupportTicketAttachmentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSupportTicketAttachment>>,
+    TError,
+    { id: string; attachmentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSupportTicketAttachment>>,
+  TError,
+  { id: string; attachmentId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteSupportTicketAttachment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSupportTicketAttachment>>,
+    { id: string; attachmentId: string }
+  > = (props) => {
+    const { id, attachmentId } = props ?? {};
+
+    return deleteSupportTicketAttachment(id, attachmentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSupportTicketAttachmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSupportTicketAttachment>>
+>;
+
+export type DeleteSupportTicketAttachmentMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete an attachment
+ */
+export const useDeleteSupportTicketAttachment = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSupportTicketAttachment>>,
+    TError,
+    { id: string; attachmentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSupportTicketAttachment>>,
+  TError,
+  { id: string; attachmentId: string },
+  TContext
+> => {
+  return useMutation(getDeleteSupportTicketAttachmentMutationOptions(options));
+};
 
 /**
  * Returns support tickets, with optional filters and search. Newest first.

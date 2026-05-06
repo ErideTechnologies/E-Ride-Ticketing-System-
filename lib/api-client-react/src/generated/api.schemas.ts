@@ -270,6 +270,31 @@ export interface SupportTicketNoteCreate {
   createdByName?: string | null;
 }
 
+export interface SupportTicketAttachmentUpload {
+  file: Blob;
+  uploadedByName?: string;
+  uploadedByEmail?: string;
+  uploadedByRole?: string;
+}
+
+export interface SupportTicketAttachment {
+  id: string;
+  supportTicketId: string;
+  fileName: string;
+  originalFileName: string;
+  fileType: string;
+  mimeType: string;
+  fileSize: number;
+  /** @nullable */
+  uploadedByName?: string | null;
+  /** @nullable */
+  uploadedByEmail?: string | null;
+  /** @nullable */
+  uploadedByRole?: string | null;
+  createdAt: string;
+  viewUrl: string;
+}
+
 export interface SupportTicketStatusHistoryItem {
   id: string;
   supportTicketId: string;
@@ -289,6 +314,7 @@ export interface SupportTicketStatusHistoryItem {
 }
 
 export interface CreatedSupportTicket {
+  id: string;
   ticketReference: string;
   publicStatus: PublicSupportTicketStatus;
   productName: string;

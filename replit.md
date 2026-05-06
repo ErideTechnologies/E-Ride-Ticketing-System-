@@ -23,7 +23,8 @@ Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; 
 
 ## Where things live
 
-- DB schema (source of truth): `lib/db/src/schema/` — `enums.ts`, `organisations.ts`, `products.ts`, `tickets.ts`, `notes.ts` (internal notes + status history)
+- DB schema (source of truth): `lib/db/src/schema/` — `enums.ts`, `organisations.ts`, `products.ts`, `tickets.ts`, `notes.ts` (internal notes + status history), `attachments.ts` (`support_ticket_attachments`, cascade delete with ticket)
+- Attachment storage helper: `artifacts/api-server/src/lib/attachmentStorage.ts` (validation, magic-byte sniff, FS write/stream/remove). Files live under `./.local-storage/attachments/<ticketId>/<uuid>.<ext>` (override with `SUPPORT_ATTACHMENTS_DIR`); module is isolated to make swapping for S3/R2 a one-file change.
 - Ticket reference helper: `lib/db/src/ticketReference.ts` (`generateSupportTicketReference`)
 - Seed: `lib/db/src/seed.ts`
 - API contract: `lib/api-spec/openapi.yaml`
@@ -43,6 +44,7 @@ Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; 
 - Internal admin dashboard at `/admin/support/tickets` backed by `GET /api/support/tickets` with filters (product, priority, public/internal status, category, source, reporter type, search, createdFrom/createdTo) and newest-first sort. No auth yet.
 - Internal ticket detail page at `/admin/support/tickets/:id`: overview, reporter, editable issue/status/priority/severity/category/assignment fields, internal notes, status history, copy-ready customer message templates and developer handoff text. Backed by `GET/PATCH /api/support/tickets/:id`, `GET/POST /api/support/tickets/:id/notes`, `GET /api/support/tickets/:id/status-history`. PATCH writes a row to `support_ticket_status_history` whenever public or internal status changes, and stamps `resolvedAt`/`closedAt` when either status enters `resolved`/`closed`.
 - Server suggests `priority`/`severity` from category (see `artifacts/api-server/src/routes/support.ts`); ticket created with `source=public_form`, `publicStatus=received`, `internalStatus=triage_required`.
+- Attachments: optional file picker on the public form (ticket is created first, then file is uploaded; if upload fails the confirmation surfaces a non-blocking warning). Admin detail page has an Attachments card with upload, list, view, download (`?download=1`), and delete. Endpoints: `GET/POST /api/support/tickets/:id/attachments` and `GET/DELETE /api/support/tickets/:id/attachments/:attachmentId`. Allowed: PNG/JPG/WEBP ≤10MB, PDF ≤15MB, MP4/MOV ≤50MB. Server validates declared MIME + extension *and* sniffs magic bytes — spoofed files (e.g. text renamed to `.png`) are rejected.
 - No Linear/Sentry/WhatsApp/email sending/SaaS yet.
 
 ## User preferences
@@ -54,6 +56,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 - Orval generates `zod.date()` for `format: date-time` query params, but Express query values are strings. Date-range filters (`createdFrom`/`createdTo`) are parsed manually in `routes/support.ts` rather than via the generated schema.
 - Orval names body Zod schemas after the **operation**, not the OpenAPI schema (e.g. `UpdateSupportTicketBody`, not `SupportTicketUpdate`). The matching TS interface uses the schema name and lives under `generated/types/`. Import the operation-named const for runtime validation.
 - Postgres throws on invalid UUID casts. Always guard `:id` route params with a UUID regex before hitting the DB; otherwise an unknown path segment 500s instead of returning 404.
+- Orval generates `zod.instanceof(File)` for multipart bodies. The api-zod tsconfig must include `"dom"` in `lib` so `File`/`Blob` types resolve. Reference multipart bodies via a named schema (`$ref`) instead of inlining — Orval names body schemas after the **operation** and inlining causes type collisions across endpoints.
+- Attachment uploads must write the file *and* insert the DB row inside a try/catch that removes the file on any failure, otherwise a DB error leaves an orphan on disk. Magic-byte sniffing (`validateAttachmentContent`) runs *after* MIME/ext validation and *before* persisting.
 
 ## Pointers
 

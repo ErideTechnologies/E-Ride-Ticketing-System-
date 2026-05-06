@@ -8,6 +8,7 @@
 import type { PublicSupportTicketStatus } from "./publicSupportTicketStatus";
 
 export interface CreatedSupportTicket {
+  id: string;
   ticketReference: string;
   publicStatus: PublicSupportTicketStatus;
   productName: string;

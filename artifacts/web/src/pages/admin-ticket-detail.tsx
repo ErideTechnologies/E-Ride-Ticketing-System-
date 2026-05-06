@@ -7,10 +7,14 @@ import {
   useListSupportTicketNotes,
   useCreateSupportTicketNote,
   useListSupportTicketStatusHistory,
+  useListSupportTicketAttachments,
+  useDeleteSupportTicketAttachment,
   getGetSupportTicketQueryKey,
   getListSupportTicketNotesQueryKey,
   getListSupportTicketStatusHistoryQueryKey,
+  getListSupportTicketAttachmentsQueryKey,
   type SupportTicketDetail,
+  type SupportTicketAttachment,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +36,23 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, ArrowLeft, Check, Copy } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  Copy,
+  Download,
+  Eye,
+  Paperclip,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_HELP_TEXT,
+  formatFileSize,
+  validateAttachmentFile,
+} from "@/lib/attachmentRules";
 import { CATEGORY_OPTIONS } from "@/lib/supportOptions";
 import {
   CATEGORY_LABELS,
@@ -304,6 +324,7 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <IssueDetailsCard ticket={ticket} onSave={save} />
           <StatusManagementCard ticket={ticket} onSave={save} />
           <AssignmentCard ticket={ticket} onSave={save} />
+          <AttachmentsCard ticketId={ticket.id} />
           <NotesCard ticketId={ticket.id} />
           <StatusHistoryCard ticketId={ticket.id} />
           <CommunicationCard ticket={ticket} />
@@ -660,6 +681,216 @@ function AssignmentCard({
         >
           {saving ? "Saving…" : "Save assignment"}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AttachmentsCard({ ticketId }: { ticketId: string }) {
+  const qc = useQueryClient();
+  const attachments = useListSupportTicketAttachments(ticketId);
+  const remove = useDeleteSupportTicketAttachment();
+  const [uploadedByName, setUploadedByName] = useState("Support");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  function selectFile(file: File | null) {
+    setError(null);
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+    const err = validateAttachmentFile(file);
+    if (err) {
+      setSelectedFile(null);
+      setError(err);
+      return;
+    }
+    setSelectedFile(file);
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", selectedFile);
+      fd.append("uploadedByName", uploadedByName.trim() || "Support");
+      fd.append("uploadedByRole", "support");
+      const resp = await fetch(
+        `/api/support/tickets/${ticketId}/attachments`,
+        { method: "POST", body: fd },
+      );
+      if (!resp.ok) {
+        let msg = "Could not upload file";
+        try {
+          const j = (await resp.json()) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          /* ignore */
+        }
+        setError(msg);
+        return;
+      }
+      setSelectedFile(null);
+      qc.invalidateQueries({
+        queryKey: getListSupportTicketAttachmentsQueryKey(ticketId),
+      });
+    } catch {
+      setError("Could not upload file");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDelete(attachmentId: string) {
+    try {
+      await remove.mutateAsync({ id: ticketId, attachmentId });
+      qc.invalidateQueries({
+        queryKey: getListSupportTicketAttachmentsQueryKey(ticketId),
+      });
+    } catch {
+      setError("Could not delete attachment");
+    }
+  }
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="text-base">Attachments</CardTitle>
+        <CardDescription>
+          Screenshots, recordings, and documents linked to this ticket.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div
+          className="space-y-2 rounded-md border p-3"
+          data-testid="attachment-uploader"
+        >
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+            <Field label="Uploaded by">
+              <Input
+                value={uploadedByName}
+                onChange={(e) => setUploadedByName(e.target.value)}
+                data-testid="input-attachment-uploader"
+              />
+            </Field>
+            <Field label="File">
+              <Input
+                type="file"
+                accept={ATTACHMENT_ACCEPT}
+                onChange={(e) =>
+                  selectFile(e.target.files?.[0] ?? null)
+                }
+                data-testid="input-attachment-file"
+              />
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {ATTACHMENT_HELP_TEXT}
+          </p>
+          {selectedFile && (
+            <p
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+              data-testid="text-attachment-selected"
+            >
+              <Paperclip className="h-3 w-3" />
+              {selectedFile.name} · {formatFileSize(selectedFile.size)}
+            </p>
+          )}
+          {error && (
+            <Alert variant="destructive" data-testid="alert-attachment-error">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <div>
+            <Button
+              type="button"
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+              data-testid="button-upload-attachment"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {uploading ? "Uploading…" : "Upload attachment"}
+            </Button>
+          </div>
+        </div>
+
+        {attachments.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading attachments…</p>
+        ) : attachments.data && attachments.data.length > 0 ? (
+          <ul
+            className="divide-y rounded-md border"
+            data-testid="attachments-list"
+          >
+            {attachments.data.map((a: SupportTicketAttachment) => (
+              <li
+                key={a.id}
+                className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"
+                data-testid={`attachment-${a.id}`}
+              >
+                <div className="min-w-0 space-y-0.5">
+                  <p className="flex items-center gap-1 truncate text-sm font-medium">
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    <span className="truncate" title={a.originalFileName}>
+                      {a.originalFileName}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.fileType} · {a.mimeType} · {formatFileSize(a.fileSize)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.uploadedByName ?? "Unknown"}
+                    {a.uploadedByRole ? ` (${a.uploadedByRole})` : ""} ·{" "}
+                    {formatDateTime(a.createdAt)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    data-testid={`button-view-attachment-${a.id}`}
+                  >
+                    <a
+                      href={a.viewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Eye className="mr-1 h-4 w-4" /> View
+                    </a>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    data-testid={`button-download-attachment-${a.id}`}
+                  >
+                    <a href={`${a.viewUrl}?download=1`}>
+                      <Download className="mr-1 h-4 w-4" /> Download
+                    </a>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(a.id)}
+                    data-testid={`button-delete-attachment-${a.id}`}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Delete
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No attachments yet.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -348,6 +348,61 @@ export const ListSupportTicketStatusHistoryResponse = zod.array(
 );
 
 /**
+ * @summary List attachments for a support ticket (newest first)
+ */
+export const ListSupportTicketAttachmentsParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListSupportTicketAttachmentsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  fileName: zod.string(),
+  originalFileName: zod.string(),
+  fileType: zod.string(),
+  mimeType: zod.string(),
+  fileSize: zod.number(),
+  uploadedByName: zod.string().nullish(),
+  uploadedByEmail: zod.string().nullish(),
+  uploadedByRole: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  viewUrl: zod.string(),
+});
+export const ListSupportTicketAttachmentsResponse = zod.array(
+  ListSupportTicketAttachmentsResponseItem,
+);
+
+/**
+ * @summary Upload an attachment to a support ticket
+ */
+export const UploadSupportTicketAttachmentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UploadSupportTicketAttachmentBody = zod.object({
+  file: zod.instanceof(File),
+  uploadedByName: zod.string().optional(),
+  uploadedByEmail: zod.string().optional(),
+  uploadedByRole: zod.string().optional(),
+});
+
+/**
+ * @summary Stream/download an attachment
+ */
+export const GetSupportTicketAttachmentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  attachmentId: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary Delete an attachment
+ */
+export const DeleteSupportTicketAttachmentParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  attachmentId: zod.coerce.string().uuid(),
+});
+
+/**
  * Returns support tickets, with optional filters and search. Newest first.
  * @summary List support tickets for the Eride organisation (internal admin)
  */

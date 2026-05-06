@@ -1,0 +1,209 @@
+Build Step 5 of the Eride Support Command Centre: Screenshot and Attachment Uploads.
+
+Context:
+Step 1 foundation is complete:
+- support_organisations
+- support_products
+- support_tickets
+- support_ticket_sequences
+
+Step 2 is complete:
+- /help/report-problem
+- POST /api/support/tickets
+- public ticket creation works
+
+Step 3 is complete:
+- /admin/support/tickets
+- ticket dashboard works
+
+Step 4 is complete:
+- /admin/support/tickets/:id
+- ticket detail page works
+- status updates work
+- internal notes work
+- status history works
+- communication copy templates work
+- developer handoff generator works
+
+Goal:
+Add screenshot and attachment support to support tickets.
+
+Important:
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+Do not add WhatsApp/email sending yet.
+Do not build full wallboard yet.
+Do not build external object storage yet unless the project already has an upload/storage pattern.
+Use the safest existing storage pattern in the app. If no existing storage exists, implement local/server-side upload storage suitable for development and clearly isolate it so it can later be replaced by S3/R2.
+
+Database:
+
+Create support_ticket_attachments table:
+- id
+- supportTicketId
+- fileName
+- originalFileName
+- fileType
+- mimeType
+- fileSize
+- storagePath
+- uploadedByName nullable
+- uploadedByEmail nullable
+- uploadedByRole nullable
+- createdAt
+
+Relationship:
+- attachment belongs to support ticket
+- cascade delete if support ticket is deleted
+
+File rules:
+Allowed file types:
+- image/png
+- image/jpeg
+- image/jpg
+- image/webp
+- application/pdf
+- video/mp4
+- video/quicktime
+
+Allowed extensions:
+- .png
+- .jpg
+- .jpeg
+- .webp
+- .pdf
+- .mp4
+- .mov
+
+Maximum file sizes:
+- images: 10MB
+- PDFs: 15MB
+- videos: 50MB
+
+Security:
+- Validate MIME type and extension.
+- Do not allow executable files.
+- Do not expose raw server file paths publicly.
+- Store files using generated safe filenames, not original filenames.
+- Preserve originalFileName separately for display.
+- Attachment download/view endpoints must check that the ticket belongs to Eride Technologies organisation.
+- If possible, serve attachments through an API route instead of direct public folder exposure.
+
+Backend endpoints:
+
+1. POST /api/support/tickets/:id/attachments
+
+Purpose:
+Upload one attachment to a ticket.
+
+Input:
+- multipart/form-data
+- file required
+- uploadedByName optional
+- uploadedByEmail optional
+- uploadedByRole optional
+
+Behavior:
+- validate ticket exists and belongs to Eride Technologies organisation
+- validate file type and size
+- save file
+- create support_ticket_attachments row
+- return attachment metadata
+
+2. GET /api/support/tickets/:id/attachments
+
+Purpose:
+List attachments for a ticket.
+
+Return newest first:
+- id
+- fileName
+- originalFileName
+- fileType
+- mimeType
+- fileSize
+- createdAt
+- uploadedByName
+- uploadedByRole
+- viewUrl/downloadUrl
+
+3. GET /api/support/tickets/:id/attachments/:attachmentId
+
+Purpose:
+Securely view/download attachment.
+
+Behavior:
+- verify ticket belongs to Eride Technologies organisation
+- verify attachment belongs to ticket
+- stream or return the file
+- set appropriate content type
+
+Optional:
+4. DELETE /api/support/tickets/:id/attachments/:attachmentId
+
+Purpose:
+Allow admin to delete an attachment if uploaded by mistake.
+
+If implemented:
+- delete file from storage
+- delete DB row
+
+Frontend changes:
+
+A. Public Report Problem page:
+/help/report-problem
+
+Add optional attachment upload field:
+Label:
+“Upload a screenshot or short screen recording”
+
+Helper text:
+“Optional. You can upload PNG, JPG, WEBP, PDF, MP4, or MOV. Please do not upload sensitive documents unless support asks for them.”
+
+Behavior:
+- user can submit ticket with or without attachment
+- if attachment is selected, create ticket first, then upload attachment to the created ticket
+- confirmation screen should still show ticket reference
+- if ticket creates but attachment upload fails, show:
+“Your ticket was created, but the attachment could not be uploaded. Reference: [ticketReference]. You can send the screenshot to support later.”
+
+B. Admin Ticket Detail page:
+/admin/support/tickets/:id
+
+Add Attachments card.
+
+The card must show:
+- list of attachments
+- original file name
+- file type
+- file size
+- uploaded by
+- created date
+- view/download button
+- delete button if DELETE endpoint is implemented
+
+Also add admin upload section:
+- file picker
+- uploadedByName default “Support”
+- upload button
+
+C. Validation UI:
+- show friendly error for unsupported file type
+- show friendly error for file too large
+- show upload progress if easy; otherwise show loading state
+
+D. Mobile-first:
+- attachment card must be usable on mobile
+- buttons must be easy to tap
+
+Acceptance criteria:
+- Public user can submit a ticket without attachment
+- Public user can submit a ticket with screenshot
+- Attachment is saved and linked to support ticket
+- Admin can open ticket detail and see attachment
+- Admin can view/download attachment
+- Admin can upload an attachment from ticket detail
+- Invalid file type is rejected
+- Oversized file is rejected
+- Typecheck passes
+- Basic browser test covers public ticket with attachment and admin viewing attachment

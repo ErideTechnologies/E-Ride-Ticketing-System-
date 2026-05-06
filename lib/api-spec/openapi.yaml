@@ -177,6 +177,101 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/attachments:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: listSupportTicketAttachments
+      tags: [support]
+      summary: List attachments for a support ticket (newest first)
+      responses:
+        "200":
+          description: Attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicketAttachment"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: uploadSupportTicketAttachment
+      tags: [support]
+      summary: Upload an attachment to a support ticket
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SupportTicketAttachmentUpload"
+      responses:
+        "201":
+          description: Attachment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketAttachment"
+        "400":
+          description: Invalid file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /support/tickets/{id}/attachments/{attachmentId}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: attachmentId
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getSupportTicketAttachment
+      tags: [support]
+      summary: Stream/download an attachment
+      responses:
+        "200":
+          description: File bytes
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSupportTicketAttachment
+      tags: [support]
+      summary: Delete an attachment
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets:
     get:
       operationId: listSupportTickets
@@ -560,6 +655,43 @@ components:
         createdByName: { type: ["string", "null"] }
       required: [note]
 
+    SupportTicketAttachmentUpload:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        uploadedByName: { type: string }
+        uploadedByEmail: { type: string }
+        uploadedByRole: { type: string }
+      required: [file]
+
+    SupportTicketAttachment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        supportTicketId: { type: string, format: uuid }
+        fileName: { type: string }
+        originalFileName: { type: string }
+        fileType: { type: string }
+        mimeType: { type: string }
+        fileSize: { type: integer }
+        uploadedByName: { type: ["string", "null"] }
+        uploadedByEmail: { type: ["string", "null"] }
+        uploadedByRole: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        viewUrl: { type: string }
+      required:
+        - id
+        - supportTicketId
+        - fileName
+        - originalFileName
+        - fileType
+        - mimeType
+        - fileSize
+        - createdAt
+        - viewUrl
+
     SupportTicketStatusHistoryItem:
       type: object
       properties:
@@ -577,6 +709,9 @@ components:
     CreatedSupportTicket:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         ticketReference:
           type: string
         publicStatus:
@@ -587,6 +722,7 @@ components:
           type: string
           format: date-time
       required:
+        - id
         - ticketReference
         - publicStatus
         - productName
