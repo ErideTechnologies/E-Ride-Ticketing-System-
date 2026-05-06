@@ -1,0 +1,220 @@
+Build Step 8 of the Eride Support Command Centre: Status Action Buttons and Workflow Shortcuts.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- products and ticket references
+
+Step 2 is complete:
+- public report problem page
+- ticket creation
+
+Step 3 is complete:
+- internal ticket dashboard
+
+Step 4 is complete:
+- ticket detail page
+- status updates
+- internal notes
+- status history
+- communication copy templates
+- developer handoff generator
+
+Step 5 is complete:
+- attachment upload/list/view/download/delete
+
+Step 6 is complete:
+- live support wallboard
+
+Step 7 is complete:
+- support_ticket_messages
+- communication log
+- manual message recording
+- communication timeline
+
+Goal:
+Add workflow action buttons to the ticket detail page so support/admin users can move tickets through the standard support lifecycle quickly and consistently.
+
+Important:
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+Do not add automatic email sending yet.
+Do not add WhatsApp API automation yet.
+This step only adds workflow shortcuts, status-change helpers, and optional communication recording prompts.
+
+Backend:
+
+Use existing PATCH /api/support/tickets/:id endpoint for status changes.
+
+If useful, add a dedicated endpoint:
+POST /api/support/tickets/:id/workflow-action
+
+Input:
+- action required
+- changedByName optional
+- reason optional
+
+Allowed actions:
+- start_review
+- request_more_info
+- escalate_to_engineering
+- mark_in_engineering
+- send_to_qa
+- mark_fixed_waiting_notification
+- mark_user_notified
+- resolve_ticket
+- close_ticket
+- reopen_ticket
+- mark_duplicate
+- mark_not_a_bug
+- defer_ticket
+- mark_spam
+
+Each action must map to publicStatus and internalStatus:
+
+1. start_review
+publicStatus = under_review
+internalStatus = support_review
+
+2. request_more_info
+publicStatus = more_info_needed
+internalStatus = needs_user_info
+
+3. escalate_to_engineering
+publicStatus = being_fixed
+internalStatus = engineering_escalation_required
+
+4. mark_in_engineering
+publicStatus = being_fixed
+internalStatus = in_engineering
+
+5. send_to_qa
+publicStatus = being_fixed
+internalStatus = in_qa_verification
+
+6. mark_fixed_waiting_notification
+publicStatus = fixed
+internalStatus = fixed_waiting_user_notification
+
+7. mark_user_notified
+publicStatus = fixed
+internalStatus = user_notified
+
+8. resolve_ticket
+publicStatus = resolved
+internalStatus = resolved
+
+9. close_ticket
+publicStatus = closed
+internalStatus = closed
+
+10. reopen_ticket
+publicStatus = under_review
+internalStatus = support_review
+
+11. mark_duplicate
+publicStatus = closed
+internalStatus = duplicate
+
+12. mark_not_a_bug
+publicStatus = resolved
+internalStatus = not_a_bug
+
+13. defer_ticket
+publicStatus = under_review
+internalStatus = deferred
+
+14. mark_spam
+publicStatus = closed
+internalStatus = spam
+
+Rules:
+- Every workflow action must create a support_ticket_status_history row.
+- resolvedAt must be set when publicStatus or internalStatus becomes resolved.
+- closedAt must be set when publicStatus or internalStatus becomes closed, duplicate, or spam.
+- Reopen should clear closedAt if closedAt exists.
+- Do not delete any previous history.
+
+Frontend:
+
+Update /admin/support/tickets/:id
+
+Add a new card near the top:
+Workflow Actions
+
+Show buttons:
+- Start Review
+- Request More Info
+- Escalate to Engineering
+- Mark In Engineering
+- Send to QA
+- Mark Fixed / Waiting User Notification
+- Mark User Notified
+- Resolve
+- Close
+- Reopen
+- Duplicate
+- Not a Bug
+- Defer
+- Spam
+
+Button visibility rules:
+Show all buttons for now, but visually group them:
+
+Group 1: Support Review
+- Start Review
+- Request More Info
+
+Group 2: Engineering
+- Escalate to Engineering
+- Mark In Engineering
+- Send to QA
+
+Group 3: Resolution
+- Mark Fixed / Waiting User Notification
+- Mark User Notified
+- Resolve
+- Close
+- Reopen
+
+Group 4: Admin Outcomes
+- Duplicate
+- Not a Bug
+- Defer
+- Spam
+
+When a button is clicked:
+- ask for optional reason/comment in a small modal or inline input
+- call workflow action endpoint or PATCH endpoint
+- update ticket data
+- refresh status history
+- show success toast or inline success message
+
+Communication helper:
+For actions that normally require communication, show reminder text after action:
+
+request_more_info:
+“Remember to send or record a More Info Needed message.”
+
+escalate_to_engineering:
+“Record the Escalated to Engineering message if the reporter should be updated.”
+
+mark_fixed_waiting_notification:
+“Send or record the Fixed message before marking User Notified.”
+
+close_ticket:
+“Make sure the closure message has been recorded if user communication is required.”
+
+Do not auto-send messages.
+
+Acceptance criteria:
+- Workflow Actions card appears on ticket detail page
+- Each workflow button updates publicStatus and internalStatus correctly
+- Status history is recorded for each workflow action
+- resolvedAt and closedAt are handled correctly
+- Reopen clears closedAt
+- Communication reminder text appears for relevant actions
+- Ticket badges update after action
+- Wallboard counts update after status changes
+- Typecheck passes
+- Basic browser test covers request_more_info, escalate_to_engineering, mark_fixed_waiting_notification, mark_user_notified, close, and reopen

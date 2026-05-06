@@ -177,6 +177,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/workflow-action:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: applySupportTicketWorkflowAction
+      tags: [support]
+      summary: Apply a named workflow shortcut to a support ticket
+      description: Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketWorkflowActionRequest"
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketDetail"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets/{id}/messages:
     parameters:
       - in: path
@@ -878,6 +915,32 @@ components:
         changeReason: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
       required: [id, supportTicketId, createdAt]
+
+    SupportTicketWorkflowAction:
+      type: string
+      enum:
+        - start_review
+        - request_more_info
+        - escalate_to_engineering
+        - mark_in_engineering
+        - send_to_qa
+        - mark_fixed_waiting_notification
+        - mark_user_notified
+        - resolve_ticket
+        - close_ticket
+        - reopen_ticket
+        - mark_duplicate
+        - mark_not_a_bug
+        - defer_ticket
+        - mark_spam
+
+    SupportTicketWorkflowActionRequest:
+      type: object
+      properties:
+        action: { $ref: "#/components/schemas/SupportTicketWorkflowAction" }
+        changedByName: { type: ["string", "null"] }
+        reason: { type: ["string", "null"] }
+      required: [action]
 
     SupportMessageDirection:
       type: string

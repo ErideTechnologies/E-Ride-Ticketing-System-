@@ -33,6 +33,7 @@ import type {
   SupportTicketStatusHistoryItem,
   SupportTicketSubmission,
   SupportTicketUpdate,
+  SupportTicketWorkflowActionRequest,
   SupportWallboard,
 } from "./api.schemas";
 
@@ -645,6 +646,101 @@ export function useListSupportTicketStatusHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.
+ * @summary Apply a named workflow shortcut to a support ticket
+ */
+export const getApplySupportTicketWorkflowActionUrl = (id: string) => {
+  return `/api/support/tickets/${id}/workflow-action`;
+};
+
+export const applySupportTicketWorkflowAction = async (
+  id: string,
+  supportTicketWorkflowActionRequest: SupportTicketWorkflowActionRequest,
+  options?: RequestInit,
+): Promise<SupportTicketDetail> => {
+  return customFetch<SupportTicketDetail>(
+    getApplySupportTicketWorkflowActionUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportTicketWorkflowActionRequest),
+    },
+  );
+};
+
+export const getApplySupportTicketWorkflowActionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applySupportTicketWorkflowAction>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketWorkflowActionRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applySupportTicketWorkflowAction>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketWorkflowActionRequest> },
+  TContext
+> => {
+  const mutationKey = ["applySupportTicketWorkflowAction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applySupportTicketWorkflowAction>>,
+    { id: string; data: BodyType<SupportTicketWorkflowActionRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return applySupportTicketWorkflowAction(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplySupportTicketWorkflowActionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applySupportTicketWorkflowAction>>
+>;
+export type ApplySupportTicketWorkflowActionMutationBody =
+  BodyType<SupportTicketWorkflowActionRequest>;
+export type ApplySupportTicketWorkflowActionMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Apply a named workflow shortcut to a support ticket
+ */
+export const useApplySupportTicketWorkflowAction = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applySupportTicketWorkflowAction>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketWorkflowActionRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applySupportTicketWorkflowAction>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketWorkflowActionRequest> },
+  TContext
+> => {
+  return useMutation(
+    getApplySupportTicketWorkflowActionMutationOptions(options),
+  );
+};
 
 /**
  * @summary List communication records for a ticket (newest first)

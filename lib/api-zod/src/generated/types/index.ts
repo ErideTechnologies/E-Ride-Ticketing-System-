@@ -32,6 +32,8 @@ export * from "./supportTicketSeverity";
 export * from "./supportTicketStatusHistoryItem";
 export * from "./supportTicketSubmission";
 export * from "./supportTicketUpdate";
+export * from "./supportTicketWorkflowAction";
+export * from "./supportTicketWorkflowActionRequest";
 export * from "./supportWallboard";
 export * from "./supportWallboardProductBreakdown";
 export * from "./supportWallboardSummary";

@@ -363,6 +363,34 @@ export interface SupportTicketStatusHistoryItem {
   createdAt: string;
 }
 
+export type SupportTicketWorkflowAction =
+  (typeof SupportTicketWorkflowAction)[keyof typeof SupportTicketWorkflowAction];
+
+export const SupportTicketWorkflowAction = {
+  start_review: "start_review",
+  request_more_info: "request_more_info",
+  escalate_to_engineering: "escalate_to_engineering",
+  mark_in_engineering: "mark_in_engineering",
+  send_to_qa: "send_to_qa",
+  mark_fixed_waiting_notification: "mark_fixed_waiting_notification",
+  mark_user_notified: "mark_user_notified",
+  resolve_ticket: "resolve_ticket",
+  close_ticket: "close_ticket",
+  reopen_ticket: "reopen_ticket",
+  mark_duplicate: "mark_duplicate",
+  mark_not_a_bug: "mark_not_a_bug",
+  defer_ticket: "defer_ticket",
+  mark_spam: "mark_spam",
+} as const;
+
+export interface SupportTicketWorkflowActionRequest {
+  action: SupportTicketWorkflowAction;
+  /** @nullable */
+  changedByName?: string | null;
+  /** @nullable */
+  reason?: string | null;
+}
+
 export type SupportMessageDirection =
   (typeof SupportMessageDirection)[keyof typeof SupportMessageDirection];
 

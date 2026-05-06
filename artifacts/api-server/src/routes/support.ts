@@ -31,6 +31,7 @@ import {
 } from "../lib/attachmentStorage";
 import { writeFile } from "node:fs/promises";
 import {
+  ApplySupportTicketWorkflowActionBody,
   CreateSupportTicketBody,
   CreateSupportTicketMessageBody,
   CreateSupportTicketNoteBody,
@@ -653,6 +654,139 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
     }),
   );
 });
+
+type WorkflowAction =
+  | "start_review"
+  | "request_more_info"
+  | "escalate_to_engineering"
+  | "mark_in_engineering"
+  | "send_to_qa"
+  | "mark_fixed_waiting_notification"
+  | "mark_user_notified"
+  | "resolve_ticket"
+  | "close_ticket"
+  | "reopen_ticket"
+  | "mark_duplicate"
+  | "mark_not_a_bug"
+  | "defer_ticket"
+  | "mark_spam";
+
+const WORKFLOW_ACTION_MAP: Record<
+  WorkflowAction,
+  {
+    publicStatus: SupportTicket["publicStatus"];
+    internalStatus: SupportTicket["internalStatus"];
+  }
+> = {
+  start_review: { publicStatus: "under_review", internalStatus: "support_review" },
+  request_more_info: {
+    publicStatus: "more_info_needed",
+    internalStatus: "needs_user_info",
+  },
+  escalate_to_engineering: {
+    publicStatus: "being_fixed",
+    internalStatus: "engineering_escalation_required",
+  },
+  mark_in_engineering: {
+    publicStatus: "being_fixed",
+    internalStatus: "in_engineering",
+  },
+  send_to_qa: { publicStatus: "being_fixed", internalStatus: "in_qa_verification" },
+  mark_fixed_waiting_notification: {
+    publicStatus: "fixed",
+    internalStatus: "fixed_waiting_user_notification",
+  },
+  mark_user_notified: { publicStatus: "fixed", internalStatus: "user_notified" },
+  resolve_ticket: { publicStatus: "resolved", internalStatus: "resolved" },
+  close_ticket: { publicStatus: "closed", internalStatus: "closed" },
+  reopen_ticket: { publicStatus: "under_review", internalStatus: "support_review" },
+  mark_duplicate: { publicStatus: "closed", internalStatus: "duplicate" },
+  mark_not_a_bug: { publicStatus: "resolved", internalStatus: "not_a_bug" },
+  defer_ticket: { publicStatus: "under_review", internalStatus: "deferred" },
+  mark_spam: { publicStatus: "closed", internalStatus: "spam" },
+};
+
+const CLOSED_INTERNAL_STATUSES = new Set(["closed", "duplicate", "spam"]);
+const RESOLVED_INTERNAL_STATUSES = new Set(["resolved"]);
+
+router.post(
+  "/support/tickets/:id/workflow-action",
+  async (req, res): Promise<void> => {
+    const parsed = ApplySupportTicketWorkflowActionBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid workflow action" });
+      return;
+    }
+    const { action, changedByName, reason } = parsed.data;
+    const mapping = WORKFLOW_ACTION_MAP[action as WorkflowAction];
+    if (!mapping) {
+      res.status(400).json({ error: "Unknown workflow action" });
+      return;
+    }
+
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const t = existing.ticket;
+
+    const updates: Partial<typeof supportTicketsTable.$inferInsert> = {
+      publicStatus: mapping.publicStatus,
+      internalStatus: mapping.internalStatus,
+      updatedAt: new Date(),
+    };
+
+    const becomesClosed =
+      mapping.publicStatus === "closed" ||
+      CLOSED_INTERNAL_STATUSES.has(mapping.internalStatus);
+    const becomesResolved =
+      mapping.publicStatus === "resolved" ||
+      RESOLVED_INTERNAL_STATUSES.has(mapping.internalStatus);
+
+    if (action === "reopen_ticket") {
+      updates.closedAt = null;
+    } else {
+      if (becomesClosed && !t.closedAt) updates.closedAt = new Date();
+      if (becomesResolved && !t.resolvedAt) updates.resolvedAt = new Date();
+    }
+
+    const [updated] = await db
+      .update(supportTicketsTable)
+      .set(updates)
+      .where(eq(supportTicketsTable.id, t.id))
+      .returning();
+
+    if (!updated) {
+      res.status(500).json({ error: "Could not update ticket" });
+      return;
+    }
+
+    const publicChanged = updated.publicStatus !== t.publicStatus;
+    const internalChanged = updated.internalStatus !== t.internalStatus;
+
+    // Per spec: every workflow action must write a history row, even if the
+    // action re-applies the current status. Always record the action.
+    await db.insert(supportTicketStatusHistoryTable).values({
+      supportTicketId: t.id,
+      oldPublicStatus: publicChanged ? t.publicStatus : null,
+      newPublicStatus: publicChanged ? updated.publicStatus : null,
+      oldInternalStatus: internalChanged ? t.internalStatus : null,
+      newInternalStatus: internalChanged ? updated.internalStatus : null,
+      changedByName: changedByName?.trim() || null,
+      changeReason:
+        reason?.trim() ? `[${action}] ${reason.trim()}` : `[${action}]`,
+    });
+
+    res.json(
+      serializeTicketDetail({
+        ticket: updated,
+        productName: existing.productName,
+        productCode: existing.productCode,
+      }),
+    );
+  },
+);
 
 router.get("/support/tickets/:id/notes", async (req, res): Promise<void> => {
   const existing = await loadErideTicket(req.params.id);

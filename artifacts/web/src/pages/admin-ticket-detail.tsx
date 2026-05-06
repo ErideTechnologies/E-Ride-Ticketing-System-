@@ -11,6 +11,8 @@ import {
   useDeleteSupportTicketAttachment,
   useListSupportTicketMessages,
   useCreateSupportTicketMessage,
+  useApplySupportTicketWorkflowAction,
+  type SupportTicketWorkflowAction,
   getGetSupportTicketQueryKey,
   getListSupportTicketNotesQueryKey,
   getListSupportTicketStatusHistoryQueryKey,
@@ -330,6 +332,8 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           </Alert>
         )}
 
+        <WorkflowActionsCard ticket={ticket} />
+
         <div className="grid gap-6 lg:grid-cols-2">
           <OverviewCard ticket={ticket} />
           <ReporterCard ticket={ticket} />
@@ -359,6 +363,240 @@ function FieldRow({
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="col-span-2 break-words">{value || "—"}</dd>
     </div>
+  );
+}
+
+type WorkflowGroup = {
+  title: string;
+  testId: string;
+  actions: Array<{ action: SupportTicketWorkflowAction; label: string }>;
+};
+
+const WORKFLOW_GROUPS: WorkflowGroup[] = [
+  {
+    title: "Support review",
+    testId: "group-support-review",
+    actions: [
+      { action: "start_review", label: "Start Review" },
+      { action: "request_more_info", label: "Request More Info" },
+    ],
+  },
+  {
+    title: "Engineering",
+    testId: "group-engineering",
+    actions: [
+      { action: "escalate_to_engineering", label: "Escalate to Engineering" },
+      { action: "mark_in_engineering", label: "Mark In Engineering" },
+      { action: "send_to_qa", label: "Send to QA" },
+    ],
+  },
+  {
+    title: "Resolution",
+    testId: "group-resolution",
+    actions: [
+      {
+        action: "mark_fixed_waiting_notification",
+        label: "Mark Fixed / Waiting User Notification",
+      },
+      { action: "mark_user_notified", label: "Mark User Notified" },
+      { action: "resolve_ticket", label: "Resolve" },
+      { action: "close_ticket", label: "Close" },
+      { action: "reopen_ticket", label: "Reopen" },
+    ],
+  },
+  {
+    title: "Admin outcomes",
+    testId: "group-admin-outcomes",
+    actions: [
+      { action: "mark_duplicate", label: "Duplicate" },
+      { action: "mark_not_a_bug", label: "Not a Bug" },
+      { action: "defer_ticket", label: "Defer" },
+      { action: "mark_spam", label: "Spam" },
+    ],
+  },
+];
+
+const WORKFLOW_REMINDERS: Partial<Record<SupportTicketWorkflowAction, string>> = {
+  request_more_info:
+    "Remember to send or record a More Info Needed message.",
+  escalate_to_engineering:
+    "Record the Escalated to Engineering message if the reporter should be updated.",
+  mark_fixed_waiting_notification:
+    "Send or record the Fixed message before marking User Notified.",
+  close_ticket:
+    "Make sure the closure message has been recorded if user communication is required.",
+};
+
+function WorkflowActionsCard({ ticket }: { ticket: SupportTicketDetail }) {
+  const qc = useQueryClient();
+  const mutation = useApplySupportTicketWorkflowAction();
+  const [activeAction, setActiveAction] =
+    useState<SupportTicketWorkflowAction | null>(null);
+  const [changedByName, setChangedByName] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [lastAction, setLastAction] =
+    useState<SupportTicketWorkflowAction | null>(null);
+
+  function openAction(action: SupportTicketWorkflowAction) {
+    setError(null);
+    setLastAction(null);
+    setActiveAction(action);
+    setChangedByName("");
+    setReason("");
+  }
+
+  function cancel() {
+    setActiveAction(null);
+    setChangedByName("");
+    setReason("");
+  }
+
+  async function confirm() {
+    if (!activeAction) return;
+    setError(null);
+    try {
+      await mutation.mutateAsync({
+        id: ticket.id,
+        data: {
+          action: activeAction,
+          changedByName: changedByName.trim() || null,
+          reason: reason.trim() || null,
+        },
+      });
+      qc.invalidateQueries({ queryKey: getGetSupportTicketQueryKey(ticket.id) });
+      qc.invalidateQueries({
+        queryKey: getListSupportTicketStatusHistoryQueryKey(ticket.id),
+      });
+      setLastAction(activeAction);
+      setActiveAction(null);
+      setChangedByName("");
+      setReason("");
+    } catch {
+      setError("Could not apply workflow action");
+    }
+  }
+
+  const reminder = lastAction ? WORKFLOW_REMINDERS[lastAction] : undefined;
+
+  return (
+    <Card data-testid="card-workflow-actions">
+      <CardHeader>
+        <CardTitle className="text-base">Workflow actions</CardTitle>
+        <CardDescription>
+          Move this ticket through the standard support lifecycle. Each action
+          updates public + internal status and writes a history entry.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {WORKFLOW_GROUPS.map((group) => (
+          <div key={group.testId} data-testid={group.testId}>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {group.title}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {group.actions.map((a) => (
+                <Button
+                  key={a.action}
+                  size="sm"
+                  variant={activeAction === a.action ? "default" : "outline"}
+                  onClick={() => openAction(a.action)}
+                  disabled={mutation.isPending}
+                  data-testid={`button-workflow-${a.action}`}
+                >
+                  {a.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {activeAction && (
+          <div
+            className="space-y-2 rounded-md border bg-muted/40 p-3"
+            data-testid="panel-workflow-confirm"
+          >
+            <div className="text-sm font-medium">
+              Apply: {activeAction.replace(/_/g, " ")}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <Label
+                  htmlFor="workflow-changed-by"
+                  className="text-xs text-muted-foreground"
+                >
+                  Your name (optional)
+                </Label>
+                <Input
+                  id="workflow-changed-by"
+                  value={changedByName}
+                  onChange={(e) => setChangedByName(e.target.value)}
+                  placeholder="e.g. Priya"
+                  data-testid="input-workflow-changed-by"
+                />
+              </div>
+              <div>
+                <Label
+                  htmlFor="workflow-reason"
+                  className="text-xs text-muted-foreground"
+                >
+                  Reason / comment (optional)
+                </Label>
+                <Input
+                  id="workflow-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Why this change?"
+                  data-testid="input-workflow-reason"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={confirm}
+                disabled={mutation.isPending}
+                data-testid="button-workflow-confirm"
+              >
+                {mutation.isPending ? "Applying…" : "Apply action"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={cancel}
+                disabled={mutation.isPending}
+                data-testid="button-workflow-cancel"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <Alert variant="destructive" data-testid="alert-workflow-error">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {lastAction && !activeAction && (
+          <div
+            className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900"
+            data-testid="text-workflow-success"
+          >
+            <div className="font-medium">
+              Applied: {lastAction.replace(/_/g, " ")}
+            </div>
+            {reminder && (
+              <div className="mt-1 text-emerald-800" data-testid="text-workflow-reminder">
+                {reminder}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

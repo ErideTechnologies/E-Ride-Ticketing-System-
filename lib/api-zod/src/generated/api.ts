@@ -348,6 +348,125 @@ export const ListSupportTicketStatusHistoryResponse = zod.array(
 );
 
 /**
+ * Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.
+ * @summary Apply a named workflow shortcut to a support ticket
+ */
+export const ApplySupportTicketWorkflowActionParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ApplySupportTicketWorkflowActionBody = zod.object({
+  action: zod.enum([
+    "start_review",
+    "request_more_info",
+    "escalate_to_engineering",
+    "mark_in_engineering",
+    "send_to_qa",
+    "mark_fixed_waiting_notification",
+    "mark_user_notified",
+    "resolve_ticket",
+    "close_ticket",
+    "reopen_ticket",
+    "mark_duplicate",
+    "mark_not_a_bug",
+    "defer_ticket",
+    "mark_spam",
+  ]),
+  changedByName: zod.string().nullish(),
+  reason: zod.string().nullish(),
+});
+
+export const ApplySupportTicketWorkflowActionResponse = zod.object({
+  id: zod.string().uuid(),
+  ticketReference: zod.string(),
+  productId: zod.string().uuid(),
+  productName: zod.string(),
+  productCode: zod.string(),
+  category: zod.enum([
+    "technical_bug",
+    "account_login_issue",
+    "otp_verification_issue",
+    "document_upload_issue",
+    "application_flow_confusion",
+    "payment_issue",
+    "b2b_firm_admin_issue",
+    "consultant_issue",
+    "partner_issue",
+    "feature_request",
+    "complaint",
+    "data_correction_request",
+    "security_privacy_concern",
+    "performance_issue",
+    "system_downtime",
+    "general_support",
+  ]),
+  publicStatus: zod.enum([
+    "received",
+    "under_review",
+    "more_info_needed",
+    "being_fixed",
+    "fixed",
+    "resolved",
+    "closed",
+  ]),
+  internalStatus: zod.enum([
+    "new",
+    "triage_required",
+    "support_review",
+    "needs_user_info",
+    "engineering_escalation_required",
+    "linear_created",
+    "in_engineering",
+    "in_review",
+    "in_qa_verification",
+    "fixed_waiting_user_notification",
+    "user_notified",
+    "resolved",
+    "closed",
+    "duplicate",
+    "not_a_bug",
+    "deferred",
+    "spam",
+  ]),
+  priority: zod.enum(["urgent", "high", "medium", "low"]),
+  severity: zod.enum(["critical", "major", "moderate", "minor", "cosmetic"]),
+  source: zod.string(),
+  environment: zod.string().nullish(),
+  reporterType: zod.enum([
+    "public_visitor",
+    "applicant",
+    "b2b_firm_admin",
+    "consultant",
+    "beauty_client",
+    "beauty_professional",
+    "partner",
+    "internal_tester",
+    "other",
+  ]),
+  reporterName: zod.string(),
+  reporterEmail: zod.string(),
+  reporterWhatsapp: zod.string().nullish(),
+  userId: zod.string().uuid().nullish(),
+  companyId: zod.string().uuid().nullish(),
+  firmId: zod.string().uuid().nullish(),
+  partnerId: zod.string().uuid().nullish(),
+  applicationReference: zod.string().nullish(),
+  accountReference: zod.string().nullish(),
+  pageOrStep: zod.string().nullish(),
+  issueSummary: zod.string(),
+  whatWereYouTryingToDo: zod.string().nullish(),
+  whatWentWrong: zod.string(),
+  assignedSupportUserId: zod.string().uuid().nullish(),
+  assignedProductOwnerId: zod.string().uuid().nullish(),
+  assignedDeveloperId: zod.string().uuid().nullish(),
+  assignedQaVerifierId: zod.string().uuid().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  resolvedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+});
+
+/**
  * @summary List communication records for a ticket (newest first)
  */
 export const ListSupportTicketMessagesParams = zod.object({
