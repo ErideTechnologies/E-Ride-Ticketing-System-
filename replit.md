@@ -1,6 +1,6 @@
-# [Project name]
+# Eride Support Command Centre
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; the data model is built so additional organisations can be onboarded later without restructuring.
 
 ## Run & Operate
 
@@ -9,6 +9,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/db run seed` — seed Eride org + active products (idempotent)
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
@@ -22,15 +23,23 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- DB schema (source of truth): `lib/db/src/schema/` — `enums.ts`, `organisations.ts`, `products.ts`, `tickets.ts`
+- Ticket reference helper: `lib/db/src/ticketReference.ts` (`generateSupportTicketReference`)
+- Seed: `lib/db/src/seed.ts`
+- API contract: `lib/api-spec/openapi.yaml`
+- API server: `artifacts/api-server/src/`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Multi-tenant from day one: every domain table (`support_products`, `support_tickets`) carries `organisationId`; for MVP only Eride is seeded as active. No public SaaS onboarding/billing yet.
+- UUID primary keys throughout (`uuid` + `defaultRandom()`) so org/product/ticket IDs are safe to expose externally and don't leak counts.
+- Status, category, priority, severity are **Postgres enums** generated from a single TS source of truth (`schema/enums.ts`) — exported `as const` arrays double as runtime constants and TS unions.
+- Ticket references (`PRODUCTCODE-SUP-YYYY-NNNNNN`) are allocated atomically via a `support_ticket_sequences` counter table scoped by `(organisationId, productId, year)`, using `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` so concurrent inserts can't collide.
+- Sequences restart at 1 each calendar year per org+product.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Foundation only: data model + enums + ticket reference generator. No UI, no Linear/Sentry integration yet.
 
 ## User preferences
 
