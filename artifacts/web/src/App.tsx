@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import HelpPage from "@/pages/help";
 import ReportProblemPage from "@/pages/report-problem";
+import AdminTicketsPage from "@/pages/admin-tickets";
 
 const queryClient = new QueryClient();
 
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={() => <Redirect to="/help" />} />
       <Route path="/help" component={HelpPage} />
       <Route path="/help/report-problem" component={ReportProblemPage} />
+      <Route path="/admin/support/tickets" component={AdminTicketsPage} />
       <Route component={NotFound} />
     </Switch>
   );

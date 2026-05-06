@@ -100,9 +100,91 @@ export interface SupportTicketSubmission {
   canContact?: boolean;
 }
 
+export type SupportTicketPriority =
+  (typeof SupportTicketPriority)[keyof typeof SupportTicketPriority];
+
+export const SupportTicketPriority = {
+  urgent: "urgent",
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type SupportTicketSeverity =
+  (typeof SupportTicketSeverity)[keyof typeof SupportTicketSeverity];
+
+export const SupportTicketSeverity = {
+  critical: "critical",
+  major: "major",
+  moderate: "moderate",
+  minor: "minor",
+  cosmetic: "cosmetic",
+} as const;
+
+export type InternalSupportTicketStatus =
+  (typeof InternalSupportTicketStatus)[keyof typeof InternalSupportTicketStatus];
+
+export const InternalSupportTicketStatus = {
+  new: "new",
+  triage_required: "triage_required",
+  support_review: "support_review",
+  needs_user_info: "needs_user_info",
+  engineering_escalation_required: "engineering_escalation_required",
+  linear_created: "linear_created",
+  in_engineering: "in_engineering",
+  in_review: "in_review",
+  in_qa_verification: "in_qa_verification",
+  fixed_waiting_user_notification: "fixed_waiting_user_notification",
+  user_notified: "user_notified",
+  resolved: "resolved",
+  closed: "closed",
+  duplicate: "duplicate",
+  not_a_bug: "not_a_bug",
+  deferred: "deferred",
+  spam: "spam",
+} as const;
+
+export interface SupportTicketListItem {
+  id: string;
+  ticketReference: string;
+  productName: string;
+  productCode: string;
+  category: SupportTicketCategory;
+  publicStatus: PublicSupportTicketStatus;
+  internalStatus: InternalSupportTicketStatus;
+  priority: SupportTicketPriority;
+  severity: SupportTicketSeverity;
+  reporterType: SupportReporterType;
+  reporterName: string;
+  reporterEmail: string;
+  /** @nullable */
+  reporterWhatsapp?: string | null;
+  issueSummary: string;
+  source: string;
+  /** @nullable */
+  environment?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreatedSupportTicket {
   ticketReference: string;
   publicStatus: PublicSupportTicketStatus;
   productName: string;
   createdAt: string;
 }
+
+export type ListSupportTicketsParams = {
+  productId?: string;
+  productCode?: string;
+  category?: SupportTicketCategory;
+  publicStatus?: PublicSupportTicketStatus;
+  internalStatus?: InternalSupportTicketStatus;
+  priority?: SupportTicketPriority;
+  severity?: SupportTicketSeverity;
+  source?: string;
+  reporterType?: SupportReporterType;
+  search?: string;
+  createdFrom?: string;
+  createdTo?: string;
+};

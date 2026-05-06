@@ -30,6 +30,165 @@ export const ListPublicSupportProductsResponse = zod.array(
 );
 
 /**
+ * Returns support tickets, with optional filters and search. Newest first.
+ * @summary List support tickets for the Eride organisation (internal admin)
+ */
+export const ListSupportTicketsQueryParams = zod.object({
+  productId: zod.coerce.string().uuid().optional(),
+  productCode: zod.coerce.string().optional(),
+  category: zod
+    .enum([
+      "technical_bug",
+      "account_login_issue",
+      "otp_verification_issue",
+      "document_upload_issue",
+      "application_flow_confusion",
+      "payment_issue",
+      "b2b_firm_admin_issue",
+      "consultant_issue",
+      "partner_issue",
+      "feature_request",
+      "complaint",
+      "data_correction_request",
+      "security_privacy_concern",
+      "performance_issue",
+      "system_downtime",
+      "general_support",
+    ])
+    .optional(),
+  publicStatus: zod
+    .enum([
+      "received",
+      "under_review",
+      "more_info_needed",
+      "being_fixed",
+      "fixed",
+      "resolved",
+      "closed",
+    ])
+    .optional(),
+  internalStatus: zod
+    .enum([
+      "new",
+      "triage_required",
+      "support_review",
+      "needs_user_info",
+      "engineering_escalation_required",
+      "linear_created",
+      "in_engineering",
+      "in_review",
+      "in_qa_verification",
+      "fixed_waiting_user_notification",
+      "user_notified",
+      "resolved",
+      "closed",
+      "duplicate",
+      "not_a_bug",
+      "deferred",
+      "spam",
+    ])
+    .optional(),
+  priority: zod.enum(["urgent", "high", "medium", "low"]).optional(),
+  severity: zod
+    .enum(["critical", "major", "moderate", "minor", "cosmetic"])
+    .optional(),
+  source: zod.coerce.string().optional(),
+  reporterType: zod
+    .enum([
+      "public_visitor",
+      "applicant",
+      "b2b_firm_admin",
+      "consultant",
+      "beauty_client",
+      "beauty_professional",
+      "partner",
+      "internal_tester",
+      "other",
+    ])
+    .optional(),
+  search: zod.coerce.string().optional(),
+  createdFrom: zod.date().optional(),
+  createdTo: zod.date().optional(),
+});
+
+export const ListSupportTicketsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  ticketReference: zod.string(),
+  productName: zod.string(),
+  productCode: zod.string(),
+  category: zod.enum([
+    "technical_bug",
+    "account_login_issue",
+    "otp_verification_issue",
+    "document_upload_issue",
+    "application_flow_confusion",
+    "payment_issue",
+    "b2b_firm_admin_issue",
+    "consultant_issue",
+    "partner_issue",
+    "feature_request",
+    "complaint",
+    "data_correction_request",
+    "security_privacy_concern",
+    "performance_issue",
+    "system_downtime",
+    "general_support",
+  ]),
+  publicStatus: zod.enum([
+    "received",
+    "under_review",
+    "more_info_needed",
+    "being_fixed",
+    "fixed",
+    "resolved",
+    "closed",
+  ]),
+  internalStatus: zod.enum([
+    "new",
+    "triage_required",
+    "support_review",
+    "needs_user_info",
+    "engineering_escalation_required",
+    "linear_created",
+    "in_engineering",
+    "in_review",
+    "in_qa_verification",
+    "fixed_waiting_user_notification",
+    "user_notified",
+    "resolved",
+    "closed",
+    "duplicate",
+    "not_a_bug",
+    "deferred",
+    "spam",
+  ]),
+  priority: zod.enum(["urgent", "high", "medium", "low"]),
+  severity: zod.enum(["critical", "major", "moderate", "minor", "cosmetic"]),
+  reporterType: zod.enum([
+    "public_visitor",
+    "applicant",
+    "b2b_firm_admin",
+    "consultant",
+    "beauty_client",
+    "beauty_professional",
+    "partner",
+    "internal_tester",
+    "other",
+  ]),
+  reporterName: zod.string(),
+  reporterEmail: zod.string(),
+  reporterWhatsapp: zod.string().nullish(),
+  issueSummary: zod.string(),
+  source: zod.string(),
+  environment: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSupportTicketsResponse = zod.array(
+  ListSupportTicketsResponseItem,
+);
+
+/**
  * @summary Submit a support ticket from the public report-a-problem form
  */
 

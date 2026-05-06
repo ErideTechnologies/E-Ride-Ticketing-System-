@@ -1,0 +1,172 @@
+Build Step 3 of the Eride Support Command Centre: the Internal Admin Ticket Dashboard.
+
+Context:
+Step 1 foundation is complete:
+- support_organisations
+- support_products
+- support_tickets
+- support_ticket_sequences
+- generateSupportTicketReference(organisationId, productId)
+
+Step 2 is complete:
+- /help/report-problem public ticket form
+- GET /api/support/products
+- POST /api/support/tickets
+- public users can submit support tickets
+- tickets are saved with source=public_form
+- publicStatus=received
+- internalStatus=triage_required
+- priority/severity suggested from category
+- confirmation screen shows ticket reference
+
+Goal:
+Create the first internal admin/support dashboard where Eride staff can view submitted support tickets.
+
+Route:
+- /admin/support/tickets
+
+Purpose:
+Allow internal Eride support/admin users to view, filter, and monitor all support tickets across:
+- E-Migration Assist
+- 8Beauty
+- Eride General Support
+
+Important:
+Do not add authentication/permissions yet unless the existing app already has admin auth patterns.
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+Do not add WhatsApp/email automation yet.
+Do not build ticket detail editing yet.
+Do not build full wallboard yet.
+This step is only the internal ticket list/dashboard.
+
+Backend requirement:
+Create or extend API endpoint:
+
+GET /api/support/tickets
+
+It must return support tickets for the Eride Technologies organisation.
+
+Include related product information:
+- productName
+- productCode
+
+Support query filters:
+- productId optional
+- productCode optional
+- category optional
+- publicStatus optional
+- internalStatus optional
+- priority optional
+- severity optional
+- source optional
+- reporterType optional
+- search optional
+- createdFrom optional
+- createdTo optional
+
+Search should match:
+- ticketReference
+- reporterName
+- reporterEmail
+- reporterWhatsapp
+- issueSummary
+- whatWentWrong
+- applicationReference
+- accountReference
+
+Default sort:
+- newest first
+
+Return:
+- id
+- ticketReference
+- productName
+- productCode
+- category
+- publicStatus
+- internalStatus
+- priority
+- severity
+- reporterType
+- reporterName
+- reporterEmail
+- reporterWhatsapp
+- issueSummary
+- source
+- environment
+- createdAt
+- updatedAt
+
+Frontend route:
+Create /admin/support/tickets
+
+Page title:
+Eride Support Tickets
+
+Subtitle:
+“View and triage support tickets submitted across Eride products.”
+
+Dashboard summary cards:
+- Total tickets
+- Awaiting triage
+- Urgent
+- High priority
+- E-Migration Assist tickets
+- 8Beauty tickets
+- Eride General tickets
+
+Filters UI:
+- Product dropdown: All Products, E-Migration Assist, 8Beauty, Eride General Support
+- Priority dropdown: All, Urgent, High, Medium, Low
+- Public Status dropdown
+- Internal Status dropdown
+- Category dropdown
+- Search input
+- Clear filters button
+
+Ticket table/list:
+Show columns:
+- Reference
+- Product
+- Summary
+- Reporter
+- Category
+- Priority
+- Public Status
+- Internal Status
+- Created
+
+Each row should visually highlight:
+- urgent tickets
+- high priority tickets
+- triage_required tickets
+
+Mobile-first:
+On small screens, use stacked cards instead of a wide table.
+
+Empty state:
+If no tickets:
+“No support tickets found.”
+
+Loading state:
+“Loading support tickets…”
+
+Error state:
+“We could not load support tickets. Please try again.”
+
+Click behavior:
+For now, clicking a ticket can do nothing or show a simple placeholder alert:
+“Ticket detail page will be added in Step 4.”
+
+Do not build /admin/support/tickets/:id yet.
+
+Acceptance criteria:
+- /admin/support/tickets loads successfully
+- Tickets created from /help/report-problem appear in the dashboard
+- Product, priority, status, category, and search filters work
+- Summary cards show correct counts
+- Newest tickets appear first
+- Mobile view is usable
+- Typecheck passes
+- Basic browser test confirms dashboard loads and displays at least one submitted ticket

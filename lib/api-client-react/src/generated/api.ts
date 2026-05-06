@@ -20,7 +20,9 @@ import type {
   CreatedSupportTicket,
   ErrorResponse,
   HealthStatus,
+  ListSupportTicketsParams,
   PublicSupportProduct,
+  SupportTicketListItem,
   SupportTicketSubmission,
 } from "./api.schemas";
 
@@ -181,6 +183,107 @@ export function useListPublicSupportProducts<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListPublicSupportProductsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns support tickets, with optional filters and search. Newest first.
+ * @summary List support tickets for the Eride organisation (internal admin)
+ */
+export const getListSupportTicketsUrl = (params?: ListSupportTicketsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/support/tickets?${stringifiedParams}`
+    : `/api/support/tickets`;
+};
+
+export const listSupportTickets = async (
+  params?: ListSupportTicketsParams,
+  options?: RequestInit,
+): Promise<SupportTicketListItem[]> => {
+  return customFetch<SupportTicketListItem[]>(
+    getListSupportTicketsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSupportTicketsQueryKey = (
+  params?: ListSupportTicketsParams,
+) => {
+  return [`/api/support/tickets`, ...(params ? [params] : [])] as const;
+};
+
+export const getListSupportTicketsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupportTickets>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSupportTicketsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTickets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupportTicketsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupportTickets>>
+  > = ({ signal }) => listSupportTickets(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupportTickets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupportTicketsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupportTickets>>
+>;
+export type ListSupportTicketsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List support tickets for the Eride organisation (internal admin)
+ */
+
+export function useListSupportTickets<
+  TData = Awaited<ReturnType<typeof listSupportTickets>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSupportTicketsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTickets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupportTicketsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

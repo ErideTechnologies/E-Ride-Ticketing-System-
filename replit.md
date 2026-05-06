@@ -40,8 +40,9 @@ Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; 
 ## Product
 
 - Public "Report a Problem" page at `/help/report-problem` (artifact `web`) backed by `POST /api/support/tickets` and `GET /api/support/products` (Eride org only).
+- Internal admin dashboard at `/admin/support/tickets` backed by `GET /api/support/tickets` with filters (product, priority, public/internal status, category, source, reporter type, search, createdFrom/createdTo) and newest-first sort. No auth yet.
 - Server suggests `priority`/`severity` from category (see `artifacts/api-server/src/routes/support.ts`); ticket created with `source=public_form`, `publicStatus=received`, `internalStatus=triage_required`.
-- No Linear/Sentry/WhatsApp/admin/SaaS yet.
+- No Linear/Sentry/WhatsApp/SaaS yet.
 
 ## User preferences
 
@@ -49,7 +50,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Orval generates `zod.date()` for `format: date-time` query params, but Express query values are strings. Date-range filters (`createdFrom`/`createdTo`) are parsed manually in `routes/support.ts` rather than via the generated schema.
 
 ## Pointers
 

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
 import {
   db,
   generateSupportTicketReference,
@@ -13,6 +13,7 @@ import {
 import {
   CreateSupportTicketBody,
   ListPublicSupportProductsResponse,
+  ListSupportTicketsQueryParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -83,6 +84,108 @@ router.get("/support/products", async (req, res): Promise<void> => {
     .orderBy(supportProductsTable.productName);
 
   res.json(ListPublicSupportProductsResponse.parse(products));
+});
+
+router.get("/support/tickets", async (req, res): Promise<void> => {
+  const { createdFrom: rawFrom, createdTo: rawTo, ...rest } = req.query;
+  const parsed = ListSupportTicketsQueryParams.omit({
+    createdFrom: true,
+    createdTo: true,
+  }).safeParse(rest);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid filters" });
+    return;
+  }
+  const q = parsed.data;
+
+  function parseDate(value: unknown): Date | null {
+    if (typeof value !== "string" || value.trim() === "") return null;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const createdFrom = parseDate(rawFrom);
+  const createdTo = parseDate(rawTo);
+  if ((rawFrom && !createdFrom) || (rawTo && !createdTo)) {
+    res.status(400).json({ error: "Invalid date filters" });
+    return;
+  }
+
+  const org = await getErideOrganisation();
+  if (!org) {
+    req.log.error({ orgCode: ERIDE_ORG_CODE }, "Eride organisation not found");
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+
+  const conditions: SQL[] = [eq(supportTicketsTable.organisationId, org.id)];
+
+  if (q.productId) conditions.push(eq(supportTicketsTable.productId, q.productId));
+  if (q.productCode)
+    conditions.push(eq(supportProductsTable.productCode, q.productCode));
+  if (q.category) conditions.push(eq(supportTicketsTable.category, q.category));
+  if (q.publicStatus)
+    conditions.push(eq(supportTicketsTable.publicStatus, q.publicStatus));
+  if (q.internalStatus)
+    conditions.push(eq(supportTicketsTable.internalStatus, q.internalStatus));
+  if (q.priority) conditions.push(eq(supportTicketsTable.priority, q.priority));
+  if (q.severity) conditions.push(eq(supportTicketsTable.severity, q.severity));
+  if (q.source) conditions.push(eq(supportTicketsTable.source, q.source));
+  if (q.reporterType)
+    conditions.push(eq(supportTicketsTable.reporterType, q.reporterType));
+  if (createdFrom) conditions.push(gte(supportTicketsTable.createdAt, createdFrom));
+  if (createdTo) conditions.push(lte(supportTicketsTable.createdAt, createdTo));
+
+  if (q.search && q.search.trim()) {
+    const term = `%${q.search.trim()}%`;
+    const searchCond = or(
+      ilike(supportTicketsTable.ticketReference, term),
+      ilike(supportTicketsTable.reporterName, term),
+      ilike(supportTicketsTable.reporterEmail, term),
+      ilike(supportTicketsTable.reporterWhatsapp, term),
+      ilike(supportTicketsTable.issueSummary, term),
+      ilike(supportTicketsTable.whatWentWrong, term),
+      ilike(supportTicketsTable.applicationReference, term),
+      ilike(supportTicketsTable.accountReference, term),
+    );
+    if (searchCond) conditions.push(searchCond);
+  }
+
+  const rows = await db
+    .select({
+      id: supportTicketsTable.id,
+      ticketReference: supportTicketsTable.ticketReference,
+      productName: supportProductsTable.productName,
+      productCode: supportProductsTable.productCode,
+      category: supportTicketsTable.category,
+      publicStatus: supportTicketsTable.publicStatus,
+      internalStatus: supportTicketsTable.internalStatus,
+      priority: supportTicketsTable.priority,
+      severity: supportTicketsTable.severity,
+      reporterType: supportTicketsTable.reporterType,
+      reporterName: supportTicketsTable.reporterName,
+      reporterEmail: supportTicketsTable.reporterEmail,
+      reporterWhatsapp: supportTicketsTable.reporterWhatsapp,
+      issueSummary: supportTicketsTable.issueSummary,
+      source: supportTicketsTable.source,
+      environment: supportTicketsTable.environment,
+      createdAt: supportTicketsTable.createdAt,
+      updatedAt: supportTicketsTable.updatedAt,
+    })
+    .from(supportTicketsTable)
+    .innerJoin(
+      supportProductsTable,
+      eq(supportProductsTable.id, supportTicketsTable.productId),
+    )
+    .where(and(...conditions))
+    .orderBy(desc(supportTicketsTable.createdAt));
+
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    })),
+  );
 });
 
 router.post("/support/tickets", async (req, res): Promise<void> => {
