@@ -1,0 +1,333 @@
+Build Step 4 of the Eride Support Command Centre: the Internal Ticket Detail Page.
+
+Context:
+Step 1 foundation is complete:
+- support_organisations
+- support_products
+- support_tickets
+- support_ticket_sequences
+- generateSupportTicketReference(organisationId, productId)
+
+Step 2 is complete:
+- /help/report-problem
+- GET /api/support/products
+- POST /api/support/tickets
+- public ticket submission works
+
+Step 3 is complete:
+- /admin/support/tickets
+- GET /api/support/tickets
+- dashboard summary cards
+- filters
+- ticket list/table
+- mobile stacked cards
+- row click currently shows Step 4 placeholder alert
+
+Goal:
+Create the internal ticket detail page so support/admin staff can open and manage a specific ticket.
+
+Route:
+- /admin/support/tickets/:id
+
+Important:
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+Do not add WhatsApp automation yet.
+Do not add email sending yet.
+Do not build full wallboard yet.
+Do not build role-based permissions yet unless existing auth patterns already exist.
+This step is only ticket detail viewing, status updates, assignment fields, internal notes, and communication draft/copy blocks.
+
+Backend requirements:
+
+1. Create endpoint:
+GET /api/support/tickets/:id
+
+It must:
+- return one ticket scoped to active Eride Technologies organisation
+- include productName and productCode
+- return all support_tickets fields
+- return 404 if not found
+
+2. Create endpoint:
+PATCH /api/support/tickets/:id
+
+It must allow updating:
+- publicStatus
+- internalStatus
+- priority
+- severity
+- category
+- assignedSupportUserId
+- assignedProductOwnerId
+- assignedDeveloperId
+- assignedQaVerifierId
+- pageOrStep
+- issueSummary
+- whatWereYouTryingToDo
+- whatWentWrong
+- environment
+- applicationReference
+- accountReference
+
+Validation:
+- publicStatus must use existing public status enum
+- internalStatus must use existing internal status enum
+- priority must use existing priority enum
+- severity must use existing severity enum
+- category must use existing category enum
+- ticket must belong to Eride Technologies organisation
+
+3. Create support_ticket_internal_notes table if it does not exist:
+- id
+- supportTicketId
+- note
+- createdByName nullable
+- createdAt
+
+4. Create endpoint:
+GET /api/support/tickets/:id/notes
+
+Return notes newest first.
+
+5. Create endpoint:
+POST /api/support/tickets/:id/notes
+
+Fields:
+- note required
+- createdByName optional
+
+Validation:
+- note cannot be empty
+- ticket must belong to Eride Technologies organisation
+
+6. Create support_ticket_status_history table if it does not exist:
+- id
+- supportTicketId
+- oldPublicStatus nullable
+- newPublicStatus nullable
+- oldInternalStatus nullable
+- newInternalStatus nullable
+- changedByName nullable
+- changeReason nullable
+- createdAt
+
+When PATCH changes publicStatus or internalStatus:
+- insert a status history record
+
+7. Create endpoint:
+GET /api/support/tickets/:id/status-history
+
+Return status history newest first.
+
+Frontend requirements:
+
+Create route:
+- /admin/support/tickets/:id
+
+Update /admin/support/tickets row click:
+- navigate to /admin/support/tickets/:id instead of placeholder alert.
+
+Page layout:
+
+Header:
+- Back to tickets button
+- Ticket reference
+- Product name/code badge
+- Priority badge
+- Public status badge
+- Internal status badge
+
+Main sections:
+
+1. Ticket overview card
+Show:
+- ticketReference
+- productName
+- productCode
+- category
+- priority
+- severity
+- publicStatus
+- internalStatus
+- source
+- environment
+- createdAt
+- updatedAt
+
+2. Reporter details card
+Show:
+- reporterType
+- reporterName
+- reporterEmail
+- reporterWhatsapp
+- userId if available
+- companyId if available
+- firmId if available
+- partnerId if available
+
+3. Issue details card
+Show and allow editing:
+- issueSummary
+- whatWereYouTryingToDo
+- whatWentWrong
+- pageOrStep
+- applicationReference
+- accountReference
+- environment
+
+4. Status and priority management card
+Editable controls:
+- publicStatus dropdown
+- internalStatus dropdown
+- priority dropdown
+- severity dropdown
+- category dropdown
+- save changes button
+
+5. Assignment card
+Editable fields:
+- assignedSupportUserId
+- assignedProductOwnerId
+- assignedDeveloperId
+- assignedQaVerifierId
+
+For now these can be simple text/ID inputs until full user management exists.
+
+6. Internal notes card
+- show existing notes newest first
+- add note textarea
+- createdByName input default “Support”
+- add note button
+
+7. Status history card
+- show status changes newest first
+- show old → new public status
+- show old → new internal status
+- show changedByName
+- show createdAt
+
+8. Communication draft card
+No sending yet. Only generate copy-ready text.
+
+Add buttons:
+- Copy ticket received message
+- Copy more info needed message
+- Copy escalated to engineering message
+- Copy fixed message
+- Copy closed message
+
+Templates:
+
+Ticket received:
+Hi {{reporterName}},
+Thank you for contacting Eride Support.
+We have received your request.
+Reference: {{ticketReference}}
+Status: Received
+Our team will review the issue and contact you if we need more information.
+Eride Support
+
+More info needed:
+Hi {{reporterName}},
+We are reviewing your support request, but we need a little more information.
+Please send us a screenshot, the page where the issue happened, and what you clicked before the issue appeared.
+Reference: {{ticketReference}}
+Eride Support
+
+Escalated to engineering:
+Hi {{reporterName}},
+Your issue has been escalated to our technical team.
+Reference: {{ticketReference}}
+Status: Being Fixed
+You do not need to report it again. We will update you once the issue has been resolved.
+Eride Support
+
+Fixed:
+Hi {{reporterName}},
+The issue you reported has been fixed.
+Reference: {{ticketReference}}
+Please try again. If the issue continues, reply to this message and we will reopen the ticket.
+Eride Support
+
+Closed:
+Hi {{reporterName}},
+We are closing your support ticket because the issue has been resolved.
+Reference: {{ticketReference}}
+If the same issue happens again, you can create a new ticket through the support page.
+Eride Support
+
+Copy behavior:
+- clicking a copy button copies the message to clipboard
+- show “Copied” feedback
+
+9. Developer handoff placeholder card
+No Linear creation yet.
+Show a “Generate Developer Handoff” button.
+
+When clicked, generate copy-ready text:
+
+SUPPORT TICKET DEVELOPER HANDOFF
+
+Ticket:
+{{ticketReference}}
+
+Product:
+{{productName}} ({{productCode}})
+
+Priority:
+{{priority}}
+
+Severity:
+{{severity}}
+
+Category:
+{{category}}
+
+Reporter Type:
+{{reporterType}}
+
+Page/Step:
+{{pageOrStep}}
+
+Issue Summary:
+{{issueSummary}}
+
+What user was trying to do:
+{{whatWereYouTryingToDo}}
+
+What went wrong:
+{{whatWentWrong}}
+
+Expected developer action:
+Investigate, reproduce, fix, add regression test, and return for QA verification.
+
+Compliance notes:
+- Do not expose PII in logs.
+- Do not expose internal notes publicly.
+- Do not use legal-decision language such as approved, rejected, guaranteed.
+- The fixer cannot verify their own work.
+
+10. Loading/error states:
+- Loading ticket…
+- Ticket not found
+- Could not load ticket
+- Could not save changes
+- Could not add note
+
+11. Mobile-first:
+- Page must be usable on mobile
+- Stack cards vertically
+- Keep action buttons easy to tap
+
+Acceptance criteria:
+- Clicking a ticket from /admin/support/tickets opens /admin/support/tickets/:id
+- Detail page loads ticket and product data
+- Support can update statuses, priority, severity, category, issue fields, and assignment fields
+- Status changes are recorded in status history
+- Support can add internal notes
+- Notes display newest first
+- Communication copy buttons work
+- Developer handoff copy text works
+- Typecheck passes
+- Basic browser test covers opening detail page, editing a status, adding a note, and copying a message

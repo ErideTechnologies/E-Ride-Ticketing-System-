@@ -22,8 +22,13 @@ import type {
   HealthStatus,
   ListSupportTicketsParams,
   PublicSupportProduct,
+  SupportTicketDetail,
   SupportTicketListItem,
+  SupportTicketNote,
+  SupportTicketNoteCreate,
+  SupportTicketStatusHistoryItem,
   SupportTicketSubmission,
+  SupportTicketUpdate,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -183,6 +188,451 @@ export function useListPublicSupportProducts<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListPublicSupportProductsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single support ticket (Eride org only)
+ */
+export const getGetSupportTicketUrl = (id: string) => {
+  return `/api/support/tickets/${id}`;
+};
+
+export const getSupportTicket = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupportTicketDetail> => {
+  return customFetch<SupportTicketDetail>(getGetSupportTicketUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupportTicketQueryKey = (id: string) => {
+  return [`/api/support/tickets/${id}`] as const;
+};
+
+export const getGetSupportTicketQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportTicket>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportTicket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSupportTicketQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportTicket>>
+  > = ({ signal }) => getSupportTicket(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportTicket>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportTicketQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportTicket>>
+>;
+export type GetSupportTicketQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a single support ticket (Eride org only)
+ */
+
+export function useGetSupportTicket<
+  TData = Awaited<ReturnType<typeof getSupportTicket>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportTicket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportTicketQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update mutable fields of a support ticket (Eride org only)
+ */
+export const getUpdateSupportTicketUrl = (id: string) => {
+  return `/api/support/tickets/${id}`;
+};
+
+export const updateSupportTicket = async (
+  id: string,
+  supportTicketUpdate: SupportTicketUpdate,
+  options?: RequestInit,
+): Promise<SupportTicketDetail> => {
+  return customFetch<SupportTicketDetail>(getUpdateSupportTicketUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supportTicketUpdate),
+  });
+};
+
+export const getUpdateSupportTicketMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSupportTicket>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSupportTicket>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateSupportTicket"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSupportTicket>>,
+    { id: string; data: BodyType<SupportTicketUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSupportTicket(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSupportTicketMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSupportTicket>>
+>;
+export type UpdateSupportTicketMutationBody = BodyType<SupportTicketUpdate>;
+export type UpdateSupportTicketMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update mutable fields of a support ticket (Eride org only)
+ */
+export const useUpdateSupportTicket = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSupportTicket>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSupportTicket>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateSupportTicketMutationOptions(options));
+};
+
+/**
+ * @summary List internal notes for a ticket (newest first)
+ */
+export const getListSupportTicketNotesUrl = (id: string) => {
+  return `/api/support/tickets/${id}/notes`;
+};
+
+export const listSupportTicketNotes = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupportTicketNote[]> => {
+  return customFetch<SupportTicketNote[]>(getListSupportTicketNotesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSupportTicketNotesQueryKey = (id: string) => {
+  return [`/api/support/tickets/${id}/notes`] as const;
+};
+
+export const getListSupportTicketNotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupportTicketNotes>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTicketNotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupportTicketNotesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupportTicketNotes>>
+  > = ({ signal }) => listSupportTicketNotes(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupportTicketNotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupportTicketNotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupportTicketNotes>>
+>;
+export type ListSupportTicketNotesQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List internal notes for a ticket (newest first)
+ */
+
+export function useListSupportTicketNotes<
+  TData = Awaited<ReturnType<typeof listSupportTicketNotes>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTicketNotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupportTicketNotesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add an internal note to a ticket
+ */
+export const getCreateSupportTicketNoteUrl = (id: string) => {
+  return `/api/support/tickets/${id}/notes`;
+};
+
+export const createSupportTicketNote = async (
+  id: string,
+  supportTicketNoteCreate: SupportTicketNoteCreate,
+  options?: RequestInit,
+): Promise<SupportTicketNote> => {
+  return customFetch<SupportTicketNote>(getCreateSupportTicketNoteUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supportTicketNoteCreate),
+  });
+};
+
+export const getCreateSupportTicketNoteMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSupportTicketNote>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketNoteCreate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSupportTicketNote>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketNoteCreate> },
+  TContext
+> => {
+  const mutationKey = ["createSupportTicketNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSupportTicketNote>>,
+    { id: string; data: BodyType<SupportTicketNoteCreate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createSupportTicketNote(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSupportTicketNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSupportTicketNote>>
+>;
+export type CreateSupportTicketNoteMutationBody =
+  BodyType<SupportTicketNoteCreate>;
+export type CreateSupportTicketNoteMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Add an internal note to a ticket
+ */
+export const useCreateSupportTicketNote = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSupportTicketNote>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketNoteCreate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSupportTicketNote>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketNoteCreate> },
+  TContext
+> => {
+  return useMutation(getCreateSupportTicketNoteMutationOptions(options));
+};
+
+/**
+ * @summary List status change history for a ticket (newest first)
+ */
+export const getListSupportTicketStatusHistoryUrl = (id: string) => {
+  return `/api/support/tickets/${id}/status-history`;
+};
+
+export const listSupportTicketStatusHistory = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupportTicketStatusHistoryItem[]> => {
+  return customFetch<SupportTicketStatusHistoryItem[]>(
+    getListSupportTicketStatusHistoryUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSupportTicketStatusHistoryQueryKey = (id: string) => {
+  return [`/api/support/tickets/${id}/status-history`] as const;
+};
+
+export const getListSupportTicketStatusHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupportTicketStatusHistory>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTicketStatusHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupportTicketStatusHistoryQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupportTicketStatusHistory>>
+  > = ({ signal }) =>
+    listSupportTicketStatusHistory(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupportTicketStatusHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupportTicketStatusHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupportTicketStatusHistory>>
+>;
+export type ListSupportTicketStatusHistoryQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List status change history for a ticket (newest first)
+ */
+
+export function useListSupportTicketStatusHistory<
+  TData = Awaited<ReturnType<typeof listSupportTicketStatusHistory>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportTicketStatusHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupportTicketStatusHistoryQueryOptions(
+    id,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

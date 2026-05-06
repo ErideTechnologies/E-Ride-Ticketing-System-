@@ -30,6 +30,324 @@ export const ListPublicSupportProductsResponse = zod.array(
 );
 
 /**
+ * @summary Get a single support ticket (Eride org only)
+ */
+export const GetSupportTicketParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetSupportTicketResponse = zod.object({
+  id: zod.string().uuid(),
+  ticketReference: zod.string(),
+  productId: zod.string().uuid(),
+  productName: zod.string(),
+  productCode: zod.string(),
+  category: zod.enum([
+    "technical_bug",
+    "account_login_issue",
+    "otp_verification_issue",
+    "document_upload_issue",
+    "application_flow_confusion",
+    "payment_issue",
+    "b2b_firm_admin_issue",
+    "consultant_issue",
+    "partner_issue",
+    "feature_request",
+    "complaint",
+    "data_correction_request",
+    "security_privacy_concern",
+    "performance_issue",
+    "system_downtime",
+    "general_support",
+  ]),
+  publicStatus: zod.enum([
+    "received",
+    "under_review",
+    "more_info_needed",
+    "being_fixed",
+    "fixed",
+    "resolved",
+    "closed",
+  ]),
+  internalStatus: zod.enum([
+    "new",
+    "triage_required",
+    "support_review",
+    "needs_user_info",
+    "engineering_escalation_required",
+    "linear_created",
+    "in_engineering",
+    "in_review",
+    "in_qa_verification",
+    "fixed_waiting_user_notification",
+    "user_notified",
+    "resolved",
+    "closed",
+    "duplicate",
+    "not_a_bug",
+    "deferred",
+    "spam",
+  ]),
+  priority: zod.enum(["urgent", "high", "medium", "low"]),
+  severity: zod.enum(["critical", "major", "moderate", "minor", "cosmetic"]),
+  source: zod.string(),
+  environment: zod.string().nullish(),
+  reporterType: zod.enum([
+    "public_visitor",
+    "applicant",
+    "b2b_firm_admin",
+    "consultant",
+    "beauty_client",
+    "beauty_professional",
+    "partner",
+    "internal_tester",
+    "other",
+  ]),
+  reporterName: zod.string(),
+  reporterEmail: zod.string(),
+  reporterWhatsapp: zod.string().nullish(),
+  userId: zod.string().uuid().nullish(),
+  companyId: zod.string().uuid().nullish(),
+  firmId: zod.string().uuid().nullish(),
+  partnerId: zod.string().uuid().nullish(),
+  applicationReference: zod.string().nullish(),
+  accountReference: zod.string().nullish(),
+  pageOrStep: zod.string().nullish(),
+  issueSummary: zod.string(),
+  whatWereYouTryingToDo: zod.string().nullish(),
+  whatWentWrong: zod.string(),
+  assignedSupportUserId: zod.string().uuid().nullish(),
+  assignedProductOwnerId: zod.string().uuid().nullish(),
+  assignedDeveloperId: zod.string().uuid().nullish(),
+  assignedQaVerifierId: zod.string().uuid().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  resolvedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Update mutable fields of a support ticket (Eride org only)
+ */
+export const UpdateSupportTicketParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateSupportTicketBody = zod.object({
+  publicStatus: zod
+    .enum([
+      "received",
+      "under_review",
+      "more_info_needed",
+      "being_fixed",
+      "fixed",
+      "resolved",
+      "closed",
+    ])
+    .optional(),
+  internalStatus: zod
+    .enum([
+      "new",
+      "triage_required",
+      "support_review",
+      "needs_user_info",
+      "engineering_escalation_required",
+      "linear_created",
+      "in_engineering",
+      "in_review",
+      "in_qa_verification",
+      "fixed_waiting_user_notification",
+      "user_notified",
+      "resolved",
+      "closed",
+      "duplicate",
+      "not_a_bug",
+      "deferred",
+      "spam",
+    ])
+    .optional(),
+  priority: zod.enum(["urgent", "high", "medium", "low"]).optional(),
+  severity: zod
+    .enum(["critical", "major", "moderate", "minor", "cosmetic"])
+    .optional(),
+  category: zod
+    .enum([
+      "technical_bug",
+      "account_login_issue",
+      "otp_verification_issue",
+      "document_upload_issue",
+      "application_flow_confusion",
+      "payment_issue",
+      "b2b_firm_admin_issue",
+      "consultant_issue",
+      "partner_issue",
+      "feature_request",
+      "complaint",
+      "data_correction_request",
+      "security_privacy_concern",
+      "performance_issue",
+      "system_downtime",
+      "general_support",
+    ])
+    .optional(),
+  assignedSupportUserId: zod.string().nullish(),
+  assignedProductOwnerId: zod.string().nullish(),
+  assignedDeveloperId: zod.string().nullish(),
+  assignedQaVerifierId: zod.string().nullish(),
+  pageOrStep: zod.string().nullish(),
+  issueSummary: zod.string().min(1).optional(),
+  whatWereYouTryingToDo: zod.string().nullish(),
+  whatWentWrong: zod.string().min(1).optional(),
+  environment: zod.string().nullish(),
+  applicationReference: zod.string().nullish(),
+  accountReference: zod.string().nullish(),
+  changedByName: zod.string().nullish(),
+  changeReason: zod.string().nullish(),
+});
+
+export const UpdateSupportTicketResponse = zod.object({
+  id: zod.string().uuid(),
+  ticketReference: zod.string(),
+  productId: zod.string().uuid(),
+  productName: zod.string(),
+  productCode: zod.string(),
+  category: zod.enum([
+    "technical_bug",
+    "account_login_issue",
+    "otp_verification_issue",
+    "document_upload_issue",
+    "application_flow_confusion",
+    "payment_issue",
+    "b2b_firm_admin_issue",
+    "consultant_issue",
+    "partner_issue",
+    "feature_request",
+    "complaint",
+    "data_correction_request",
+    "security_privacy_concern",
+    "performance_issue",
+    "system_downtime",
+    "general_support",
+  ]),
+  publicStatus: zod.enum([
+    "received",
+    "under_review",
+    "more_info_needed",
+    "being_fixed",
+    "fixed",
+    "resolved",
+    "closed",
+  ]),
+  internalStatus: zod.enum([
+    "new",
+    "triage_required",
+    "support_review",
+    "needs_user_info",
+    "engineering_escalation_required",
+    "linear_created",
+    "in_engineering",
+    "in_review",
+    "in_qa_verification",
+    "fixed_waiting_user_notification",
+    "user_notified",
+    "resolved",
+    "closed",
+    "duplicate",
+    "not_a_bug",
+    "deferred",
+    "spam",
+  ]),
+  priority: zod.enum(["urgent", "high", "medium", "low"]),
+  severity: zod.enum(["critical", "major", "moderate", "minor", "cosmetic"]),
+  source: zod.string(),
+  environment: zod.string().nullish(),
+  reporterType: zod.enum([
+    "public_visitor",
+    "applicant",
+    "b2b_firm_admin",
+    "consultant",
+    "beauty_client",
+    "beauty_professional",
+    "partner",
+    "internal_tester",
+    "other",
+  ]),
+  reporterName: zod.string(),
+  reporterEmail: zod.string(),
+  reporterWhatsapp: zod.string().nullish(),
+  userId: zod.string().uuid().nullish(),
+  companyId: zod.string().uuid().nullish(),
+  firmId: zod.string().uuid().nullish(),
+  partnerId: zod.string().uuid().nullish(),
+  applicationReference: zod.string().nullish(),
+  accountReference: zod.string().nullish(),
+  pageOrStep: zod.string().nullish(),
+  issueSummary: zod.string(),
+  whatWereYouTryingToDo: zod.string().nullish(),
+  whatWentWrong: zod.string(),
+  assignedSupportUserId: zod.string().uuid().nullish(),
+  assignedProductOwnerId: zod.string().uuid().nullish(),
+  assignedDeveloperId: zod.string().uuid().nullish(),
+  assignedQaVerifierId: zod.string().uuid().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  resolvedAt: zod.coerce.date().nullish(),
+  closedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary List internal notes for a ticket (newest first)
+ */
+export const ListSupportTicketNotesParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListSupportTicketNotesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  note: zod.string(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListSupportTicketNotesResponse = zod.array(
+  ListSupportTicketNotesResponseItem,
+);
+
+/**
+ * @summary Add an internal note to a ticket
+ */
+export const CreateSupportTicketNoteParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const CreateSupportTicketNoteBody = zod.object({
+  note: zod.string().min(1),
+  createdByName: zod.string().nullish(),
+});
+
+/**
+ * @summary List status change history for a ticket (newest first)
+ */
+export const ListSupportTicketStatusHistoryParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListSupportTicketStatusHistoryResponseItem = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  oldPublicStatus: zod.string().nullish(),
+  newPublicStatus: zod.string().nullish(),
+  oldInternalStatus: zod.string().nullish(),
+  newInternalStatus: zod.string().nullish(),
+  changedByName: zod.string().nullish(),
+  changeReason: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListSupportTicketStatusHistoryResponse = zod.array(
+  ListSupportTicketStatusHistoryResponseItem,
+);
+
+/**
  * Returns support tickets, with optional filters and search. Newest first.
  * @summary List support tickets for the Eride organisation (internal admin)
  */

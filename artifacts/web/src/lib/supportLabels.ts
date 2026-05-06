@@ -3,6 +3,14 @@ import {
   REPORTER_TYPE_OPTIONS,
 } from "./supportOptions";
 
+export const SEVERITY_OPTIONS = [
+  { value: "critical", label: "Critical" },
+  { value: "major", label: "Major" },
+  { value: "moderate", label: "Moderate" },
+  { value: "minor", label: "Minor" },
+  { value: "cosmetic", label: "Cosmetic" },
+] as const;
+
 export const PRIORITY_OPTIONS = [
   { value: "urgent", label: "Urgent" },
   { value: "high", label: "High" },
@@ -49,6 +57,7 @@ function makeLookup<T extends readonly { value: string; label: string }[]>(
 export const CATEGORY_LABELS = makeLookup(CATEGORY_OPTIONS);
 export const REPORTER_TYPE_LABELS = makeLookup(REPORTER_TYPE_OPTIONS);
 export const PRIORITY_LABELS = makeLookup(PRIORITY_OPTIONS);
+export const SEVERITY_LABELS = makeLookup(SEVERITY_OPTIONS);
 export const PUBLIC_STATUS_LABELS = makeLookup(PUBLIC_STATUS_OPTIONS);
 export const INTERNAL_STATUS_LABELS = makeLookup(INTERNAL_STATUS_OPTIONS);
 

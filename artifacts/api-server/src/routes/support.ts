@@ -5,15 +5,20 @@ import {
   generateSupportTicketReference,
   supportOrganisationsTable,
   supportProductsTable,
+  supportTicketInternalNotesTable,
+  supportTicketStatusHistoryTable,
   supportTicketsTable,
+  type SupportTicket,
   type TicketCategory,
   type TicketPriority,
   type TicketSeverity,
 } from "@workspace/db";
 import {
   CreateSupportTicketBody,
+  CreateSupportTicketNoteBody,
   ListPublicSupportProductsResponse,
   ListSupportTicketsQueryParams,
+  UpdateSupportTicketBody,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -274,5 +279,245 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
     createdAt: ticket.createdAt.toISOString(),
   });
 });
+
+type DetailRow = {
+  ticket: SupportTicket;
+  productName: string;
+  productCode: string;
+};
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function loadErideTicket(id: string): Promise<DetailRow | null> {
+  if (!UUID_RE.test(id)) return null;
+  const org = await getErideOrganisation();
+  if (!org) return null;
+
+  const row = await db
+    .select({
+      ticket: supportTicketsTable,
+      productName: supportProductsTable.productName,
+      productCode: supportProductsTable.productCode,
+    })
+    .from(supportTicketsTable)
+    .innerJoin(
+      supportProductsTable,
+      eq(supportProductsTable.id, supportTicketsTable.productId),
+    )
+    .where(
+      and(
+        eq(supportTicketsTable.id, id),
+        eq(supportTicketsTable.organisationId, org.id),
+      ),
+    )
+    .limit(1);
+
+  return row[0] ?? null;
+}
+
+function serializeTicketDetail(row: DetailRow) {
+  const t = row.ticket;
+  return {
+    id: t.id,
+    ticketReference: t.ticketReference,
+    productId: t.productId,
+    productName: row.productName,
+    productCode: row.productCode,
+    category: t.category,
+    publicStatus: t.publicStatus,
+    internalStatus: t.internalStatus,
+    priority: t.priority,
+    severity: t.severity,
+    source: t.source,
+    environment: t.environment,
+    reporterType: t.reporterType,
+    reporterName: t.reporterName,
+    reporterEmail: t.reporterEmail,
+    reporterWhatsapp: t.reporterWhatsapp,
+    userId: t.userId,
+    companyId: t.companyId,
+    firmId: t.firmId,
+    partnerId: t.partnerId,
+    applicationReference: t.applicationReference,
+    accountReference: t.accountReference,
+    pageOrStep: t.pageOrStep,
+    issueSummary: t.issueSummary,
+    whatWereYouTryingToDo: t.whatWereYouTryingToDo,
+    whatWentWrong: t.whatWentWrong,
+    assignedSupportUserId: t.assignedSupportUserId,
+    assignedProductOwnerId: t.assignedProductOwnerId,
+    assignedDeveloperId: t.assignedDeveloperId,
+    assignedQaVerifierId: t.assignedQaVerifierId,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+    resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
+    closedAt: t.closedAt ? t.closedAt.toISOString() : null,
+  };
+}
+
+router.get("/support/tickets/:id", async (req, res): Promise<void> => {
+  const row = await loadErideTicket(req.params.id);
+  if (!row) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  res.json(serializeTicketDetail(row));
+});
+
+router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
+  const parsed = UpdateSupportTicketBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid update" });
+    return;
+  }
+  const body = parsed.data;
+
+  const existing = await loadErideTicket(req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const { changedByName, changeReason, ...rawUpdates } = body;
+  const updates: Partial<typeof supportTicketsTable.$inferInsert> = {};
+  for (const [k, v] of Object.entries(rawUpdates)) {
+    if (v !== undefined) {
+      (updates as Record<string, unknown>)[k] = v;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.json(serializeTicketDetail(existing));
+    return;
+  }
+
+  updates.updatedAt = new Date();
+  const isResolved = (s: unknown) => s === "resolved";
+  const isClosed = (s: unknown) => s === "closed";
+  const wasResolved =
+    isResolved(existing.ticket.publicStatus) ||
+    isResolved(existing.ticket.internalStatus);
+  const wasClosed =
+    isClosed(existing.ticket.publicStatus) ||
+    isClosed(existing.ticket.internalStatus);
+  const nowResolved =
+    isResolved(updates.publicStatus ?? existing.ticket.publicStatus) ||
+    isResolved(updates.internalStatus ?? existing.ticket.internalStatus);
+  const nowClosed =
+    isClosed(updates.publicStatus ?? existing.ticket.publicStatus) ||
+    isClosed(updates.internalStatus ?? existing.ticket.internalStatus);
+  if (nowResolved && !wasResolved && !existing.ticket.resolvedAt) {
+    updates.resolvedAt = new Date();
+  }
+  if (nowClosed && !wasClosed && !existing.ticket.closedAt) {
+    updates.closedAt = new Date();
+  }
+
+  const [updated] = await db
+    .update(supportTicketsTable)
+    .set(updates)
+    .where(eq(supportTicketsTable.id, existing.ticket.id))
+    .returning();
+
+  if (!updated) {
+    res.status(500).json({ error: "Could not update ticket" });
+    return;
+  }
+
+  const publicChanged =
+    updates.publicStatus !== undefined &&
+    updates.publicStatus !== existing.ticket.publicStatus;
+  const internalChanged =
+    updates.internalStatus !== undefined &&
+    updates.internalStatus !== existing.ticket.internalStatus;
+
+  if (publicChanged || internalChanged) {
+    await db.insert(supportTicketStatusHistoryTable).values({
+      supportTicketId: existing.ticket.id,
+      oldPublicStatus: publicChanged ? existing.ticket.publicStatus : null,
+      newPublicStatus: publicChanged ? updated.publicStatus : null,
+      oldInternalStatus: internalChanged ? existing.ticket.internalStatus : null,
+      newInternalStatus: internalChanged ? updated.internalStatus : null,
+      changedByName: changedByName ?? null,
+      changeReason: changeReason ?? null,
+    });
+  }
+
+  res.json(
+    serializeTicketDetail({
+      ticket: updated,
+      productName: existing.productName,
+      productCode: existing.productCode,
+    }),
+  );
+});
+
+router.get("/support/tickets/:id/notes", async (req, res): Promise<void> => {
+  const existing = await loadErideTicket(req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  const notes = await db
+    .select()
+    .from(supportTicketInternalNotesTable)
+    .where(eq(supportTicketInternalNotesTable.supportTicketId, existing.ticket.id))
+    .orderBy(desc(supportTicketInternalNotesTable.createdAt));
+  res.json(
+    notes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
+  );
+});
+
+router.post("/support/tickets/:id/notes", async (req, res): Promise<void> => {
+  const parsed = CreateSupportTicketNoteBody.safeParse(req.body);
+  if (!parsed.success || !parsed.data.note.trim()) {
+    res.status(400).json({ error: "Note is required" });
+    return;
+  }
+
+  const existing = await loadErideTicket(req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const [note] = await db
+    .insert(supportTicketInternalNotesTable)
+    .values({
+      supportTicketId: existing.ticket.id,
+      note: parsed.data.note.trim(),
+      createdByName: parsed.data.createdByName?.trim() || null,
+    })
+    .returning();
+
+  if (!note) {
+    res.status(500).json({ error: "Could not save note" });
+    return;
+  }
+
+  res.status(201).json({ ...note, createdAt: note.createdAt.toISOString() });
+});
+
+router.get(
+  "/support/tickets/:id/status-history",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(supportTicketStatusHistoryTable)
+      .where(
+        eq(supportTicketStatusHistoryTable.supportTicketId, existing.ticket.id),
+      )
+      .orderBy(desc(supportTicketStatusHistoryTable.createdAt));
+    res.json(
+      rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })),
+    );
+  },
+);
 
 export default router;

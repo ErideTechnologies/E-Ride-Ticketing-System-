@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import {
   useListSupportTickets,
   useListPublicSupportProducts,
@@ -87,6 +88,7 @@ function formatDateTime(iso: string): string {
 }
 
 export default function AdminTicketsPage() {
+  const [, navigate] = useLocation();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const products = useListPublicSupportProducts();
 
@@ -133,8 +135,8 @@ export default function AdminTicketsPage() {
     setFilters(EMPTY_FILTERS);
   }
 
-  function handleRowClick() {
-    alert("Ticket detail page will be added in Step 4.");
+  function handleRowClick(t: SupportTicketListItem) {
+    navigate(`/admin/support/tickets/${t.id}`);
   }
 
   return (
@@ -290,7 +292,7 @@ export default function AdminTicketsPage() {
                     {data.map((t) => (
                       <tr
                         key={t.id}
-                        onClick={handleRowClick}
+                        onClick={() => handleRowClick(t)}
                         className={`cursor-pointer border-t hover:bg-muted/40 ${rowAccentClass(t)}`}
                         data-testid={`ticket-row-${t.ticketReference}`}
                       >
@@ -334,7 +336,7 @@ export default function AdminTicketsPage() {
                 {data.map((t) => (
                   <Card
                     key={t.id}
-                    onClick={handleRowClick}
+                    onClick={() => handleRowClick(t)}
                     className={`cursor-pointer ${rowAccentClass(t)}`}
                     data-testid={`ticket-card-${t.ticketReference}`}
                   >

@@ -167,6 +167,127 @@ export interface SupportTicketListItem {
   updatedAt: string;
 }
 
+export interface SupportTicketDetail {
+  id: string;
+  ticketReference: string;
+  productId: string;
+  productName: string;
+  productCode: string;
+  category: SupportTicketCategory;
+  publicStatus: PublicSupportTicketStatus;
+  internalStatus: InternalSupportTicketStatus;
+  priority: SupportTicketPriority;
+  severity: SupportTicketSeverity;
+  source: string;
+  /** @nullable */
+  environment?: string | null;
+  reporterType: SupportReporterType;
+  reporterName: string;
+  reporterEmail: string;
+  /** @nullable */
+  reporterWhatsapp?: string | null;
+  /** @nullable */
+  userId?: string | null;
+  /** @nullable */
+  companyId?: string | null;
+  /** @nullable */
+  firmId?: string | null;
+  /** @nullable */
+  partnerId?: string | null;
+  /** @nullable */
+  applicationReference?: string | null;
+  /** @nullable */
+  accountReference?: string | null;
+  /** @nullable */
+  pageOrStep?: string | null;
+  issueSummary: string;
+  /** @nullable */
+  whatWereYouTryingToDo?: string | null;
+  whatWentWrong: string;
+  /** @nullable */
+  assignedSupportUserId?: string | null;
+  /** @nullable */
+  assignedProductOwnerId?: string | null;
+  /** @nullable */
+  assignedDeveloperId?: string | null;
+  /** @nullable */
+  assignedQaVerifierId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+  /** @nullable */
+  closedAt?: string | null;
+}
+
+export interface SupportTicketUpdate {
+  publicStatus?: PublicSupportTicketStatus;
+  internalStatus?: InternalSupportTicketStatus;
+  priority?: SupportTicketPriority;
+  severity?: SupportTicketSeverity;
+  category?: SupportTicketCategory;
+  /** @nullable */
+  assignedSupportUserId?: string | null;
+  /** @nullable */
+  assignedProductOwnerId?: string | null;
+  /** @nullable */
+  assignedDeveloperId?: string | null;
+  /** @nullable */
+  assignedQaVerifierId?: string | null;
+  /** @nullable */
+  pageOrStep?: string | null;
+  /** @minLength 1 */
+  issueSummary?: string;
+  /** @nullable */
+  whatWereYouTryingToDo?: string | null;
+  /** @minLength 1 */
+  whatWentWrong?: string;
+  /** @nullable */
+  environment?: string | null;
+  /** @nullable */
+  applicationReference?: string | null;
+  /** @nullable */
+  accountReference?: string | null;
+  /** @nullable */
+  changedByName?: string | null;
+  /** @nullable */
+  changeReason?: string | null;
+}
+
+export interface SupportTicketNote {
+  id: string;
+  supportTicketId: string;
+  note: string;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+}
+
+export interface SupportTicketNoteCreate {
+  /** @minLength 1 */
+  note: string;
+  /** @nullable */
+  createdByName?: string | null;
+}
+
+export interface SupportTicketStatusHistoryItem {
+  id: string;
+  supportTicketId: string;
+  /** @nullable */
+  oldPublicStatus?: string | null;
+  /** @nullable */
+  newPublicStatus?: string | null;
+  /** @nullable */
+  oldInternalStatus?: string | null;
+  /** @nullable */
+  newInternalStatus?: string | null;
+  /** @nullable */
+  changedByName?: string | null;
+  /** @nullable */
+  changeReason?: string | null;
+  createdAt: string;
+}
+
 export interface CreatedSupportTicket {
   ticketReference: string;
   publicStatus: PublicSupportTicketStatus;
