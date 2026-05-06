@@ -142,14 +142,23 @@ export default function AdminTicketsPage() {
   return (
     <main className="min-h-screen bg-muted/30 px-4 py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="space-y-1">
-          <p className="text-sm font-medium text-primary">Eride Admin</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Eride Support Tickets
-          </h1>
-          <p className="text-muted-foreground">
-            View and triage support tickets submitted across Eride products.
-          </p>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-primary">Eride Admin</p>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Eride Support Tickets
+            </h1>
+            <p className="text-muted-foreground">
+              View and triage support tickets submitted across Eride products.
+            </p>
+          </div>
+          <Button
+            asChild
+            variant="outline"
+            data-testid="link-wallboard"
+          >
+            <a href="/admin/support/wallboard">Open Live Wallboard</a>
+          </Button>
         </header>
 
         <section

@@ -106,6 +106,188 @@ router.get("/support/products", async (req, res): Promise<void> => {
   res.json(ListPublicSupportProductsResponse.parse(products));
 });
 
+const OPEN_INTERNAL_STATUS_EXCLUDE = new Set([
+  "closed",
+  "resolved",
+  "spam",
+  "duplicate",
+  "not_a_bug",
+]);
+
+router.get("/support/wallboard", async (req, res): Promise<void> => {
+  const org = await getErideOrganisation();
+  if (!org) {
+    req.log.error({ orgCode: ERIDE_ORG_CODE }, "Eride organisation not found");
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+
+  const products = await db
+    .select({
+      id: supportProductsTable.id,
+      productName: supportProductsTable.productName,
+      productCode: supportProductsTable.productCode,
+    })
+    .from(supportProductsTable)
+    .where(
+      and(
+        eq(supportProductsTable.organisationId, org.id),
+        eq(supportProductsTable.isActive, true),
+      ),
+    )
+    .orderBy(supportProductsTable.productName);
+
+  const rows = await db
+    .select({
+      id: supportTicketsTable.id,
+      ticketReference: supportTicketsTable.ticketReference,
+      productId: supportTicketsTable.productId,
+      productName: supportProductsTable.productName,
+      productCode: supportProductsTable.productCode,
+      issueSummary: supportTicketsTable.issueSummary,
+      priority: supportTicketsTable.priority,
+      severity: supportTicketsTable.severity,
+      publicStatus: supportTicketsTable.publicStatus,
+      internalStatus: supportTicketsTable.internalStatus,
+      reporterType: supportTicketsTable.reporterType,
+      createdAt: supportTicketsTable.createdAt,
+      updatedAt: supportTicketsTable.updatedAt,
+      resolvedAt: supportTicketsTable.resolvedAt,
+      closedAt: supportTicketsTable.closedAt,
+    })
+    .from(supportTicketsTable)
+    .innerJoin(
+      supportProductsTable,
+      eq(supportProductsTable.id, supportTicketsTable.productId),
+    )
+    .where(eq(supportTicketsTable.organisationId, org.id))
+    .orderBy(desc(supportTicketsTable.createdAt));
+
+  const startOfTodayUtc = new Date();
+  startOfTodayUtc.setUTCHours(0, 0, 0, 0);
+
+  const isOpen = (s: string): boolean =>
+    !OPEN_INTERNAL_STATUS_EXCLUDE.has(s);
+  const isAwaitingTriage = (s: string): boolean =>
+    s === "triage_required" || s === "new";
+  const isToday = (d: Date | null): boolean =>
+    d != null && d.getTime() >= startOfTodayUtc.getTime();
+
+  const summary = {
+    totalOpenTickets: 0,
+    urgentTickets: 0,
+    highPriorityTickets: 0,
+    awaitingTriage: 0,
+    needsUserInfo: 0,
+    engineeringEscalationRequired: 0,
+    inEngineering: 0,
+    inQaVerification: 0,
+    fixedWaitingUserNotification: 0,
+    slaBreachedPlaceholder: 0,
+    closedToday: 0,
+    resolvedToday: 0,
+  };
+
+  const productAgg = new Map<
+    string,
+    {
+      productId: string;
+      productName: string;
+      productCode: string;
+      openTickets: number;
+      urgentTickets: number;
+      highPriorityTickets: number;
+      awaitingTriage: number;
+      resolvedToday: number;
+    }
+  >();
+  for (const p of products) {
+    productAgg.set(p.id, {
+      productId: p.id,
+      productName: p.productName,
+      productCode: p.productCode,
+      openTickets: 0,
+      urgentTickets: 0,
+      highPriorityTickets: 0,
+      awaitingTriage: 0,
+      resolvedToday: 0,
+    });
+  }
+
+  for (const t of rows) {
+    const open = isOpen(t.internalStatus);
+    if (open) {
+      summary.totalOpenTickets++;
+      if (t.priority === "urgent") summary.urgentTickets++;
+      if (t.priority === "high") summary.highPriorityTickets++;
+    }
+    if (isAwaitingTriage(t.internalStatus)) summary.awaitingTriage++;
+    if (t.internalStatus === "needs_user_info") summary.needsUserInfo++;
+    if (t.internalStatus === "engineering_escalation_required")
+      summary.engineeringEscalationRequired++;
+    if (t.internalStatus === "in_engineering") summary.inEngineering++;
+    if (t.internalStatus === "in_qa_verification") summary.inQaVerification++;
+    if (t.internalStatus === "fixed_waiting_user_notification")
+      summary.fixedWaitingUserNotification++;
+    if (isToday(t.closedAt)) summary.closedToday++;
+    if (isToday(t.resolvedAt)) summary.resolvedToday++;
+
+    const agg = productAgg.get(t.productId);
+    if (agg) {
+      if (open) {
+        agg.openTickets++;
+        if (t.priority === "urgent") agg.urgentTickets++;
+        if (t.priority === "high") agg.highPriorityTickets++;
+      }
+      if (isAwaitingTriage(t.internalStatus)) agg.awaitingTriage++;
+      if (isToday(t.resolvedAt)) agg.resolvedToday++;
+    }
+  }
+
+  const toWallboardTicket = (t: (typeof rows)[number]) => ({
+    id: t.id,
+    ticketReference: t.ticketReference,
+    productName: t.productName,
+    productCode: t.productCode,
+    issueSummary: t.issueSummary,
+    priority: t.priority,
+    severity: t.severity,
+    publicStatus: t.publicStatus,
+    internalStatus: t.internalStatus,
+    reporterType: t.reporterType,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+  });
+
+  const urgentHighTickets = rows
+    .filter(
+      (t) =>
+        (t.priority === "urgent" || t.priority === "high") &&
+        isOpen(t.internalStatus),
+    )
+    .slice(0, 10)
+    .map(toWallboardTicket);
+
+  const awaitingTriageTickets = rows
+    .filter((t) => isAwaitingTriage(t.internalStatus))
+    .slice(0, 10)
+    .map(toWallboardTicket);
+
+  const waitingUserNotificationTickets = rows
+    .filter((t) => t.internalStatus === "fixed_waiting_user_notification")
+    .slice(0, 10)
+    .map(toWallboardTicket);
+
+  res.json({
+    summary,
+    productBreakdown: Array.from(productAgg.values()),
+    urgentHighTickets,
+    awaitingTriageTickets,
+    waitingUserNotificationTickets,
+    lastUpdated: new Date().toISOString(),
+  });
+});
+
 router.get("/support/tickets", async (req, res): Promise<void> => {
   const { createdFrom: rawFrom, createdTo: rawTo, ...rest } = req.query;
   const parsed = ListSupportTicketsQueryParams.omit({

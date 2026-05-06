@@ -1,0 +1,207 @@
+Build Step 6 of the Eride Support Command Centre: the Live Support Wallboard.
+
+Context:
+Step 1 is complete:
+- support_organisations
+- support_products
+- support_tickets
+- support_ticket_sequences
+
+Step 2 is complete:
+- /help/report-problem
+- public ticket creation works
+
+Step 3 is complete:
+- /admin/support/tickets
+- internal ticket dashboard works
+
+Step 4 is complete:
+- /admin/support/tickets/:id
+- ticket detail page works
+- status updates work
+- notes work
+- communication copy templates work
+- developer handoff generator works
+
+Step 5 is complete:
+- support_ticket_attachments
+- attachment upload/list/view/download/delete works
+- public report page supports optional attachment
+- admin ticket detail supports attachments
+
+Goal:
+Create a live office wallboard for Eride support operations.
+
+Route:
+- /admin/support/wallboard
+
+Purpose:
+This page will be displayed on an office TV/monitor to show the live support status across:
+- E-Migration Assist
+- 8Beauty
+- Eride General Support
+
+Important:
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+Do not add WhatsApp/email automation yet.
+Do not build authentication/permissions yet unless existing app patterns already exist.
+This step is only the live support wallboard.
+
+Backend:
+
+Create endpoint:
+GET /api/support/wallboard
+
+It must return data scoped to active Eride Technologies organisation.
+
+Return:
+1. Summary counts:
+- totalOpenTickets
+- urgentTickets
+- highPriorityTickets
+- awaitingTriage
+- needsUserInfo
+- engineeringEscalationRequired
+- inEngineering
+- inQaVerification
+- fixedWaitingUserNotification
+- slaBreachedPlaceholder
+- closedToday
+- resolvedToday
+
+2. Product breakdown:
+For each active Eride product:
+- productName
+- productCode
+- openTickets
+- urgentTickets
+- highPriorityTickets
+- awaitingTriage
+- resolvedToday
+
+3. Recent urgent/high tickets:
+Return up to 10 newest tickets where:
+- priority = urgent or high
+- internalStatus is not closed/resolved/spam/duplicate/not_a_bug
+
+Fields:
+- id
+- ticketReference
+- productName
+- productCode
+- issueSummary
+- priority
+- severity
+- publicStatus
+- internalStatus
+- reporterType
+- createdAt
+- updatedAt
+
+4. Awaiting triage tickets:
+Return up to 10 newest tickets where:
+- internalStatus = triage_required or new
+
+5. Tickets waiting for user notification:
+Return up to 10 newest tickets where:
+- internalStatus = fixed_waiting_user_notification
+
+6. Last updated timestamp.
+
+Frontend:
+
+Create route:
+- /admin/support/wallboard
+
+Page title:
+Eride Support Command Centre
+
+Subtitle:
+“Live support and bug ticket visibility across Eride products.”
+
+Layout:
+This page is meant for an office TV, so make it clean, large, readable, and low-clutter.
+
+Top section:
+- Big title
+- Current date/time
+- Last updated time
+- Auto-refresh indicator
+
+Main KPI cards:
+- Open Tickets
+- Urgent
+- High Priority
+- Awaiting Triage
+- Needs User Info
+- Engineering Escalations
+- In QA
+- Waiting User Notification
+
+Use large numbers and readable labels.
+
+Product breakdown section:
+Show cards for:
+- E-Migration Assist
+- 8Beauty
+- Eride General Support
+
+Each product card must show:
+- Open
+- Urgent
+- High
+- Awaiting Triage
+- Resolved Today
+
+Urgent/High Tickets section:
+Show recent urgent/high tickets with:
+- Reference
+- Product
+- Summary
+- Priority
+- Internal status
+- Created time
+
+Awaiting Triage section:
+Show newest awaiting triage tickets.
+
+Waiting User Notification section:
+Show tickets that are fixed but still need user/support communication.
+
+Auto-refresh:
+- Refresh wallboard data every 60 seconds.
+- Show “Last updated: [time]”.
+- Do not reload the full page; refresh data client-side.
+
+Visual rules:
+- Urgent tickets should stand out strongly.
+- High priority tickets should stand out but less than urgent.
+- Keep design professional and Eride-branded.
+- Use mobile/tablet friendly layout, but optimize for large screen/TV.
+
+Empty states:
+- If no urgent tickets: “No urgent tickets.”
+- If no awaiting triage tickets: “Triage queue clear.”
+- If no notification pending: “No user notifications pending.”
+
+Navigation:
+Add button/link:
+- View Full Ticket Dashboard → /admin/support/tickets
+
+Click behavior:
+Clicking a ticket on the wallboard should navigate to:
+/admin/support/tickets/:id
+
+Acceptance criteria:
+- /admin/support/wallboard loads successfully
+- Wallboard shows summary counts
+- Wallboard shows product breakdown
+- Wallboard shows urgent/high tickets
+- Wallboard shows awaiting triage tickets
+- Wallboard shows fixed waiting user notification tickets
+- Data refreshes every 60 seconds
+- Clicking a ticket opens the ticket detail page
+- Layout is readable on desktop/TV
+- Typecheck passes
+- Basic browser test confirms wallboard loads and displays at least one existing ticket

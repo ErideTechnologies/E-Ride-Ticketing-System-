@@ -272,6 +272,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/wallboard:
+    get:
+      operationId: getSupportWallboard
+      tags: [support]
+      summary: Live support wallboard data for the Eride organisation
+      description: Aggregated counts, product breakdown, and watchlists for the office wallboard. Eride org only.
+      responses:
+        "200":
+          description: Wallboard payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportWallboard"
+
   /support/tickets:
     get:
       operationId: listSupportTickets
@@ -519,6 +533,110 @@ components:
         - not_a_bug
         - deferred
         - spam
+
+    SupportWallboardSummary:
+      type: object
+      properties:
+        totalOpenTickets: { type: integer }
+        urgentTickets: { type: integer }
+        highPriorityTickets: { type: integer }
+        awaitingTriage: { type: integer }
+        needsUserInfo: { type: integer }
+        engineeringEscalationRequired: { type: integer }
+        inEngineering: { type: integer }
+        inQaVerification: { type: integer }
+        fixedWaitingUserNotification: { type: integer }
+        slaBreachedPlaceholder: { type: integer }
+        closedToday: { type: integer }
+        resolvedToday: { type: integer }
+      required:
+        - totalOpenTickets
+        - urgentTickets
+        - highPriorityTickets
+        - awaitingTriage
+        - needsUserInfo
+        - engineeringEscalationRequired
+        - inEngineering
+        - inQaVerification
+        - fixedWaitingUserNotification
+        - slaBreachedPlaceholder
+        - closedToday
+        - resolvedToday
+
+    SupportWallboardProductBreakdown:
+      type: object
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        productCode: { type: string }
+        openTickets: { type: integer }
+        urgentTickets: { type: integer }
+        highPriorityTickets: { type: integer }
+        awaitingTriage: { type: integer }
+        resolvedToday: { type: integer }
+      required:
+        - productId
+        - productName
+        - productCode
+        - openTickets
+        - urgentTickets
+        - highPriorityTickets
+        - awaitingTriage
+        - resolvedToday
+
+    SupportWallboardTicket:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ticketReference: { type: string }
+        productName: { type: string }
+        productCode: { type: string }
+        issueSummary: { type: string }
+        priority: { $ref: "#/components/schemas/SupportTicketPriority" }
+        severity: { $ref: "#/components/schemas/SupportTicketSeverity" }
+        publicStatus: { $ref: "#/components/schemas/PublicSupportTicketStatus" }
+        internalStatus: { $ref: "#/components/schemas/InternalSupportTicketStatus" }
+        reporterType: { $ref: "#/components/schemas/SupportReporterType" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - ticketReference
+        - productName
+        - productCode
+        - issueSummary
+        - priority
+        - severity
+        - publicStatus
+        - internalStatus
+        - reporterType
+        - createdAt
+        - updatedAt
+
+    SupportWallboard:
+      type: object
+      properties:
+        summary: { $ref: "#/components/schemas/SupportWallboardSummary" }
+        productBreakdown:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardProductBreakdown" }
+        urgentHighTickets:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardTicket" }
+        awaitingTriageTickets:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardTicket" }
+        waitingUserNotificationTickets:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardTicket" }
+        lastUpdated: { type: string, format: date-time }
+      required:
+        - summary
+        - productBreakdown
+        - urgentHighTickets
+        - awaitingTriageTickets
+        - waitingUserNotificationTickets
+        - lastUpdated
 
     SupportTicketListItem:
       type: object

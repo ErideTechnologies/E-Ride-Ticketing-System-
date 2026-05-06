@@ -144,6 +144,56 @@ export const InternalSupportTicketStatus = {
   spam: "spam",
 } as const;
 
+export interface SupportWallboardSummary {
+  totalOpenTickets: number;
+  urgentTickets: number;
+  highPriorityTickets: number;
+  awaitingTriage: number;
+  needsUserInfo: number;
+  engineeringEscalationRequired: number;
+  inEngineering: number;
+  inQaVerification: number;
+  fixedWaitingUserNotification: number;
+  slaBreachedPlaceholder: number;
+  closedToday: number;
+  resolvedToday: number;
+}
+
+export interface SupportWallboardProductBreakdown {
+  productId: string;
+  productName: string;
+  productCode: string;
+  openTickets: number;
+  urgentTickets: number;
+  highPriorityTickets: number;
+  awaitingTriage: number;
+  resolvedToday: number;
+}
+
+export interface SupportWallboardTicket {
+  id: string;
+  ticketReference: string;
+  productName: string;
+  productCode: string;
+  issueSummary: string;
+  priority: SupportTicketPriority;
+  severity: SupportTicketSeverity;
+  publicStatus: PublicSupportTicketStatus;
+  internalStatus: InternalSupportTicketStatus;
+  reporterType: SupportReporterType;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportWallboard {
+  summary: SupportWallboardSummary;
+  productBreakdown: SupportWallboardProductBreakdown[];
+  urgentHighTickets: SupportWallboardTicket[];
+  awaitingTriageTickets: SupportWallboardTicket[];
+  waitingUserNotificationTickets: SupportWallboardTicket[];
+  lastUpdated: string;
+}
+
 export interface SupportTicketListItem {
   id: string;
   ticketReference: string;

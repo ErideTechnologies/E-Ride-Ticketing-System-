@@ -31,6 +31,7 @@ import type {
   SupportTicketStatusHistoryItem,
   SupportTicketSubmission,
   SupportTicketUpdate,
+  SupportWallboard,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1041,6 +1042,82 @@ export const useDeleteSupportTicketAttachment = <
 > => {
   return useMutation(getDeleteSupportTicketAttachmentMutationOptions(options));
 };
+
+/**
+ * Aggregated counts, product breakdown, and watchlists for the office wallboard. Eride org only.
+ * @summary Live support wallboard data for the Eride organisation
+ */
+export const getGetSupportWallboardUrl = () => {
+  return `/api/support/wallboard`;
+};
+
+export const getSupportWallboard = async (
+  options?: RequestInit,
+): Promise<SupportWallboard> => {
+  return customFetch<SupportWallboard>(getGetSupportWallboardUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupportWallboardQueryKey = () => {
+  return [`/api/support/wallboard`] as const;
+};
+
+export const getGetSupportWallboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportWallboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportWallboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSupportWallboardQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportWallboard>>
+  > = ({ signal }) => getSupportWallboard({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportWallboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportWallboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportWallboard>>
+>;
+export type GetSupportWallboardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Live support wallboard data for the Eride organisation
+ */
+
+export function useGetSupportWallboard<
+  TData = Awaited<ReturnType<typeof getSupportWallboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportWallboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportWallboardQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Returns support tickets, with optional filters and search. Newest first.

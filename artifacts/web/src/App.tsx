@@ -7,6 +7,7 @@ import HelpPage from "@/pages/help";
 import ReportProblemPage from "@/pages/report-problem";
 import AdminTicketsPage from "@/pages/admin-tickets";
 import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
+import AdminWallboardPage from "@/pages/admin-wallboard";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={() => <Redirect to="/help" />} />
       <Route path="/help" component={HelpPage} />
       <Route path="/help/report-problem" component={ReportProblemPage} />
+      <Route path="/admin/support/wallboard" component={AdminWallboardPage} />
       <Route path="/admin/support/tickets" component={AdminTicketsPage} />
       <Route path="/admin/support/tickets/:id" component={AdminTicketDetailPage} />
       <Route component={NotFound} />
