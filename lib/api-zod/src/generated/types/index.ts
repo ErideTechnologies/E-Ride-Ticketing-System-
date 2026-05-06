@@ -6,4 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createdSupportTicket";
+export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./publicSupportProduct";
+export * from "./publicSupportTicketStatus";
+export * from "./supportReporterType";
+export * from "./supportTicketCategory";
+export * from "./supportTicketSubmission";

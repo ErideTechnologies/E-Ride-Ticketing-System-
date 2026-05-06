@@ -1,0 +1,186 @@
+Build Step 2 of the Eride Support Command Centre: the Public Report Problem Page.
+
+Context:
+Step 1 foundation is already complete. The database already has:
+- support_organisations
+- support_products
+- support_tickets
+- support_ticket_sequences
+- generateSupportTicketReference(organisationId, productId)
+
+Seed data already exists for:
+- Eride Technologies organisation, code ERIDE
+- E-Migration Assist product, code EMA
+- 8Beauty product, code 8BT
+- Eride General Support product, code ERD
+
+Goal:
+Create the first public-facing support ticket submission flow.
+
+Route:
+- /help/report-problem
+
+Purpose:
+Allow public users, logged-in users, testers, B2B users, partners, and general visitors to report a problem and receive a ticket reference immediately.
+
+Important:
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+Do not add WhatsApp automation yet.
+Do not build the full admin dashboard yet.
+Do not build SaaS onboarding or billing.
+Only build the public ticket submission page and the backend endpoint needed to create tickets.
+
+Page requirements:
+
+1. Page title:
+Report a Problem
+
+2. Intro text:
+“Tell us what went wrong. Our team will review your report and contact you if we need more information.”
+
+3. Product dropdown:
+Load active and public visible products for Eride Technologies from support_products.
+
+Only show:
+- E-Migration Assist
+- 8Beauty
+- Eride General Support
+
+4. Form fields:
+- productId required
+- reporterName required
+- reporterEmail required unless reporterWhatsapp is provided
+- reporterWhatsapp optional
+- reporterType required
+- category required
+- pageOrStep optional
+- applicationReference optional
+- accountReference optional
+- issueSummary required
+- whatWereYouTryingToDo optional
+- whatWentWrong required
+- deviceType optional
+- browser optional
+- canContact boolean default true
+
+Reporter type options:
+- public_visitor
+- applicant
+- b2b_firm_admin
+- consultant
+- beauty_client
+- beauty_professional
+- partner
+- internal_tester
+- other
+
+Category options:
+Use the existing ticket category enum/constants:
+- technical_bug
+- account_login_issue
+- otp_verification_issue
+- document_upload_issue
+- application_flow_confusion
+- payment_issue
+- b2b_firm_admin_issue
+- consultant_issue
+- partner_issue
+- feature_request
+- complaint
+- data_correction_request
+- security_privacy_concern
+- performance_issue
+- system_downtime
+- general_support
+
+5. Default ticket values on create:
+- organisationId = Eride Technologies organisation ID
+- selected productId from form
+- source = public_form
+- publicStatus = received
+- internalStatus = triage_required
+- priority = suggested priority based on category
+- severity = suggested severity based on category
+- environment = production
+- ticketReference = generateSupportTicketReference(organisationId, productId)
+
+Suggested priority rules:
+- security_privacy_concern = urgent
+- system_downtime = urgent
+- payment_issue = high
+- otp_verification_issue = high
+- document_upload_issue = high
+- technical_bug = high
+- performance_issue = medium
+- complaint = medium
+- all others = medium
+
+Suggested severity rules:
+- security_privacy_concern = critical
+- system_downtime = critical
+- payment_issue = major
+- otp_verification_issue = major
+- document_upload_issue = major
+- technical_bug = major
+- performance_issue = moderate
+- all others = moderate
+
+6. Backend endpoint:
+Create an API endpoint to submit a support ticket.
+
+Suggested route:
+POST /api/support/tickets
+
+The endpoint must:
+- validate required fields
+- fetch the Eride Technologies organisation
+- confirm product belongs to Eride Technologies and is active
+- generate ticket reference
+- create the support ticket
+- return success JSON with:
+  - ticketReference
+  - publicStatus
+  - productName
+  - createdAt
+
+7. Confirmation screen:
+After successful submission, show a confirmation screen:
+
+“Thank you. Your issue has been received.
+
+Reference: [ticketReference]
+
+Our team will review it and contact you if we need more information.”
+
+Add a button:
+“Report another problem”
+
+Add another button:
+“Back to Help”
+
+8. Error handling:
+If submission fails, show:
+“We could not submit your report. Please check the form and try again.”
+
+9. Privacy text below form:
+“Please do not upload or include sensitive documents unless requested by support. Do not include passwords or payment card details.”
+
+10. Styling:
+Use the existing app design system.
+Make it mobile-first.
+Keep the design clean, professional, and Eride-branded.
+Do not overcomplicate the UI.
+
+11. Acceptance criteria:
+- /help/report-problem loads successfully
+- Product dropdown shows only active public Eride products
+- User can submit a valid ticket
+- Ticket is saved in support_tickets
+- Ticket reference uses correct product code
+- EMA ticket creates EMA-SUP-YYYY-000001 style reference
+- 8Beauty ticket creates 8BT-SUP-YYYY-000001 style reference
+- ERD ticket creates ERD-SUP-YYYY-000001 style reference
+- Confirmation screen displays the reference
+- Invalid form submission shows validation errors
+- Typecheck passes

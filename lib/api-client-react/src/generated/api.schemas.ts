@@ -8,3 +8,101 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export interface PublicSupportProduct {
+  id: string;
+  productCode: string;
+  productName: string;
+  /** @nullable */
+  productDescription?: string | null;
+}
+
+export type SupportTicketCategory =
+  (typeof SupportTicketCategory)[keyof typeof SupportTicketCategory];
+
+export const SupportTicketCategory = {
+  technical_bug: "technical_bug",
+  account_login_issue: "account_login_issue",
+  otp_verification_issue: "otp_verification_issue",
+  document_upload_issue: "document_upload_issue",
+  application_flow_confusion: "application_flow_confusion",
+  payment_issue: "payment_issue",
+  b2b_firm_admin_issue: "b2b_firm_admin_issue",
+  consultant_issue: "consultant_issue",
+  partner_issue: "partner_issue",
+  feature_request: "feature_request",
+  complaint: "complaint",
+  data_correction_request: "data_correction_request",
+  security_privacy_concern: "security_privacy_concern",
+  performance_issue: "performance_issue",
+  system_downtime: "system_downtime",
+  general_support: "general_support",
+} as const;
+
+export type SupportReporterType =
+  (typeof SupportReporterType)[keyof typeof SupportReporterType];
+
+export const SupportReporterType = {
+  public_visitor: "public_visitor",
+  applicant: "applicant",
+  b2b_firm_admin: "b2b_firm_admin",
+  consultant: "consultant",
+  beauty_client: "beauty_client",
+  beauty_professional: "beauty_professional",
+  partner: "partner",
+  internal_tester: "internal_tester",
+  other: "other",
+} as const;
+
+export type PublicSupportTicketStatus =
+  (typeof PublicSupportTicketStatus)[keyof typeof PublicSupportTicketStatus];
+
+export const PublicSupportTicketStatus = {
+  received: "received",
+  under_review: "under_review",
+  more_info_needed: "more_info_needed",
+  being_fixed: "being_fixed",
+  fixed: "fixed",
+  resolved: "resolved",
+  closed: "closed",
+} as const;
+
+export interface SupportTicketSubmission {
+  productId: string;
+  /** @minLength 1 */
+  reporterName: string;
+  /** @nullable */
+  reporterEmail?: string | null;
+  /** @nullable */
+  reporterWhatsapp?: string | null;
+  reporterType: SupportReporterType;
+  category: SupportTicketCategory;
+  /** @nullable */
+  pageOrStep?: string | null;
+  /** @nullable */
+  applicationReference?: string | null;
+  /** @nullable */
+  accountReference?: string | null;
+  /** @minLength 1 */
+  issueSummary: string;
+  /** @nullable */
+  whatWereYouTryingToDo?: string | null;
+  /** @minLength 1 */
+  whatWentWrong: string;
+  /** @nullable */
+  deviceType?: string | null;
+  /** @nullable */
+  browser?: string | null;
+  canContact?: boolean;
+}
+
+export interface CreatedSupportTicket {
+  ticketReference: string;
+  publicStatus: PublicSupportTicketStatus;
+  productName: string;
+  createdAt: string;
+}

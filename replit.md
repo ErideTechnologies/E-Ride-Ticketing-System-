@@ -39,7 +39,9 @@ Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; 
 
 ## Product
 
-- Foundation only: data model + enums + ticket reference generator. No UI, no Linear/Sentry integration yet.
+- Public "Report a Problem" page at `/help/report-problem` (artifact `web`) backed by `POST /api/support/tickets` and `GET /api/support/products` (Eride org only).
+- Server suggests `priority`/`severity` from category (see `artifacts/api-server/src/routes/support.ts`); ticket created with `source=public_form`, `publicStatus=received`, `internalStatus=triage_required`.
+- No Linear/Sentry/WhatsApp/admin/SaaS yet.
 
 ## User preferences
 

@@ -5,18 +5,27 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  CreatedSupportTicket,
+  ErrorResponse,
+  HealthStatus,
+  PublicSupportProduct,
+  SupportTicketSubmission,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +108,169 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Returns the list of active and publicly visible products that public users can report problems against.
+ * @summary List active, publicly visible support products
+ */
+export const getListPublicSupportProductsUrl = () => {
+  return `/api/support/products`;
+};
+
+export const listPublicSupportProducts = async (
+  options?: RequestInit,
+): Promise<PublicSupportProduct[]> => {
+  return customFetch<PublicSupportProduct[]>(
+    getListPublicSupportProductsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPublicSupportProductsQueryKey = () => {
+  return [`/api/support/products`] as const;
+};
+
+export const getListPublicSupportProductsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicSupportProducts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicSupportProducts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPublicSupportProductsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPublicSupportProducts>>
+  > = ({ signal }) => listPublicSupportProducts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicSupportProducts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPublicSupportProductsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPublicSupportProducts>>
+>;
+export type ListPublicSupportProductsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List active, publicly visible support products
+ */
+
+export function useListPublicSupportProducts<
+  TData = Awaited<ReturnType<typeof listPublicSupportProducts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicSupportProducts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPublicSupportProductsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit a support ticket from the public report-a-problem form
+ */
+export const getCreateSupportTicketUrl = () => {
+  return `/api/support/tickets`;
+};
+
+export const createSupportTicket = async (
+  supportTicketSubmission: SupportTicketSubmission,
+  options?: RequestInit,
+): Promise<CreatedSupportTicket> => {
+  return customFetch<CreatedSupportTicket>(getCreateSupportTicketUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supportTicketSubmission),
+  });
+};
+
+export const getCreateSupportTicketMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSupportTicket>>,
+    TError,
+    { data: BodyType<SupportTicketSubmission> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSupportTicket>>,
+  TError,
+  { data: BodyType<SupportTicketSubmission> },
+  TContext
+> => {
+  const mutationKey = ["createSupportTicket"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSupportTicket>>,
+    { data: BodyType<SupportTicketSubmission> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createSupportTicket(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSupportTicketMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSupportTicket>>
+>;
+export type CreateSupportTicketMutationBody = BodyType<SupportTicketSubmission>;
+export type CreateSupportTicketMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Submit a support ticket from the public report-a-problem form
+ */
+export const useCreateSupportTicket = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSupportTicket>>,
+    TError,
+    { data: BodyType<SupportTicketSubmission> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSupportTicket>>,
+  TError,
+  { data: BodyType<SupportTicketSubmission> },
+  TContext
+> => {
+  return useMutation(getCreateSupportTicketMutationOptions(options));
+};

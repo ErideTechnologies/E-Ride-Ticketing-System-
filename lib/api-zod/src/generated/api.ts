@@ -14,3 +14,68 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns the list of active and publicly visible products that public users can report problems against.
+ * @summary List active, publicly visible support products
+ */
+export const ListPublicSupportProductsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  productCode: zod.string(),
+  productName: zod.string(),
+  productDescription: zod.string().nullish(),
+});
+export const ListPublicSupportProductsResponse = zod.array(
+  ListPublicSupportProductsResponseItem,
+);
+
+/**
+ * @summary Submit a support ticket from the public report-a-problem form
+ */
+
+export const createSupportTicketBodyCanContactDefault = true;
+
+export const CreateSupportTicketBody = zod.object({
+  productId: zod.string().uuid(),
+  reporterName: zod.string().min(1),
+  reporterEmail: zod.string().nullish(),
+  reporterWhatsapp: zod.string().nullish(),
+  reporterType: zod.enum([
+    "public_visitor",
+    "applicant",
+    "b2b_firm_admin",
+    "consultant",
+    "beauty_client",
+    "beauty_professional",
+    "partner",
+    "internal_tester",
+    "other",
+  ]),
+  category: zod.enum([
+    "technical_bug",
+    "account_login_issue",
+    "otp_verification_issue",
+    "document_upload_issue",
+    "application_flow_confusion",
+    "payment_issue",
+    "b2b_firm_admin_issue",
+    "consultant_issue",
+    "partner_issue",
+    "feature_request",
+    "complaint",
+    "data_correction_request",
+    "security_privacy_concern",
+    "performance_issue",
+    "system_downtime",
+    "general_support",
+  ]),
+  pageOrStep: zod.string().nullish(),
+  applicationReference: zod.string().nullish(),
+  accountReference: zod.string().nullish(),
+  issueSummary: zod.string().min(1),
+  whatWereYouTryingToDo: zod.string().nullish(),
+  whatWentWrong: zod.string().min(1),
+  deviceType: zod.string().nullish(),
+  browser: zod.string().nullish(),
+  canContact: zod.boolean().default(createSupportTicketBodyCanContactDefault),
+});

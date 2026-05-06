@@ -1,0 +1,30 @@
+export const REPORTER_TYPE_OPTIONS = [
+  { value: "public_visitor", label: "Public visitor" },
+  { value: "applicant", label: "Applicant" },
+  { value: "b2b_firm_admin", label: "B2B firm admin" },
+  { value: "consultant", label: "Consultant" },
+  { value: "beauty_client", label: "Beauty client" },
+  { value: "beauty_professional", label: "Beauty professional" },
+  { value: "partner", label: "Partner" },
+  { value: "internal_tester", label: "Internal tester" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const CATEGORY_OPTIONS = [
+  { value: "technical_bug", label: "Technical bug" },
+  { value: "account_login_issue", label: "Account or login issue" },
+  { value: "otp_verification_issue", label: "OTP / verification issue" },
+  { value: "document_upload_issue", label: "Document upload issue" },
+  { value: "application_flow_confusion", label: "Application flow confusion" },
+  { value: "payment_issue", label: "Payment issue" },
+  { value: "b2b_firm_admin_issue", label: "B2B firm admin issue" },
+  { value: "consultant_issue", label: "Consultant issue" },
+  { value: "partner_issue", label: "Partner issue" },
+  { value: "feature_request", label: "Feature request" },
+  { value: "complaint", label: "Complaint" },
+  { value: "data_correction_request", label: "Data correction request" },
+  { value: "security_privacy_concern", label: "Security or privacy concern" },
+  { value: "performance_issue", label: "Performance issue" },
+  { value: "system_downtime", label: "System downtime" },
+  { value: "general_support", label: "General support" },
+] as const;

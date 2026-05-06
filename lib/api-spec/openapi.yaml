@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: support
+    description: Support ticketing operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /support/products:
+    get:
+      operationId: listPublicSupportProducts
+      tags: [support]
+      summary: List active, publicly visible support products
+      description: Returns the list of active and publicly visible products that public users can report problems against.
+      responses:
+        "200":
+          description: List of public products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicSupportProduct"
+
+  /support/tickets:
+    post:
+      operationId: createSupportTicket
+      tags: [support]
+      summary: Submit a support ticket from the public report-a-problem form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketSubmission"
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedSupportTicket"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Product not found or not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +84,135 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    PublicSupportProduct:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productCode:
+          type: string
+        productName:
+          type: string
+        productDescription:
+          type: ["string", "null"]
+      required:
+        - id
+        - productCode
+        - productName
+
+    SupportTicketCategory:
+      type: string
+      enum:
+        - technical_bug
+        - account_login_issue
+        - otp_verification_issue
+        - document_upload_issue
+        - application_flow_confusion
+        - payment_issue
+        - b2b_firm_admin_issue
+        - consultant_issue
+        - partner_issue
+        - feature_request
+        - complaint
+        - data_correction_request
+        - security_privacy_concern
+        - performance_issue
+        - system_downtime
+        - general_support
+
+    SupportReporterType:
+      type: string
+      enum:
+        - public_visitor
+        - applicant
+        - b2b_firm_admin
+        - consultant
+        - beauty_client
+        - beauty_professional
+        - partner
+        - internal_tester
+        - other
+
+    PublicSupportTicketStatus:
+      type: string
+      enum:
+        - received
+        - under_review
+        - more_info_needed
+        - being_fixed
+        - fixed
+        - resolved
+        - closed
+
+    SupportTicketSubmission:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        reporterName:
+          type: string
+          minLength: 1
+        reporterEmail:
+          type: ["string", "null"]
+        reporterWhatsapp:
+          type: ["string", "null"]
+        reporterType:
+          $ref: "#/components/schemas/SupportReporterType"
+        category:
+          $ref: "#/components/schemas/SupportTicketCategory"
+        pageOrStep:
+          type: ["string", "null"]
+        applicationReference:
+          type: ["string", "null"]
+        accountReference:
+          type: ["string", "null"]
+        issueSummary:
+          type: string
+          minLength: 1
+        whatWereYouTryingToDo:
+          type: ["string", "null"]
+        whatWentWrong:
+          type: string
+          minLength: 1
+        deviceType:
+          type: ["string", "null"]
+        browser:
+          type: ["string", "null"]
+        canContact:
+          type: boolean
+          default: true
+      required:
+        - productId
+        - reporterName
+        - reporterType
+        - category
+        - issueSummary
+        - whatWentWrong
+
+    CreatedSupportTicket:
+      type: object
+      properties:
+        ticketReference:
+          type: string
+        publicStatus:
+          $ref: "#/components/schemas/PublicSupportTicketStatus"
+        productName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - ticketReference
+        - publicStatus
+        - productName
+        - createdAt
