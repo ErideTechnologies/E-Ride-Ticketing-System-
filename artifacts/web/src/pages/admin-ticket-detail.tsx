@@ -9,12 +9,16 @@ import {
   useListSupportTicketStatusHistory,
   useListSupportTicketAttachments,
   useDeleteSupportTicketAttachment,
+  useListSupportTicketMessages,
+  useCreateSupportTicketMessage,
   getGetSupportTicketQueryKey,
   getListSupportTicketNotesQueryKey,
   getListSupportTicketStatusHistoryQueryKey,
   getListSupportTicketAttachmentsQueryKey,
+  getListSupportTicketMessagesQueryKey,
   type SupportTicketDetail,
   type SupportTicketAttachment,
+  type SupportTicketMessage,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +62,14 @@ import {
   CATEGORY_LABELS,
   INTERNAL_STATUS_LABELS,
   INTERNAL_STATUS_OPTIONS,
+  MESSAGE_CHANNEL_LABELS,
+  MESSAGE_CHANNEL_OPTIONS,
+  MESSAGE_DELIVERY_STATUS_LABELS,
+  MESSAGE_DELIVERY_STATUS_OPTIONS,
+  MESSAGE_DIRECTION_LABELS,
+  MESSAGE_DIRECTION_OPTIONS,
+  MESSAGE_TYPE_LABELS,
+  MESSAGE_TYPE_OPTIONS,
   PRIORITY_LABELS,
   PRIORITY_OPTIONS,
   PUBLIC_STATUS_LABELS,
@@ -327,7 +339,7 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <AttachmentsCard ticketId={ticket.id} />
           <NotesCard ticketId={ticket.id} />
           <StatusHistoryCard ticketId={ticket.id} />
-          <CommunicationCard ticket={ticket} />
+          <CommunicationLogCard ticket={ticket} />
           <HandoffCard ticket={ticket} />
         </div>
       </div>
@@ -1045,41 +1057,441 @@ function StatusHistoryCard({ ticketId }: { ticketId: string }) {
   );
 }
 
-function CommunicationCard({ ticket }: { ticket: SupportTicketDetail }) {
-  const messages = useMemo(
+type MessageTypeValue =
+  (typeof MESSAGE_TYPE_OPTIONS)[number]["value"];
+type DirectionValue =
+  (typeof MESSAGE_DIRECTION_OPTIONS)[number]["value"];
+type ChannelValue = (typeof MESSAGE_CHANNEL_OPTIONS)[number]["value"];
+type DeliveryStatusValue =
+  (typeof MESSAGE_DELIVERY_STATUS_OPTIONS)[number]["value"];
+
+const TEMPLATE_TO_MESSAGE_TYPE: Record<string, MessageTypeValue> = {
+  received: "ticket_received",
+  "more-info": "more_info_needed",
+  escalated: "escalated_to_engineering",
+  fixed: "fixed",
+  closed: "closed",
+};
+
+const STATUS_SUGGESTION_BY_TYPE: Partial<
+  Record<
+    MessageTypeValue,
+    { publicStatus: string; internalStatus: string; help: string }
+  >
+> = {
+  more_info_needed: {
+    publicStatus: "more_info_needed",
+    internalStatus: "needs_user_info",
+    help: "Suggest setting public status to More info needed and internal to Needs user info.",
+  },
+  escalated_to_engineering: {
+    publicStatus: "being_fixed",
+    internalStatus: "engineering_escalation_required",
+    help: "Suggest setting public status to Being fixed and internal to Engineering escalation required.",
+  },
+  fixed: {
+    publicStatus: "fixed",
+    internalStatus: "fixed_waiting_user_notification",
+    help: "Suggest setting public status to Fixed and internal to Fixed (awaiting notification) or User notified.",
+  },
+  closed: {
+    publicStatus: "closed",
+    internalStatus: "closed",
+    help: "Suggest setting public status to Closed and internal to Closed.",
+  },
+  resolved: {
+    publicStatus: "resolved",
+    internalStatus: "resolved",
+    help: "Suggest setting public status to Resolved and internal to Resolved.",
+  },
+};
+
+function CommunicationLogCard({ ticket }: { ticket: SupportTicketDetail }) {
+  const qc = useQueryClient();
+  const list = useListSupportTicketMessages(ticket.id);
+  const create = useCreateSupportTicketMessage();
+  const [recordingFor, setRecordingFor] = useState<string | null>(null);
+  const [recordChannel, setRecordChannel] = useState<ChannelValue>("manual");
+  const [recordSaving, setRecordSaving] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+
+  // Manual entry form state
+  const [direction, setDirection] = useState<DirectionValue>("outbound");
+  const [channel, setChannel] = useState<ChannelValue>("manual");
+  const [messageType, setMessageType] =
+    useState<MessageTypeValue>("custom");
+  const [deliveryStatus, setDeliveryStatus] =
+    useState<DeliveryStatusValue>("sent_manual");
+  const [senderName, setSenderName] = useState("Support");
+  const [recipientName, setRecipientName] = useState(
+    ticket.reporterName ?? "",
+  );
+  const [recipientEmail, setRecipientEmail] = useState(
+    ticket.reporterEmail ?? "",
+  );
+  const [recipientWhatsapp, setRecipientWhatsapp] = useState(
+    ticket.reporterWhatsapp ?? "",
+  );
+  const [messageBody, setMessageBody] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+
+  const templates = useMemo(
     () =>
       COMM_TEMPLATES.map((t) => ({
         ...t,
         text: fillTemplate(t.body, ticket),
+        messageType: TEMPLATE_TO_MESSAGE_TYPE[t.key] ?? "custom",
       })),
     [ticket],
   );
+
+  function invalidate() {
+    qc.invalidateQueries({
+      queryKey: getListSupportTicketMessagesQueryKey(ticket.id),
+    });
+  }
+
+  async function recordTemplateAsSent(t: {
+    key: string;
+    label: string;
+    text: string;
+    messageType: MessageTypeValue;
+  }) {
+    setRecordError(null);
+    setRecordSaving(true);
+    try {
+      await create.mutateAsync({
+        id: ticket.id,
+        data: {
+          direction: "outbound",
+          channel: recordChannel,
+          messageType: t.messageType,
+          deliveryStatus: "sent_manual",
+          senderName: "Support",
+          recipientName: ticket.reporterName ?? null,
+          recipientEmail: ticket.reporterEmail ?? null,
+          recipientWhatsapp: ticket.reporterWhatsapp ?? null,
+          messageBody: t.text,
+          relatedPublicStatus: ticket.publicStatus,
+          relatedInternalStatus: ticket.internalStatus,
+        },
+      });
+      invalidate();
+      setRecordingFor(null);
+    } catch {
+      setRecordError("Could not record message");
+    } finally {
+      setRecordSaving(false);
+    }
+  }
+
+  async function saveManual() {
+    if (!messageBody.trim()) return;
+    setManualError(null);
+    setManualSaving(true);
+    try {
+      await create.mutateAsync({
+        id: ticket.id,
+        data: {
+          direction,
+          channel,
+          messageType,
+          deliveryStatus,
+          senderName: senderName.trim() || null,
+          recipientName: recipientName.trim() || null,
+          recipientEmail: recipientEmail.trim() || null,
+          recipientWhatsapp: recipientWhatsapp.trim() || null,
+          messageBody: messageBody.trim(),
+          relatedPublicStatus: ticket.publicStatus,
+          relatedInternalStatus: ticket.internalStatus,
+        },
+      });
+      invalidate();
+      setMessageBody("");
+    } catch {
+      setManualError("Could not save communication");
+    } finally {
+      setManualSaving(false);
+    }
+  }
+
+  const manualSuggestion = STATUS_SUGGESTION_BY_TYPE[messageType];
+  const messages: SupportTicketMessage[] = list.data ?? [];
+
   return (
-    <Card className="lg:col-span-2">
+    <Card className="lg:col-span-2" data-testid="card-communication-log">
       <CardHeader>
-        <CardTitle className="text-base">Communication drafts</CardTitle>
+        <CardTitle className="text-base">Communication log</CardTitle>
         <CardDescription>
-          Copy-ready messages. Sending is not wired up yet.
+          Copy-ready templates, manual entries, and a timeline of every
+          message exchanged about this ticket. Email/WhatsApp sending is not
+          wired up yet.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {messages.map((m) => (
-          <div key={m.key} className="rounded-md border bg-background p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium">{m.label}</p>
-              <CopyButton
-                text={m.text}
-                label={`Copy ${m.label.toLowerCase()} message`}
-                testId={`button-copy-${m.key}`}
+      <CardContent className="space-y-6">
+        {/* A. Quick templates */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold">Quick message templates</h3>
+          {templates.map((m) => {
+            const isRecording = recordingFor === m.key;
+            const suggestion = STATUS_SUGGESTION_BY_TYPE[m.messageType];
+            return (
+              <div
+                key={m.key}
+                className="rounded-md border bg-background p-3"
+                data-testid={`template-${m.key}`}
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{m.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <CopyButton
+                      text={m.text}
+                      label={`Copy ${m.label.toLowerCase()} message`}
+                      testId={`button-copy-${m.key}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setRecordError(null);
+                        setRecordingFor(isRecording ? null : m.key);
+                        setRecordChannel("manual");
+                      }}
+                      data-testid={`button-record-toggle-${m.key}`}
+                    >
+                      {isRecording ? "Cancel" : "Record as sent manually"}
+                    </Button>
+                  </div>
+                </div>
+                <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
+                  {m.text}
+                </pre>
+                {suggestion && (
+                  <p
+                    className="mt-2 text-xs text-muted-foreground"
+                    data-testid={`hint-${m.key}`}
+                  >
+                    {suggestion.help}
+                  </p>
+                )}
+                {isRecording && (
+                  <div
+                    className="mt-3 space-y-2 rounded-md border bg-muted/40 p-2"
+                    data-testid={`record-panel-${m.key}`}
+                  >
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="min-w-[180px]">
+                        <Label className="text-xs text-muted-foreground">
+                          Channel
+                        </Label>
+                        <SimpleSelect
+                          value={recordChannel}
+                          onChange={(v) =>
+                            setRecordChannel(v as ChannelValue)
+                          }
+                          options={MESSAGE_CHANNEL_OPTIONS}
+                          testId={`select-record-channel-${m.key}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => recordTemplateAsSent(m)}
+                        disabled={recordSaving}
+                        data-testid={`button-record-confirm-${m.key}`}
+                      >
+                        {recordSaving ? "Saving…" : "Confirm sent"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {recordError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{recordError}</AlertDescription>
+            </Alert>
+          )}
+        </section>
+
+        {/* B. Manual entry */}
+        <section
+          className="space-y-3 border-t pt-4"
+          data-testid="manual-entry"
+        >
+          <h3 className="text-sm font-semibold">Manual communication entry</h3>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Direction">
+              <SimpleSelect
+                value={direction}
+                onChange={(v) => setDirection(v as DirectionValue)}
+                options={MESSAGE_DIRECTION_OPTIONS}
+                testId="select-manual-direction"
               />
-            </div>
-            <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground">
-              {m.text}
-            </pre>
+            </Field>
+            <Field label="Channel">
+              <SimpleSelect
+                value={channel}
+                onChange={(v) => setChannel(v as ChannelValue)}
+                options={MESSAGE_CHANNEL_OPTIONS}
+                testId="select-manual-channel"
+              />
+            </Field>
+            <Field label="Message type">
+              <SimpleSelect
+                value={messageType}
+                onChange={(v) => setMessageType(v as MessageTypeValue)}
+                options={MESSAGE_TYPE_OPTIONS}
+                testId="select-manual-message-type"
+              />
+            </Field>
+            <Field label="Delivery status">
+              <SimpleSelect
+                value={deliveryStatus}
+                onChange={(v) =>
+                  setDeliveryStatus(v as DeliveryStatusValue)
+                }
+                options={MESSAGE_DELIVERY_STATUS_OPTIONS}
+                testId="select-manual-delivery-status"
+              />
+            </Field>
+            <Field label="Sender name">
+              <Input
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                data-testid="input-manual-sender-name"
+              />
+            </Field>
+            <Field label="Recipient name">
+              <Input
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                data-testid="input-manual-recipient-name"
+              />
+            </Field>
+            <Field label="Recipient email">
+              <Input
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                data-testid="input-manual-recipient-email"
+              />
+            </Field>
+            <Field label="Recipient WhatsApp">
+              <Input
+                value={recipientWhatsapp}
+                onChange={(e) => setRecipientWhatsapp(e.target.value)}
+                data-testid="input-manual-recipient-whatsapp"
+              />
+            </Field>
           </div>
-        ))}
+          <Field label="Message body">
+            <Textarea
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              rows={4}
+              placeholder="What was said?"
+              data-testid="input-manual-body"
+            />
+          </Field>
+          {manualSuggestion && (
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="text-manual-suggestion"
+            >
+              {manualSuggestion.help}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={saveManual}
+              disabled={manualSaving || !messageBody.trim()}
+              data-testid="button-save-manual-message"
+            >
+              {manualSaving ? "Saving…" : "Save communication"}
+            </Button>
+            {manualError && (
+              <span className="text-xs text-destructive">{manualError}</span>
+            )}
+          </div>
+        </section>
+
+        {/* C. Timeline */}
+        <section
+          className="space-y-3 border-t pt-4"
+          data-testid="messages-timeline"
+        >
+          <h3 className="text-sm font-semibold">
+            Communication timeline ({messages.length})
+          </h3>
+          {list.isLoading && (
+            <p className="text-sm text-muted-foreground">Loading messages…</p>
+          )}
+          {!list.isLoading && messages.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No communication recorded yet.
+            </p>
+          )}
+          <ul className="space-y-2">
+            {messages.map((m) => (
+              <MessageRow key={m.id} message={m} />
+            ))}
+          </ul>
+        </section>
       </CardContent>
     </Card>
+  );
+}
+
+function MessageRow({ message }: { message: SupportTicketMessage }) {
+  const isOutbound = message.direction === "outbound";
+  const isInternal = message.direction === "internal";
+  const wrapperClass = isInternal
+    ? "border-amber-300 bg-amber-50 dark:bg-amber-950/30"
+    : isOutbound
+      ? "border-sky-300 bg-sky-50 dark:bg-sky-950/30"
+      : "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30";
+  return (
+    <li
+      className={`rounded-md border p-3 ${wrapperClass}`}
+      data-testid={`message-${message.id}`}
+    >
+      <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
+        <Badge variant="outline" data-testid={`badge-direction-${message.id}`}>
+          {humanLabel(MESSAGE_DIRECTION_LABELS, message.direction)}
+        </Badge>
+        <Badge variant="secondary">
+          {humanLabel(MESSAGE_TYPE_LABELS, message.messageType)}
+        </Badge>
+        <Badge variant="outline">
+          {humanLabel(MESSAGE_CHANNEL_LABELS, message.channel)}
+        </Badge>
+        <Badge variant="outline">
+          {humanLabel(
+            MESSAGE_DELIVERY_STATUS_LABELS,
+            message.deliveryStatus,
+          )}
+        </Badge>
+        {isInternal && (
+          <Badge className="bg-amber-500 text-amber-50">Internal</Badge>
+        )}
+        <span className="ml-auto text-muted-foreground">
+          {formatDateTime(message.createdAt)}
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        From: {message.senderName ?? "—"}
+        {message.senderRole ? ` (${message.senderRole})` : ""} · To:{" "}
+        {message.recipientName ?? "—"}
+      </p>
+      <pre className="mt-2 whitespace-pre-wrap break-words text-sm">
+        {message.messageBody}
+      </pre>
+    </li>
   );
 }
 

@@ -363,6 +363,102 @@ export interface SupportTicketStatusHistoryItem {
   createdAt: string;
 }
 
+export type SupportMessageDirection =
+  (typeof SupportMessageDirection)[keyof typeof SupportMessageDirection];
+
+export const SupportMessageDirection = {
+  outbound: "outbound",
+  inbound: "inbound",
+  internal: "internal",
+} as const;
+
+export type SupportMessageChannel =
+  (typeof SupportMessageChannel)[keyof typeof SupportMessageChannel];
+
+export const SupportMessageChannel = {
+  email: "email",
+  whatsapp: "whatsapp",
+  phone: "phone",
+  in_app: "in_app",
+  manual: "manual",
+  internal_note: "internal_note",
+} as const;
+
+export type SupportMessageType =
+  (typeof SupportMessageType)[keyof typeof SupportMessageType];
+
+export const SupportMessageType = {
+  ticket_received: "ticket_received",
+  under_review: "under_review",
+  more_info_needed: "more_info_needed",
+  escalated_to_engineering: "escalated_to_engineering",
+  fixed: "fixed",
+  resolved: "resolved",
+  closed: "closed",
+  reopened: "reopened",
+  custom: "custom",
+  user_reply: "user_reply",
+  internal_update: "internal_update",
+} as const;
+
+export type SupportMessageDeliveryStatus =
+  (typeof SupportMessageDeliveryStatus)[keyof typeof SupportMessageDeliveryStatus];
+
+export const SupportMessageDeliveryStatus = {
+  drafted: "drafted",
+  copied: "copied",
+  sent_manual: "sent_manual",
+  received: "received",
+  failed: "failed",
+  not_applicable: "not_applicable",
+} as const;
+
+export interface SupportTicketMessage {
+  id: string;
+  supportTicketId: string;
+  direction: SupportMessageDirection;
+  channel: SupportMessageChannel;
+  messageType: SupportMessageType;
+  /** @nullable */
+  senderName?: string | null;
+  /** @nullable */
+  senderRole?: string | null;
+  /** @nullable */
+  recipientName?: string | null;
+  /** @nullable */
+  recipientEmail?: string | null;
+  /** @nullable */
+  recipientWhatsapp?: string | null;
+  messageBody: string;
+  deliveryStatus: SupportMessageDeliveryStatus;
+  /** @nullable */
+  relatedPublicStatus?: string | null;
+  /** @nullable */
+  relatedInternalStatus?: string | null;
+  createdAt: string;
+}
+
+export interface SupportTicketMessageCreate {
+  direction: SupportMessageDirection;
+  channel: SupportMessageChannel;
+  messageType: SupportMessageType;
+  /** @nullable */
+  senderName?: string | null;
+  /** @nullable */
+  senderRole?: string | null;
+  /** @nullable */
+  recipientName?: string | null;
+  /** @nullable */
+  recipientEmail?: string | null;
+  /** @nullable */
+  recipientWhatsapp?: string | null;
+  /** @minLength 1 */
+  messageBody: string;
+  deliveryStatus: SupportMessageDeliveryStatus;
+  relatedPublicStatus?: PublicSupportTicketStatus;
+  relatedInternalStatus?: InternalSupportTicketStatus;
+}
+
 export interface CreatedSupportTicket {
   id: string;
   ticketReference: string;

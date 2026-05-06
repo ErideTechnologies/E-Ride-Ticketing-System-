@@ -4,3 +4,4 @@ export * from "./products";
 export * from "./tickets";
 export * from "./notes";
 export * from "./attachments";
+export * from "./messages";

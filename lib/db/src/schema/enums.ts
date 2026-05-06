@@ -81,3 +81,54 @@ export const ticketSeverities = [
 ] as const;
 export type TicketSeverity = (typeof ticketSeverities)[number];
 export const ticketSeverityEnum = pgEnum("ticket_severity", ticketSeverities);
+
+export const messageDirections = ["outbound", "inbound", "internal"] as const;
+export type MessageDirection = (typeof messageDirections)[number];
+export const messageDirectionEnum = pgEnum(
+  "support_message_direction",
+  messageDirections,
+);
+
+export const messageChannels = [
+  "email",
+  "whatsapp",
+  "phone",
+  "in_app",
+  "manual",
+  "internal_note",
+] as const;
+export type MessageChannel = (typeof messageChannels)[number];
+export const messageChannelEnum = pgEnum(
+  "support_message_channel",
+  messageChannels,
+);
+
+export const messageTypes = [
+  "ticket_received",
+  "under_review",
+  "more_info_needed",
+  "escalated_to_engineering",
+  "fixed",
+  "resolved",
+  "closed",
+  "reopened",
+  "custom",
+  "user_reply",
+  "internal_update",
+] as const;
+export type MessageType = (typeof messageTypes)[number];
+export const messageTypeEnum = pgEnum("support_message_type", messageTypes);
+
+export const messageDeliveryStatuses = [
+  "drafted",
+  "copied",
+  "sent_manual",
+  "received",
+  "failed",
+  "not_applicable",
+] as const;
+export type MessageDeliveryStatus = (typeof messageDeliveryStatuses)[number];
+export const messageDeliveryStatusEnum = pgEnum(
+  "support_message_delivery_status",
+  messageDeliveryStatuses,
+);

@@ -1,0 +1,241 @@
+Build Step 7 of the Eride Support Command Centre: Communication Log and Manual Message Recording.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- products and ticket references
+
+Step 2 is complete:
+- public report problem page
+- ticket creation
+
+Step 3 is complete:
+- internal ticket dashboard
+
+Step 4 is complete:
+- ticket detail page
+- status updates
+- internal notes
+- communication copy templates
+- developer handoff generator
+
+Step 5 is complete:
+- ticket attachments and screenshot uploads
+
+Step 6 is complete:
+- live support wallboard
+- GET /api/support/wallboard
+- /admin/support/wallboard
+
+Goal:
+Add a communication log so support/admin staff can record messages sent to users through email, WhatsApp, phone, or in-app/manual channels.
+
+Important:
+Do not add actual email sending yet.
+Do not add WhatsApp API automation yet.
+Do not add Linear integration yet.
+Do not add Sentry integration yet.
+This step is only communication record-keeping and manual message logging.
+
+Database:
+
+Create support_ticket_messages table:
+- id
+- supportTicketId
+- direction
+- channel
+- messageType
+- senderName nullable
+- senderRole nullable
+- recipientName nullable
+- recipientEmail nullable
+- recipientWhatsapp nullable
+- messageBody
+- deliveryStatus
+- relatedPublicStatus nullable
+- relatedInternalStatus nullable
+- createdAt
+
+Allowed direction values:
+- outbound
+- inbound
+- internal
+
+Allowed channel values:
+- email
+- whatsapp
+- phone
+- in_app
+- manual
+- internal_note
+
+Allowed messageType values:
+- ticket_received
+- under_review
+- more_info_needed
+- escalated_to_engineering
+- fixed
+- resolved
+- closed
+- reopened
+- custom
+- user_reply
+- internal_update
+
+Allowed deliveryStatus values:
+- drafted
+- copied
+- sent_manual
+- received
+- failed
+- not_applicable
+
+Relationship:
+- message belongs to support ticket
+- cascade delete if ticket is deleted
+
+Backend endpoints:
+
+1. GET /api/support/tickets/:id/messages
+
+Purpose:
+List communication records for a ticket.
+
+Return newest first:
+- id
+- direction
+- channel
+- messageType
+- senderName
+- senderRole
+- recipientName
+- recipientEmail
+- recipientWhatsapp
+- messageBody
+- deliveryStatus
+- relatedPublicStatus
+- relatedInternalStatus
+- createdAt
+
+Must:
+- verify ticket belongs to active Eride Technologies organisation
+
+2. POST /api/support/tickets/:id/messages
+
+Purpose:
+Create a communication record.
+
+Input:
+- direction required
+- channel required
+- messageType required
+- senderName optional
+- senderRole optional
+- recipientName optional
+- recipientEmail optional
+- recipientWhatsapp optional
+- messageBody required
+- deliveryStatus required
+- relatedPublicStatus optional
+- relatedInternalStatus optional
+
+Validation:
+- messageBody cannot be empty
+- direction/channel/messageType/deliveryStatus must use allowed values
+- ticket must belong to Eride Technologies organisation
+
+Frontend changes:
+
+Update /admin/support/tickets/:id
+
+Replace or extend the existing Communication Draft card with a full Communication Log card.
+
+The card must have two sections:
+
+A. Quick message templates
+
+Keep existing copy buttons:
+- Ticket received
+- More info needed
+- Escalated to engineering
+- Fixed
+- Closed
+
+For each template:
+- Generate message body using ticket data
+- Copy to clipboard
+- Show “Copied”
+- After copy, show button:
+  “Record as sent manually”
+
+When user clicks “Record as sent manually”:
+- create support_ticket_messages row
+- direction = outbound
+- channel = manual by default, with option to choose email or whatsapp
+- messageType = matching template type
+- deliveryStatus = sent_manual
+- senderName = Support
+- recipientName = reporterName
+- recipientEmail = reporterEmail
+- recipientWhatsapp = reporterWhatsapp
+- messageBody = copied template body
+- relatedPublicStatus = current publicStatus
+- relatedInternalStatus = current internalStatus
+
+B. Manual communication entry
+
+Fields:
+- direction dropdown: outbound, inbound, internal
+- channel dropdown: email, whatsapp, phone, in_app, manual, internal_note
+- messageType dropdown
+- deliveryStatus dropdown
+- senderName input default “Support”
+- recipientName input default reporterName
+- recipientEmail input default reporterEmail
+- recipientWhatsapp input default reporterWhatsapp
+- messageBody textarea
+- Save communication button
+
+C. Communication timeline
+
+Show all messages newest first.
+
+Each message should display:
+- messageType
+- direction
+- channel
+- deliveryStatus
+- senderName
+- recipientName
+- createdAt
+- messageBody preview/full body
+
+Visual rules:
+- outbound messages should be visually distinct from inbound/internal
+- internal messages should be clearly marked “Internal”
+- WhatsApp/email/manual channel should be visible
+- Mobile-friendly cards
+
+D. Ticket status helper
+
+When saving certain message types, optionally suggest status changes but do not force them.
+
+Examples:
+- more_info_needed message should suggest publicStatus = more_info_needed and internalStatus = needs_user_info
+- escalated_to_engineering should suggest publicStatus = being_fixed and internalStatus = engineering_escalation_required
+- fixed should suggest publicStatus = fixed and internalStatus = fixed_waiting_user_notification or user_notified
+- closed should suggest publicStatus = closed and internalStatus = closed
+
+For this step, show the suggestion as helper text only. Do not auto-change status.
+
+Acceptance criteria:
+- support_ticket_messages table exists
+- GET messages endpoint returns messages newest first
+- POST messages endpoint validates and creates messages
+- Ticket detail page shows communication log
+- Existing template copy buttons still work
+- After copying a template, support can record it as sent manually
+- Support can manually add inbound/outbound/internal communication
+- Communication records show on the ticket timeline
+- Typecheck passes
+- Basic browser test covers copying a template, recording it as sent, manually adding a message, and seeing both in the timeline

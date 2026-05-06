@@ -8,10 +8,12 @@ import {
   supportProductsTable,
   supportTicketAttachmentsTable,
   supportTicketInternalNotesTable,
+  supportTicketMessagesTable,
   supportTicketStatusHistoryTable,
   supportTicketsTable,
   type SupportTicket,
   type SupportTicketAttachment,
+  type SupportTicketMessage,
   type TicketCategory,
   type TicketPriority,
   type TicketSeverity,
@@ -30,6 +32,7 @@ import {
 import { writeFile } from "node:fs/promises";
 import {
   CreateSupportTicketBody,
+  CreateSupportTicketMessageBody,
   CreateSupportTicketNoteBody,
   ListPublicSupportProductsResponse,
   ListSupportTicketsQueryParams,
@@ -715,6 +718,78 @@ router.get(
     res.json(
       rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })),
     );
+  },
+);
+
+// ─── Messages ───────────────────────────────────────────────────────────────
+
+function serializeMessage(m: SupportTicketMessage) {
+  return { ...m, createdAt: m.createdAt.toISOString() };
+}
+
+router.get(
+  "/support/tickets/:id/messages",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(supportTicketMessagesTable)
+      .where(
+        eq(supportTicketMessagesTable.supportTicketId, existing.ticket.id),
+      )
+      .orderBy(desc(supportTicketMessagesTable.createdAt));
+    res.json(rows.map(serializeMessage));
+  },
+);
+
+router.post(
+  "/support/tickets/:id/messages",
+  async (req, res): Promise<void> => {
+    const parsed = CreateSupportTicketMessageBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid message" });
+      return;
+    }
+    const data = parsed.data;
+    if (!data.messageBody.trim()) {
+      res.status(400).json({ error: "Message body is required" });
+      return;
+    }
+
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    const [row] = await db
+      .insert(supportTicketMessagesTable)
+      .values({
+        supportTicketId: existing.ticket.id,
+        direction: data.direction,
+        channel: data.channel,
+        messageType: data.messageType,
+        senderName: data.senderName?.trim() || null,
+        senderRole: data.senderRole?.trim() || null,
+        recipientName: data.recipientName?.trim() || null,
+        recipientEmail: data.recipientEmail?.trim() || null,
+        recipientWhatsapp: data.recipientWhatsapp?.trim() || null,
+        messageBody: data.messageBody.trim(),
+        deliveryStatus: data.deliveryStatus,
+        relatedPublicStatus: data.relatedPublicStatus ?? null,
+        relatedInternalStatus: data.relatedInternalStatus ?? null,
+      })
+      .returning();
+
+    if (!row) {
+      res.status(500).json({ error: "Could not save message" });
+      return;
+    }
+    res.status(201).json(serializeMessage(row));
   },
 );
 

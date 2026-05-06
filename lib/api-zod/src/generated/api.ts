@@ -348,6 +348,138 @@ export const ListSupportTicketStatusHistoryResponse = zod.array(
 );
 
 /**
+ * @summary List communication records for a ticket (newest first)
+ */
+export const ListSupportTicketMessagesParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListSupportTicketMessagesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  direction: zod.enum(["outbound", "inbound", "internal"]),
+  channel: zod.enum([
+    "email",
+    "whatsapp",
+    "phone",
+    "in_app",
+    "manual",
+    "internal_note",
+  ]),
+  messageType: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+    "user_reply",
+    "internal_update",
+  ]),
+  senderName: zod.string().nullish(),
+  senderRole: zod.string().nullish(),
+  recipientName: zod.string().nullish(),
+  recipientEmail: zod.string().nullish(),
+  recipientWhatsapp: zod.string().nullish(),
+  messageBody: zod.string(),
+  deliveryStatus: zod.enum([
+    "drafted",
+    "copied",
+    "sent_manual",
+    "received",
+    "failed",
+    "not_applicable",
+  ]),
+  relatedPublicStatus: zod.string().nullish(),
+  relatedInternalStatus: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListSupportTicketMessagesResponse = zod.array(
+  ListSupportTicketMessagesResponseItem,
+);
+
+/**
+ * @summary Record a communication for a ticket
+ */
+export const CreateSupportTicketMessageParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const CreateSupportTicketMessageBody = zod.object({
+  direction: zod.enum(["outbound", "inbound", "internal"]),
+  channel: zod.enum([
+    "email",
+    "whatsapp",
+    "phone",
+    "in_app",
+    "manual",
+    "internal_note",
+  ]),
+  messageType: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+    "user_reply",
+    "internal_update",
+  ]),
+  senderName: zod.string().nullish(),
+  senderRole: zod.string().nullish(),
+  recipientName: zod.string().nullish(),
+  recipientEmail: zod.string().nullish(),
+  recipientWhatsapp: zod.string().nullish(),
+  messageBody: zod.string().min(1),
+  deliveryStatus: zod.enum([
+    "drafted",
+    "copied",
+    "sent_manual",
+    "received",
+    "failed",
+    "not_applicable",
+  ]),
+  relatedPublicStatus: zod
+    .enum([
+      "received",
+      "under_review",
+      "more_info_needed",
+      "being_fixed",
+      "fixed",
+      "resolved",
+      "closed",
+    ])
+    .optional(),
+  relatedInternalStatus: zod
+    .enum([
+      "new",
+      "triage_required",
+      "support_review",
+      "needs_user_info",
+      "engineering_escalation_required",
+      "linear_created",
+      "in_engineering",
+      "in_review",
+      "in_qa_verification",
+      "fixed_waiting_user_notification",
+      "user_notified",
+      "resolved",
+      "closed",
+      "duplicate",
+      "not_a_bug",
+      "deferred",
+      "spam",
+    ])
+    .optional(),
+});
+
+/**
  * @summary List attachments for a support ticket (newest first)
  */
 export const ListSupportTicketAttachmentsParams = zod.object({

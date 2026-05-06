@@ -177,6 +177,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/messages:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: listSupportTicketMessages
+      tags: [support]
+      summary: List communication records for a ticket (newest first)
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicketMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createSupportTicketMessage
+      tags: [support]
+      summary: Record a communication for a ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketMessageCreate"
+      responses:
+        "201":
+          description: Message created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketMessage"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets/{id}/attachments:
     parameters:
       - in: path
@@ -823,6 +878,82 @@ components:
         changeReason: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
       required: [id, supportTicketId, createdAt]
+
+    SupportMessageDirection:
+      type: string
+      enum: [outbound, inbound, internal]
+
+    SupportMessageChannel:
+      type: string
+      enum: [email, whatsapp, phone, in_app, manual, internal_note]
+
+    SupportMessageType:
+      type: string
+      enum:
+        - ticket_received
+        - under_review
+        - more_info_needed
+        - escalated_to_engineering
+        - fixed
+        - resolved
+        - closed
+        - reopened
+        - custom
+        - user_reply
+        - internal_update
+
+    SupportMessageDeliveryStatus:
+      type: string
+      enum: [drafted, copied, sent_manual, received, failed, not_applicable]
+
+    SupportTicketMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        supportTicketId: { type: string, format: uuid }
+        direction: { $ref: "#/components/schemas/SupportMessageDirection" }
+        channel: { $ref: "#/components/schemas/SupportMessageChannel" }
+        messageType: { $ref: "#/components/schemas/SupportMessageType" }
+        senderName: { type: ["string", "null"] }
+        senderRole: { type: ["string", "null"] }
+        recipientName: { type: ["string", "null"] }
+        recipientEmail: { type: ["string", "null"] }
+        recipientWhatsapp: { type: ["string", "null"] }
+        messageBody: { type: string }
+        deliveryStatus:
+          { $ref: "#/components/schemas/SupportMessageDeliveryStatus" }
+        relatedPublicStatus: { type: ["string", "null"] }
+        relatedInternalStatus: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required:
+        - id
+        - supportTicketId
+        - direction
+        - channel
+        - messageType
+        - messageBody
+        - deliveryStatus
+        - createdAt
+
+    SupportTicketMessageCreate:
+      type: object
+      properties:
+        direction: { $ref: "#/components/schemas/SupportMessageDirection" }
+        channel: { $ref: "#/components/schemas/SupportMessageChannel" }
+        messageType: { $ref: "#/components/schemas/SupportMessageType" }
+        senderName: { type: ["string", "null"] }
+        senderRole: { type: ["string", "null"] }
+        recipientName: { type: ["string", "null"] }
+        recipientEmail: { type: ["string", "null"] }
+        recipientWhatsapp: { type: ["string", "null"] }
+        messageBody: { type: string, minLength: 1 }
+        deliveryStatus:
+          { $ref: "#/components/schemas/SupportMessageDeliveryStatus" }
+        relatedPublicStatus:
+          { $ref: "#/components/schemas/PublicSupportTicketStatus" }
+        relatedInternalStatus:
+          { $ref: "#/components/schemas/InternalSupportTicketStatus" }
+      required: [direction, channel, messageType, messageBody, deliveryStatus]
 
     CreatedSupportTicket:
       type: object
