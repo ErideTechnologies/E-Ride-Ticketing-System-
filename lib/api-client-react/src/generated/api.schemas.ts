@@ -533,7 +533,43 @@ export interface SupportTicketMessage {
   relatedPublicStatus?: string | null;
   /** @nullable */
   relatedInternalStatus?: string | null;
+  /** @nullable */
+  providerMessageId?: string | null;
+  /** @nullable */
+  errorMessage?: string | null;
   createdAt: string;
+}
+
+export type SupportEmailSendMode =
+  (typeof SupportEmailSendMode)[keyof typeof SupportEmailSendMode];
+
+export const SupportEmailSendMode = {
+  template: "template",
+  custom: "custom",
+} as const;
+
+export interface SupportTicketEmailSendRequest {
+  messageType: SupportMessageType;
+  sendMode?: SupportEmailSendMode;
+  /** @nullable */
+  to?: string | null;
+  /** @nullable */
+  subject?: string | null;
+  /** @nullable */
+  bodyText?: string | null;
+  /** @nullable */
+  senderName?: string | null;
+}
+
+export interface SendSupportTicketEmailResult {
+  success: boolean;
+  disabled: boolean;
+  deliveryStatus: SupportMessageDeliveryStatus;
+  /** @nullable */
+  providerMessageId?: string | null;
+  /** @nullable */
+  errorMessage?: string | null;
+  message: SupportTicketMessage;
 }
 
 export interface SupportTicketMessageCreate {

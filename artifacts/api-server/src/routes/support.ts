@@ -42,8 +42,19 @@ import {
   UpdateSupportTicketBody,
   UpsertSupportTicketLinearLinkBody,
   CreateSupportTicketSentryLinkBody,
+  SendSupportTicketEmailBody,
 } from "@workspace/api-zod";
 import * as Sentry from "@sentry/node";
+import {
+  isSupportEmailEnabled,
+  sendSupportEmail,
+} from "../lib/supportEmail";
+import {
+  renderCustomEmailHtml,
+  renderSupportEmailTemplate,
+  SUPPORT_EMAIL_TEMPLATE_KEYS,
+  type SupportEmailTemplateKey,
+} from "../lib/supportEmailTemplates";
 
 const router: IRouter = Router();
 
@@ -477,6 +488,14 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
     res.status(500).json({ error: "Could not save the ticket." });
     return;
   }
+
+  // Fire-and-forget: attempt to send a "ticket received" email.
+  // Never block ticket creation on email outcome.
+  sendTicketReceivedEmailIfPossible(ticket, product.productName).catch(
+    (err) => {
+      req.log.warn({ err }, "Failed to send ticket_received email");
+    },
+  );
 
   res.status(201).json({
     id: ticket.id,
@@ -1161,6 +1180,260 @@ router.post(
     res.status(201).json(serializeMessage(row));
   },
 );
+
+// ─── Email sending ──────────────────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isTemplateKey(v: string): v is SupportEmailTemplateKey {
+  return (SUPPORT_EMAIL_TEMPLATE_KEYS as readonly string[]).includes(v);
+}
+
+async function insertPendingOutboundEmail(opts: {
+  ticketId: string;
+  publicStatus: SupportTicket["publicStatus"];
+  internalStatus: SupportTicket["internalStatus"];
+  messageType: SupportTicketMessage["messageType"];
+  senderName: string;
+  recipientName: string | null;
+  recipientEmail: string;
+  recipientWhatsapp: string | null;
+  messageBody: string;
+}) {
+  const [row] = await db
+    .insert(supportTicketMessagesTable)
+    .values({
+      supportTicketId: opts.ticketId,
+      direction: "outbound",
+      channel: "email",
+      messageType: opts.messageType,
+      senderName: opts.senderName,
+      senderRole: "support",
+      recipientName: opts.recipientName,
+      recipientEmail: opts.recipientEmail,
+      recipientWhatsapp: opts.recipientWhatsapp,
+      messageBody: opts.messageBody,
+      deliveryStatus: "drafted",
+      relatedPublicStatus: opts.publicStatus,
+      relatedInternalStatus: opts.internalStatus,
+      providerMessageId: null,
+      errorMessage: null,
+    })
+    .returning();
+  return row ?? null;
+}
+
+async function finalizeOutboundEmail(
+  id: string,
+  patch: {
+    deliveryStatus: SupportTicketMessage["deliveryStatus"];
+    providerMessageId: string | null;
+    errorMessage: string | null;
+  },
+) {
+  const [row] = await db
+    .update(supportTicketMessagesTable)
+    .set(patch)
+    .where(eq(supportTicketMessagesTable.id, id))
+    .returning();
+  return row ?? null;
+}
+
+function deliveryStatusFor(sendResult: {
+  success: boolean;
+  disabled: boolean;
+}): SupportTicketMessage["deliveryStatus"] {
+  if (sendResult.disabled) return "drafted";
+  if (sendResult.success) return "sent_manual";
+  return "failed";
+}
+
+export async function sendTicketReceivedEmailIfPossible(
+  ticket: SupportTicket,
+  productName: string,
+): Promise<void> {
+  const recipient = ticket.reporterEmail?.trim();
+  if (!recipient || !EMAIL_RE.test(recipient)) return;
+
+  const rendered = renderSupportEmailTemplate("ticket_received", {
+    ticket,
+    productName,
+  });
+
+  // Always create the audit row first so we never send without a record.
+  let pending: SupportTicketMessage | null = null;
+  try {
+    pending = await insertPendingOutboundEmail({
+      ticketId: ticket.id,
+      publicStatus: ticket.publicStatus,
+      internalStatus: ticket.internalStatus,
+      messageType: "ticket_received",
+      senderName: "Eride Support",
+      recipientName: ticket.reporterName ?? null,
+      recipientEmail: recipient,
+      recipientWhatsapp: ticket.reporterWhatsapp ?? null,
+      messageBody: rendered.text,
+    });
+  } catch (err) {
+    Sentry.captureException(err);
+    return; // refuse to send without an audit row
+  }
+  if (!pending) return;
+
+  const sendResult = await sendSupportEmail({
+    to: recipient,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+  });
+
+  try {
+    await finalizeOutboundEmail(pending.id, {
+      deliveryStatus: deliveryStatusFor(sendResult),
+      providerMessageId: sendResult.providerMessageId ?? null,
+      errorMessage: sendResult.errorMessage ?? null,
+    });
+  } catch (err) {
+    Sentry.captureException(err);
+  }
+}
+
+router.post(
+  "/support/tickets/:id/send-email",
+  async (req, res): Promise<void> => {
+    const parsed = SendSupportTicketEmailBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid email send request" });
+      return;
+    }
+    const data = parsed.data;
+
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const t = existing.ticket;
+
+    const recipient = (data.to?.trim() || t.reporterEmail?.trim() || "")
+      .trim();
+    if (!recipient) {
+      res.status(400).json({
+        error: "No recipient email address available for this ticket.",
+      });
+      return;
+    }
+    if (!EMAIL_RE.test(recipient)) {
+      res.status(400).json({ error: "Recipient email address is not valid." });
+      return;
+    }
+
+    const sendMode = data.sendMode ?? "template";
+    let subject: string;
+    let text: string;
+    let html: string;
+    const messageType = data.messageType;
+
+    if (sendMode === "custom" || messageType === "custom") {
+      const customSubject = data.subject?.trim();
+      const customBody = data.bodyText?.trim();
+      if (!customSubject || !customBody) {
+        res.status(400).json({
+          error: "Custom emails require a subject and a message body.",
+        });
+        return;
+      }
+      subject = customSubject;
+      text = customBody;
+      // Always render custom HTML server-side from bodyText so escaping,
+      // ticket-context header, and footer warning are always applied.
+      html = renderCustomEmailHtml({
+        ticketReference: t.ticketReference,
+        productName: existing.productName,
+        publicStatus: t.publicStatus,
+        reporterName: t.reporterName ?? null,
+        bodyText: customBody,
+      });
+    } else {
+      if (!isTemplateKey(messageType)) {
+        res.status(400).json({
+          error: `Template emails are not supported for messageType "${messageType}".`,
+        });
+        return;
+      }
+      const rendered = renderSupportEmailTemplate(messageType, {
+        ticket: t,
+        productName: existing.productName,
+      });
+      subject = rendered.subject;
+      text = rendered.text;
+      html = rendered.html;
+    }
+
+    const senderName = data.senderName?.trim() || "Eride Support";
+
+    // 1) Create the audit row up front (delivery_status=drafted) so we
+    //    never call the provider without a recorded row to update.
+    const pending = await insertPendingOutboundEmail({
+      ticketId: t.id,
+      publicStatus: t.publicStatus,
+      internalStatus: t.internalStatus,
+      messageType,
+      senderName,
+      recipientName: t.reporterName ?? null,
+      recipientEmail: recipient,
+      recipientWhatsapp: t.reporterWhatsapp ?? null,
+      messageBody: text,
+    });
+    if (!pending) {
+      res.status(500).json({ error: "Could not record outbound email." });
+      return;
+    }
+
+    // 2) Send via provider (or skip when disabled).
+    const sendResult = await sendSupportEmail({
+      to: recipient,
+      subject,
+      html,
+      text,
+    });
+    const deliveryStatus = deliveryStatusFor(sendResult);
+
+    // 3) Update the audit row with the outcome. If this update fails,
+    //    we still keep the drafted row but surface a 500 so callers retry.
+    let finalRow: SupportTicketMessage | null;
+    try {
+      finalRow = await finalizeOutboundEmail(pending.id, {
+        deliveryStatus,
+        providerMessageId: sendResult.providerMessageId ?? null,
+        errorMessage: sendResult.errorMessage ?? null,
+      });
+    } catch (err) {
+      req.log.error(
+        { err, messageId: pending.id },
+        "Failed to finalize outbound email row",
+      );
+      res.status(500).json({
+        error:
+          "Email send completed but the audit row could not be updated. Please refresh.",
+      });
+      return;
+    }
+
+    const row = finalRow ?? pending;
+    res.json({
+      success: sendResult.success,
+      disabled: sendResult.disabled,
+      deliveryStatus,
+      providerMessageId: sendResult.providerMessageId ?? null,
+      errorMessage: sendResult.errorMessage ?? null,
+      message: serializeMessage(row),
+    });
+  },
+);
+
+// silence unused-import warnings if email helper is never directly hit
+void isSupportEmailEnabled;
 
 // ─── Attachments ────────────────────────────────────────────────────────────
 

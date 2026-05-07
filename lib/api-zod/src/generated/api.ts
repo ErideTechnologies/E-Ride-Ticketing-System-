@@ -469,6 +469,94 @@ export const DeleteSupportTicketSentryLinkParams = zod.object({
 });
 
 /**
+ * @summary Send a support email for a ticket and log it as an outbound message
+ */
+export const SendSupportTicketEmailParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const SendSupportTicketEmailBody = zod.object({
+  messageType: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+    "user_reply",
+    "internal_update",
+  ]),
+  sendMode: zod.enum(["template", "custom"]).optional(),
+  to: zod.string().nullish(),
+  subject: zod.string().nullish(),
+  bodyText: zod.string().nullish(),
+  senderName: zod.string().nullish(),
+});
+
+export const SendSupportTicketEmailResponse = zod.object({
+  success: zod.boolean(),
+  disabled: zod.boolean(),
+  deliveryStatus: zod.enum([
+    "drafted",
+    "copied",
+    "sent_manual",
+    "received",
+    "failed",
+    "not_applicable",
+  ]),
+  providerMessageId: zod.string().nullish(),
+  errorMessage: zod.string().nullish(),
+  message: zod.object({
+    id: zod.string().uuid(),
+    supportTicketId: zod.string().uuid(),
+    direction: zod.enum(["outbound", "inbound", "internal"]),
+    channel: zod.enum([
+      "email",
+      "whatsapp",
+      "phone",
+      "in_app",
+      "manual",
+      "internal_note",
+    ]),
+    messageType: zod.enum([
+      "ticket_received",
+      "under_review",
+      "more_info_needed",
+      "escalated_to_engineering",
+      "fixed",
+      "resolved",
+      "closed",
+      "reopened",
+      "custom",
+      "user_reply",
+      "internal_update",
+    ]),
+    senderName: zod.string().nullish(),
+    senderRole: zod.string().nullish(),
+    recipientName: zod.string().nullish(),
+    recipientEmail: zod.string().nullish(),
+    recipientWhatsapp: zod.string().nullish(),
+    messageBody: zod.string(),
+    deliveryStatus: zod.enum([
+      "drafted",
+      "copied",
+      "sent_manual",
+      "received",
+      "failed",
+      "not_applicable",
+    ]),
+    relatedPublicStatus: zod.string().nullish(),
+    relatedInternalStatus: zod.string().nullish(),
+    providerMessageId: zod.string().nullish(),
+    errorMessage: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+});
+
+/**
  * Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.
  * @summary Apply a named workflow shortcut to a support ticket
  */
@@ -635,6 +723,8 @@ export const ListSupportTicketMessagesResponseItem = zod.object({
   ]),
   relatedPublicStatus: zod.string().nullish(),
   relatedInternalStatus: zod.string().nullish(),
+  providerMessageId: zod.string().nullish(),
+  errorMessage: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListSupportTicketMessagesResponse = zod.array(

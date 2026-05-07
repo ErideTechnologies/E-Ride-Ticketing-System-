@@ -26,6 +26,8 @@ export const supportTicketMessagesTable = pgTable("support_ticket_messages", {
   deliveryStatus: messageDeliveryStatusEnum("delivery_status").notNull(),
   relatedPublicStatus: publicTicketStatusEnum("related_public_status"),
   relatedInternalStatus: internalTicketStatusEnum("related_internal_status"),
+  providerMessageId: text("provider_message_id"),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

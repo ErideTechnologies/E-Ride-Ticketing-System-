@@ -1,0 +1,282 @@
+Build Step 11 of the Eride Support Command Centre: Email Notification Setup.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- organisations/products/tickets
+- ticket reference generation
+
+Step 2 is complete:
+- public report problem page
+- public ticket creation
+
+Step 3 is complete:
+- internal ticket dashboard
+
+Step 4 is complete:
+- ticket detail page
+- status updates
+- notes
+- status history
+
+Step 5 is complete:
+- screenshot and attachment uploads
+
+Step 6 is complete:
+- live support wallboard
+
+Step 7 is complete:
+- support_ticket_messages
+- communication log
+- manual message recording
+
+Step 8 is complete:
+- workflow action buttons
+
+Step 9 is complete:
+- engineering escalation
+- manual Linear handoff
+- support_ticket_linear_links
+
+Step 10 is complete:
+- Sentry backend/frontend setup
+- Sentry links on tickets
+- support_ticket_sentry_links
+
+Goal:
+Add real email notification support using Resend, while keeping human control for sensitive messages.
+
+Important:
+- Do not add WhatsApp automation yet.
+- Do not add Linear API integration yet.
+- Do not add public ticket tracking yet.
+- Do not auto-send every possible message without control.
+- Do not expose sensitive ticket details in email.
+- Emails must be logged in support_ticket_messages.
+- The system must still work if RESEND_API_KEY is missing.
+
+Environment variable:
+- RESEND_API_KEY
+- SUPPORT_EMAIL_FROM optional
+- SUPPORT_EMAIL_REPLY_TO optional
+
+Default values if env missing:
+- SUPPORT_EMAIL_FROM = "Eride Support <support@eridetech.africa>"
+- SUPPORT_EMAIL_REPLY_TO = "support@eridetech.africa"
+
+Package:
+Install Resend package if not already installed:
+- resend
+
+Backend requirements:
+
+1. Create email service helper.
+
+Create a server-side helper module, for example:
+artifacts/api-server/src/lib/supportEmail.ts
+
+It must:
+- initialise Resend only if RESEND_API_KEY exists
+- expose sendSupportEmail(params)
+- gracefully return a disabled result if RESEND_API_KEY is missing
+- never crash the app if email is not configured
+
+sendSupportEmail params:
+- to
+- subject
+- html
+- text
+- replyTo optional
+- from optional
+
+Return:
+- success boolean
+- provider: "resend"
+- providerMessageId optional
+- errorMessage optional
+- disabled boolean
+
+2. Create email template generator.
+
+Create support email templates for:
+- ticket_received
+- under_review
+- more_info_needed
+- escalated_to_engineering
+- fixed
+- resolved
+- closed
+- reopened
+
+Each template must return:
+- subject
+- text
+- html
+
+Template rules:
+- Keep emails professional and simple.
+- Include ticketReference.
+- Include productName.
+- Include publicStatus.
+- Do not include internal status.
+- Do not include internal notes.
+- Do not include Linear/Sentry/GitHub/Replit details.
+- Do not include stack traces.
+- Do not include attachments in the email.
+- Do not include sensitive immigration/legal details.
+- Include a footer:
+  “This message relates to your Eride Support ticket. Please do not reply with passwords, payment card details, or sensitive documents unless specifically requested by support.”
+
+3. Create endpoint:
+POST /api/support/tickets/:id/send-email
+
+Purpose:
+Send a support email for a ticket and log it in support_ticket_messages.
+
+Input:
+- messageType required
+- to optional
+- subject optional
+- bodyText optional
+- bodyHtml optional
+- senderName optional
+- sendMode optional: "template" or "custom"
+
+Allowed messageType:
+- ticket_received
+- under_review
+- more_info_needed
+- escalated_to_engineering
+- fixed
+- resolved
+- closed
+- reopened
+- custom
+
+Behavior:
+- verify ticket belongs to active Eride Technologies organisation
+- determine recipient:
+  - use input.to if provided
+  - otherwise use ticket.reporterEmail
+- reject with 400 if no recipient email exists
+- if sendMode = template:
+  - generate subject/text/html from template and ticket
+- if sendMode = custom:
+  - require subject and bodyText
+  - generate basic HTML from bodyText
+- send email through support email helper
+- create support_ticket_messages row:
+  direction = outbound
+  channel = email
+  messageType = input.messageType
+  senderName = input.senderName or "Eride Support"
+  senderRole = "support"
+  recipientName = ticket.reporterName
+  recipientEmail = recipient
+  recipientWhatsapp = ticket.reporterWhatsapp
+  messageBody = text body sent
+  deliveryStatus:
+    - sent_manual if successfully sent
+    - failed if provider failed
+    - drafted if email disabled due to missing RESEND_API_KEY
+  relatedPublicStatus = ticket.publicStatus
+  relatedInternalStatus = ticket.internalStatus
+- return:
+  - success
+  - disabled
+  - deliveryStatus
+  - providerMessageId if available
+  - message record
+
+4. Optional but useful:
+Add providerMessageId and errorMessage columns to support_ticket_messages if easy:
+- providerMessageId nullable
+- errorMessage nullable
+
+If schema change is added, update related types/migrations.
+
+Frontend requirements:
+
+Update /admin/support/tickets/:id
+
+Add to Communication Log card or create new “Email Actions” section.
+
+A. Send template email section
+
+Show buttons:
+- Send Ticket Received Email
+- Send Under Review Email
+- Send More Info Needed Email
+- Send Escalated to Engineering Email
+- Send Fixed Email
+- Send Resolved Email
+- Send Closed Email
+- Send Reopened Email
+
+When clicked:
+- show confirmation modal or inline confirmation:
+  “Send this email to [reporterEmail]?”
+- show generated preview subject and body
+- allow admin to cancel
+- allow admin to send
+- call POST /api/support/tickets/:id/send-email
+
+After sending:
+- show success or disabled/failed message
+- refresh communication timeline
+
+If RESEND_API_KEY missing / disabled:
+Show:
+“Email is not configured. The message has been saved as drafted in the communication log.”
+
+B. Custom email section
+
+Fields:
+- To email default reporterEmail
+- Subject
+- Message body
+- Sender name default Eride Support
+- Send custom email button
+
+Validation:
+- To email required
+- Subject required
+- Body required
+
+C. Communication timeline
+
+Ensure sent email records appear in the existing communication timeline with:
+- channel = email
+- deliveryStatus
+- messageType
+- sender/recipient
+- timestamp
+- provider error if failed
+
+D. Public report form confirmation email
+
+After POST /api/support/tickets creates a ticket from /help/report-problem:
+- Attempt to send ticket_received email automatically if reporterEmail exists.
+- If email sending succeeds or fails, do not block ticket creation.
+- Log result in support_ticket_messages.
+- If email disabled, log drafted/disabled state but still show confirmation page.
+- Confirmation page remains unchanged.
+
+Important privacy:
+- Do not email attachment links.
+- Do not email internal notes.
+- Do not email Linear or Sentry details.
+- Do not email stack traces.
+- Do not expose internal status.
+
+Acceptance criteria:
+- RESEND_API_KEY missing does not crash app
+- Ticket creation still works without email configured
+- Ticket creation attempts/logs ticket_received email when reporterEmail exists
+- Admin can send template email from ticket detail page
+- Admin can send custom email from ticket detail page
+- Sent/failed/disabled emails are logged in support_ticket_messages
+- Communication timeline shows email records
+- Emails contain ticket reference, product, public status, and safe support text only
+- Typecheck passes
+- Basic browser test covers ticket creation with reporterEmail, communication log email record, sending a template email, and sending a custom email in disabled mode if no RESEND_API_KEY is configured

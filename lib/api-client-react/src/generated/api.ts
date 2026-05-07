@@ -22,9 +22,11 @@ import type {
   HealthStatus,
   ListSupportTicketsParams,
   PublicSupportProduct,
+  SendSupportTicketEmailResult,
   SupportTicketAttachment,
   SupportTicketAttachmentUpload,
   SupportTicketDetail,
+  SupportTicketEmailSendRequest,
   SupportTicketLinearLink,
   SupportTicketLinearLinkUpsert,
   SupportTicketListItem,
@@ -1194,6 +1196,97 @@ export const useDeleteSupportTicketSentryLink = <
   TContext
 > => {
   return useMutation(getDeleteSupportTicketSentryLinkMutationOptions(options));
+};
+
+/**
+ * @summary Send a support email for a ticket and log it as an outbound message
+ */
+export const getSendSupportTicketEmailUrl = (id: string) => {
+  return `/api/support/tickets/${id}/send-email`;
+};
+
+export const sendSupportTicketEmail = async (
+  id: string,
+  supportTicketEmailSendRequest: SupportTicketEmailSendRequest,
+  options?: RequestInit,
+): Promise<SendSupportTicketEmailResult> => {
+  return customFetch<SendSupportTicketEmailResult>(
+    getSendSupportTicketEmailUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportTicketEmailSendRequest),
+    },
+  );
+};
+
+export const getSendSupportTicketEmailMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendSupportTicketEmail>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketEmailSendRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendSupportTicketEmail>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketEmailSendRequest> },
+  TContext
+> => {
+  const mutationKey = ["sendSupportTicketEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendSupportTicketEmail>>,
+    { id: string; data: BodyType<SupportTicketEmailSendRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return sendSupportTicketEmail(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendSupportTicketEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendSupportTicketEmail>>
+>;
+export type SendSupportTicketEmailMutationBody =
+  BodyType<SupportTicketEmailSendRequest>;
+export type SendSupportTicketEmailMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Send a support email for a ticket and log it as an outbound message
+ */
+export const useSendSupportTicketEmail = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendSupportTicketEmail>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketEmailSendRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendSupportTicketEmail>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketEmailSendRequest> },
+  TContext
+> => {
+  return useMutation(getSendSupportTicketEmailMutationOptions(options));
 };
 
 /**

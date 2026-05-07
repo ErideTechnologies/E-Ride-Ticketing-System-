@@ -32,5 +32,9 @@ export interface SupportTicketMessage {
   relatedPublicStatus?: string | null;
   /** @nullable */
   relatedInternalStatus?: string | null;
+  /** @nullable */
+  providerMessageId?: string | null;
+  /** @nullable */
+  errorMessage?: string | null;
   createdAt: Date;
 }

@@ -11,6 +11,7 @@ import {
   useDeleteSupportTicketAttachment,
   useListSupportTicketMessages,
   useCreateSupportTicketMessage,
+  useSendSupportTicketEmail,
   useApplySupportTicketWorkflowAction,
   useGetSupportTicketLinearLink,
   useUpsertSupportTicketLinearLink,
@@ -353,6 +354,7 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <AttachmentsCard ticketId={ticket.id} />
           <NotesCard ticketId={ticket.id} />
           <StatusHistoryCard ticketId={ticket.id} />
+          <EmailActionsCard ticket={ticket} />
           <CommunicationLogCard ticket={ticket} />
           <EngineeringEscalationCard ticket={ticket} />
           <SentryLinksCard ticket={ticket} />
@@ -1697,6 +1699,389 @@ function CommunicationLogCard({ ticket }: { ticket: SupportTicketDetail }) {
   );
 }
 
+type EmailTemplateKey =
+  | "ticket_received"
+  | "under_review"
+  | "more_info_needed"
+  | "escalated_to_engineering"
+  | "fixed"
+  | "resolved"
+  | "closed"
+  | "reopened";
+
+const EMAIL_TEMPLATES: ReadonlyArray<{
+  key: EmailTemplateKey;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "ticket_received",
+    label: "Ticket received",
+    description: "Confirms receipt and shares the ticket reference.",
+  },
+  {
+    key: "under_review",
+    label: "Under review",
+    description: "Lets the reporter know the team is actively reviewing.",
+  },
+  {
+    key: "more_info_needed",
+    label: "More info needed",
+    description: "Asks the reporter for additional details.",
+  },
+  {
+    key: "escalated_to_engineering",
+    label: "Escalated to engineering",
+    description: "Confirms the issue has been handed to engineering.",
+  },
+  {
+    key: "fixed",
+    label: "Fixed",
+    description: "Notifies the reporter that a fix has been deployed.",
+  },
+  {
+    key: "resolved",
+    label: "Resolved",
+    description: "Confirms the ticket is resolved.",
+  },
+  {
+    key: "closed",
+    label: "Closed",
+    description: "Confirms the ticket has been closed.",
+  },
+  {
+    key: "reopened",
+    label: "Reopened",
+    description: "Confirms the ticket has been reopened.",
+  },
+];
+
+type EmailSendOutcome = {
+  success: boolean;
+  disabled: boolean;
+  deliveryStatus: string;
+  errorMessage: string | null;
+  providerMessageId: string | null;
+  templateLabel: string;
+};
+
+function EmailActionsCard({ ticket }: { ticket: SupportTicketDetail }) {
+  const qc = useQueryClient();
+  const send = useSendSupportTicketEmail();
+
+  const [pendingTemplate, setPendingTemplate] =
+    useState<EmailTemplateKey | null>(null);
+  const [recipient, setRecipient] = useState(ticket.reporterEmail ?? "");
+  const [senderName, setSenderName] = useState("Eride Support");
+
+  const [customMode, setCustomMode] = useState(false);
+  const [customTo, setCustomTo] = useState(ticket.reporterEmail ?? "");
+  const [customSubject, setCustomSubject] = useState("");
+  const [customBody, setCustomBody] = useState("");
+  const [customSenderName, setCustomSenderName] = useState("Eride Support");
+
+  const [outcome, setOutcome] = useState<EmailSendOutcome | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const invalidateMessages = () =>
+    qc.invalidateQueries({
+      queryKey: getListSupportTicketMessagesQueryKey(ticket.id),
+    });
+
+  const handleSendTemplate = async (key: EmailTemplateKey) => {
+    setSubmitError(null);
+    setOutcome(null);
+    setBusyKey(`tpl:${key}`);
+    try {
+      const result = await send.mutateAsync({
+        id: ticket.id,
+        data: {
+          messageType: key,
+          sendMode: "template",
+          to: recipient.trim() || null,
+          senderName: senderName.trim() || null,
+        },
+      });
+      setOutcome({
+        success: result.success,
+        disabled: result.disabled,
+        deliveryStatus: result.deliveryStatus,
+        errorMessage: result.errorMessage ?? null,
+        providerMessageId: result.providerMessageId ?? null,
+        templateLabel:
+          EMAIL_TEMPLATES.find((t) => t.key === key)?.label ?? key,
+      });
+      setPendingTemplate(null);
+      await invalidateMessages();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to send email";
+      setSubmitError(msg);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const handleSendCustom = async () => {
+    setSubmitError(null);
+    setOutcome(null);
+    if (!customTo.trim() || !customSubject.trim() || !customBody.trim()) {
+      setSubmitError(
+        "Please fill in recipient, subject, and message body for a custom email.",
+      );
+      return;
+    }
+    setBusyKey("custom");
+    try {
+      const result = await send.mutateAsync({
+        id: ticket.id,
+        data: {
+          messageType: "custom",
+          sendMode: "custom",
+          to: customTo.trim(),
+          subject: customSubject.trim(),
+          bodyText: customBody,
+          senderName: customSenderName.trim() || null,
+        },
+      });
+      setOutcome({
+        success: result.success,
+        disabled: result.disabled,
+        deliveryStatus: result.deliveryStatus,
+        errorMessage: result.errorMessage ?? null,
+        providerMessageId: result.providerMessageId ?? null,
+        templateLabel: "Custom email",
+      });
+      setCustomSubject("");
+      setCustomBody("");
+      await invalidateMessages();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to send email";
+      setSubmitError(msg);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <Card data-testid="card-email-actions">
+      <CardHeader>
+        <CardTitle>Email actions</CardTitle>
+        <CardDescription>
+          Send real emails to the reporter via the configured provider. Every
+          send is logged in the communication timeline.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Recipient email">
+            <Input
+              type="email"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder="reporter@example.com"
+              data-testid="input-email-recipient"
+            />
+          </Field>
+          <Field label="Sender name (From)">
+            <Input
+              value={senderName}
+              onChange={(e) => setSenderName(e.target.value)}
+              placeholder="Eride Support"
+              data-testid="input-email-sender"
+            />
+          </Field>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Template emails</h3>
+          <p className="text-xs text-muted-foreground">
+            Pre-written messages safe to send without revealing internal
+            notes, attachments, or engineering links.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {EMAIL_TEMPLATES.map((tpl) => {
+              const isPending = pendingTemplate === tpl.key;
+              const isBusy = busyKey === `tpl:${tpl.key}`;
+              return (
+                <li
+                  key={tpl.key}
+                  className="rounded-md border p-3"
+                  data-testid={`email-template-${tpl.key}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">{tpl.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {tpl.description}
+                      </p>
+                    </div>
+                    {!isPending ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSubmitError(null);
+                          setOutcome(null);
+                          setPendingTemplate(tpl.key);
+                        }}
+                        data-testid={`button-prepare-email-${tpl.key}`}
+                      >
+                        Send…
+                      </Button>
+                    ) : null}
+                  </div>
+                  {isPending && (
+                    <div className="mt-3 space-y-2 rounded border bg-muted/40 p-2">
+                      <p className="text-xs">
+                        Send{" "}
+                        <span className="font-medium">{tpl.label}</span>{" "}
+                        email to{" "}
+                        <span className="font-medium">
+                          {recipient.trim() || "(no recipient)"}
+                        </span>
+                        ?
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleSendTemplate(tpl.key)}
+                          disabled={isBusy || !recipient.trim()}
+                          data-testid={`button-confirm-email-${tpl.key}`}
+                        >
+                          {isBusy ? "Sending…" : "Confirm send"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPendingTemplate(null)}
+                          disabled={isBusy}
+                          data-testid={`button-cancel-email-${tpl.key}`}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="space-y-2 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Custom email</h3>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setCustomMode((v) => !v)}
+              data-testid="button-toggle-custom-email"
+            >
+              {customMode ? "Hide" : "Compose custom email"}
+            </Button>
+          </div>
+          {customMode && (
+            <div className="space-y-3 rounded-md border p-3">
+              <p className="text-xs text-muted-foreground">
+                Custom emails still go through the same provider and get
+                logged in the timeline. Do not include internal notes,
+                attachments, Linear/Sentry IDs, or stack traces.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="To">
+                  <Input
+                    type="email"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    data-testid="input-custom-email-to"
+                  />
+                </Field>
+                <Field label="Sender name">
+                  <Input
+                    value={customSenderName}
+                    onChange={(e) => setCustomSenderName(e.target.value)}
+                    data-testid="input-custom-email-sender"
+                  />
+                </Field>
+              </div>
+              <Field label="Subject">
+                <Input
+                  value={customSubject}
+                  onChange={(e) => setCustomSubject(e.target.value)}
+                  placeholder="Subject line"
+                  data-testid="input-custom-email-subject"
+                />
+              </Field>
+              <Field label="Message body">
+                <Textarea
+                  value={customBody}
+                  onChange={(e) => setCustomBody(e.target.value)}
+                  rows={6}
+                  placeholder="Write your message…"
+                  data-testid="input-custom-email-body"
+                />
+              </Field>
+              <Button
+                type="button"
+                onClick={handleSendCustom}
+                disabled={busyKey === "custom"}
+                data-testid="button-send-custom-email"
+              >
+                {busyKey === "custom" ? "Sending…" : "Send custom email"}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {submitError && (
+          <Alert variant="destructive" data-testid="alert-email-error">
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
+
+        {outcome && (
+          <Alert
+            variant={outcome.disabled || !outcome.success ? "default" : "default"}
+            data-testid="alert-email-outcome"
+          >
+            <AlertDescription>
+              {outcome.disabled ? (
+                <>
+                  <strong>Email is not configured.</strong> The{" "}
+                  {outcome.templateLabel.toLowerCase()} message was logged as a
+                  draft (delivery status: {outcome.deliveryStatus}). Set{" "}
+                  <code>RESEND_API_KEY</code> on the API server to enable real
+                  sending.
+                </>
+              ) : outcome.success ? (
+                <>
+                  <strong>Sent.</strong> {outcome.templateLabel} delivered
+                  (status: {outcome.deliveryStatus}
+                  {outcome.providerMessageId
+                    ? `, provider id ${outcome.providerMessageId}`
+                    : ""}
+                  ).
+                </>
+              ) : (
+                <>
+                  <strong>Send failed.</strong> {outcome.templateLabel} was
+                  logged with status {outcome.deliveryStatus}
+                  {outcome.errorMessage ? `: ${outcome.errorMessage}` : "."}
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function MessageRow({ message }: { message: SupportTicketMessage }) {
   const isOutbound = message.direction === "outbound";
   const isInternal = message.direction === "internal";
@@ -1741,6 +2126,26 @@ function MessageRow({ message }: { message: SupportTicketMessage }) {
       <pre className="mt-2 whitespace-pre-wrap break-words text-sm">
         {message.messageBody}
       </pre>
+      {(message.providerMessageId || message.errorMessage) && (
+        <div className="mt-2 space-y-1 text-xs">
+          {message.providerMessageId && (
+            <p
+              className="text-muted-foreground"
+              data-testid={`text-provider-id-${message.id}`}
+            >
+              Provider id: <code>{message.providerMessageId}</code>
+            </p>
+          )}
+          {message.errorMessage && (
+            <p
+              className="text-destructive"
+              data-testid={`text-error-${message.id}`}
+            >
+              Provider error: {message.errorMessage}
+            </p>
+          )}
+        </div>
+      )}
     </li>
   );
 }

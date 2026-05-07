@@ -324,6 +324,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/send-email:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: sendSupportTicketEmail
+      tags: [support]
+      summary: Send a support email for a ticket and log it as an outbound message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketEmailSendRequest"
+      responses:
+        "200":
+          description: Email send result (success, failure, or disabled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendSupportTicketEmailResult"
+        "400":
+          description: Validation error or missing recipient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets/{id}/workflow-action:
     parameters:
       - in: path
@@ -1186,6 +1222,8 @@ components:
           { $ref: "#/components/schemas/SupportMessageDeliveryStatus" }
         relatedPublicStatus: { type: ["string", "null"] }
         relatedInternalStatus: { type: ["string", "null"] }
+        providerMessageId: { type: ["string", "null"] }
+        errorMessage: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
       required:
         - id
@@ -1196,6 +1234,33 @@ components:
         - messageBody
         - deliveryStatus
         - createdAt
+
+    SupportEmailSendMode:
+      type: string
+      enum: [template, custom]
+
+    SupportTicketEmailSendRequest:
+      type: object
+      properties:
+        messageType: { $ref: "#/components/schemas/SupportMessageType" }
+        sendMode: { $ref: "#/components/schemas/SupportEmailSendMode" }
+        to: { type: ["string", "null"] }
+        subject: { type: ["string", "null"] }
+        bodyText: { type: ["string", "null"] }
+        senderName: { type: ["string", "null"] }
+      required: [messageType]
+
+    SendSupportTicketEmailResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        disabled: { type: boolean }
+        deliveryStatus:
+          { $ref: "#/components/schemas/SupportMessageDeliveryStatus" }
+        providerMessageId: { type: ["string", "null"] }
+        errorMessage: { type: ["string", "null"] }
+        message: { $ref: "#/components/schemas/SupportTicketMessage" }
+      required: [success, disabled, deliveryStatus, message]
 
     SupportTicketMessageCreate:
       type: object
