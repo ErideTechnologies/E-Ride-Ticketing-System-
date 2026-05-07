@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LifeBuoy } from "lucide-react";
+import { LifeBuoy, Search } from "lucide-react";
 
 export default function HelpPage() {
   return (
@@ -40,6 +40,30 @@ export default function HelpPage() {
           <CardContent>
             <Button asChild data-testid="button-report-problem">
               <Link href="/help/report-problem">Report a problem</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <Search className="h-5 w-5 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle>Track an existing ticket</CardTitle>
+              <CardDescription>
+                Look up the latest status using your reference and contact
+                details.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button
+              asChild
+              variant="outline"
+              data-testid="button-track-ticket"
+            >
+              <Link href="/help/track-ticket">Track my ticket</Link>
             </Button>
           </CardContent>
         </Card>

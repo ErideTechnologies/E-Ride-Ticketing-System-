@@ -324,6 +324,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # Public-user ticket tracking endpoints (verify, view, messages, reply, attachments)
+  # are intentionally NOT in this OpenAPI spec — they are called via plain `fetch` from
+  # the public web pages and accept an HMAC-signed access token. Keeping them out of
+  # codegen avoids generating React Query hooks the public pages should not be using
+  # (e.g. accidental cache sharing with the admin app).
+
   /support/tickets/{id}/send-email:
     parameters:
       - in: path

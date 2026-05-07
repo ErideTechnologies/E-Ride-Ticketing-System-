@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import HelpPage from "@/pages/help";
 import ReportProblemPage from "@/pages/report-problem";
+import TrackTicketPage from "@/pages/track-ticket";
+import PublicTicketPage from "@/pages/public-ticket";
 import AdminTicketsPage from "@/pages/admin-tickets";
 import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
 import AdminWallboardPage from "@/pages/admin-wallboard";
@@ -18,6 +20,8 @@ function Router() {
       <Route path="/" component={() => <Redirect to="/help" />} />
       <Route path="/help" component={HelpPage} />
       <Route path="/help/report-problem" component={ReportProblemPage} />
+      <Route path="/help/track-ticket" component={TrackTicketPage} />
+      <Route path="/help/ticket/:ticketReference" component={PublicTicketPage} />
       <Route path="/admin/support/wallboard" component={AdminWallboardPage} />
       <Route path="/admin/support/tickets" component={AdminTicketsPage} />
       <Route path="/admin/support/tickets/:id" component={AdminTicketDetailPage} />

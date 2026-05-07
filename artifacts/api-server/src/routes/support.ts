@@ -55,6 +55,10 @@ import {
   SUPPORT_EMAIL_TEMPLATE_KEYS,
   type SupportEmailTemplateKey,
 } from "../lib/supportEmailTemplates";
+import {
+  signPublicTicketToken,
+  verifyPublicTicketToken,
+} from "../lib/publicTicketToken";
 
 const router: IRouter = Router();
 
@@ -1649,6 +1653,391 @@ router.delete(
       .where(eq(supportTicketAttachmentsTable.id, attachmentId));
     await removeStored(att.storagePath);
     res.status(204).end();
+  },
+);
+
+// ─── Public ticket tracking (token-gated, public-safe fields only) ─────────
+
+const PUBLIC_TICKET_REFERENCE_RE = /^[A-Z0-9_-]{1,64}$/i;
+
+function normaliseEmail(v: string | null | undefined): string {
+  return (v ?? "").trim().toLowerCase();
+}
+function normaliseWhatsapp(v: string | null | undefined): string {
+  return (v ?? "").trim().replace(/[^\d+]/g, "");
+}
+
+async function loadEridePublicTicket(
+  ticketReference: string,
+): Promise<DetailRow | null> {
+  if (!PUBLIC_TICKET_REFERENCE_RE.test(ticketReference)) return null;
+  const org = await getErideOrganisation();
+  if (!org) return null;
+
+  const row = await db
+    .select({
+      ticket: supportTicketsTable,
+      productName: supportProductsTable.productName,
+      productCode: supportProductsTable.productCode,
+    })
+    .from(supportTicketsTable)
+    .innerJoin(
+      supportProductsTable,
+      eq(supportProductsTable.id, supportTicketsTable.productId),
+    )
+    .where(
+      and(
+        ilike(supportTicketsTable.ticketReference, ticketReference),
+        eq(supportTicketsTable.organisationId, org.id),
+      ),
+    )
+    .limit(1);
+
+  return row[0] ?? null;
+}
+
+function getPublicTicketAccessToken(req: import("express").Request): string {
+  const auth = req.headers["authorization"];
+  if (typeof auth === "string" && auth.startsWith("Bearer ")) {
+    return auth.slice("Bearer ".length).trim();
+  }
+  const q = req.query["token"];
+  if (typeof q === "string") return q.trim();
+  return "";
+}
+
+/** Verifies token AND that the token's ticketId matches the loaded ticket. */
+async function authorisedPublicTicket(
+  req: import("express").Request,
+  ticketReference: string,
+): Promise<DetailRow | null> {
+  const token = getPublicTicketAccessToken(req);
+  if (!token) return null;
+  const payload = verifyPublicTicketToken(token);
+  if (!payload) return null;
+  const row = await loadEridePublicTicket(ticketReference);
+  if (!row) return null;
+  if (row.ticket.id !== payload.ticketId) return null;
+  return row;
+}
+
+function serializePublicTicket(row: DetailRow) {
+  const t = row.ticket;
+  return {
+    ticketReference: t.ticketReference,
+    productName: row.productName,
+    productCode: row.productCode,
+    publicStatus: t.publicStatus,
+    category: t.category,
+    priority: t.priority,
+    issueSummary: t.issueSummary,
+    pageOrStep: t.pageOrStep,
+    reporterName: t.reporterName,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+    resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
+    closedAt: t.closedAt ? t.closedAt.toISOString() : null,
+  };
+}
+
+const PUBLIC_MESSAGE_CHANNELS = new Set<SupportTicketMessage["channel"]>([
+  "email",
+  "whatsapp",
+  "phone",
+  "in_app",
+  "manual",
+]);
+
+function serializePublicMessage(m: SupportTicketMessage) {
+  return {
+    id: m.id,
+    direction: m.direction,
+    channel: m.channel,
+    messageType: m.messageType,
+    senderName: m.senderName,
+    messageBody: m.messageBody,
+    createdAt: m.createdAt.toISOString(),
+  };
+}
+
+router.post(
+  "/support/public/verify-ticket",
+  async (req, res): Promise<void> => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const ticketReference =
+      typeof body["ticketReference"] === "string"
+        ? body["ticketReference"].trim()
+        : "";
+    const contactEmail =
+      typeof body["contactEmail"] === "string"
+        ? body["contactEmail"].trim()
+        : "";
+    const contactWhatsapp =
+      typeof body["contactWhatsapp"] === "string"
+        ? body["contactWhatsapp"].trim()
+        : "";
+
+    if (!ticketReference) {
+      res.status(400).json({
+        error: "Please provide a ticket reference.",
+      });
+      return;
+    }
+    if (!contactEmail && !contactWhatsapp) {
+      res.status(400).json({
+        error:
+          "Please provide the email or WhatsApp number you used when you submitted this ticket.",
+      });
+      return;
+    }
+
+    const row = await loadEridePublicTicket(ticketReference);
+    if (!row) {
+      // Do not reveal whether the ticket exists.
+      res.json({ success: false });
+      return;
+    }
+
+    const reporterEmail = normaliseEmail(row.ticket.reporterEmail);
+    const reporterWhatsapp = normaliseWhatsapp(row.ticket.reporterWhatsapp);
+    const inputEmail = normaliseEmail(contactEmail);
+    const inputWhatsapp = normaliseWhatsapp(contactWhatsapp);
+
+    const emailMatch =
+      inputEmail.length > 0 && reporterEmail.length > 0 &&
+      inputEmail === reporterEmail;
+    const whatsappMatch =
+      inputWhatsapp.length > 0 && reporterWhatsapp.length > 0 &&
+      inputWhatsapp === reporterWhatsapp;
+
+    if (!emailMatch && !whatsappMatch) {
+      res.json({ success: false });
+      return;
+    }
+
+    const { token, expiresAt } = signPublicTicketToken(row.ticket.id);
+    res.json({
+      success: true,
+      ticketReference: row.ticket.ticketReference,
+      accessToken: token,
+      expiresAt: expiresAt.toISOString(),
+    });
+  },
+);
+
+router.get(
+  "/support/public/tickets/:ticketReference",
+  async (req, res): Promise<void> => {
+    const row = await authorisedPublicTicket(req, String(req.params.ticketReference ?? ""));
+    if (!row) {
+      res.status(401).json({ error: "Access link expired or invalid." });
+      return;
+    }
+    res.json(serializePublicTicket(row));
+  },
+);
+
+router.get(
+  "/support/public/tickets/:ticketReference/messages",
+  async (req, res): Promise<void> => {
+    const row = await authorisedPublicTicket(req, String(req.params.ticketReference ?? ""));
+    if (!row) {
+      res.status(401).json({ error: "Access link expired or invalid." });
+      return;
+    }
+    const messages = await db
+      .select()
+      .from(supportTicketMessagesTable)
+      .where(eq(supportTicketMessagesTable.supportTicketId, row.ticket.id))
+      .orderBy(desc(supportTicketMessagesTable.createdAt));
+
+    const visible = messages.filter((m) => {
+      if (m.direction === "internal") return false;
+      if (!PUBLIC_MESSAGE_CHANNELS.has(m.channel)) return false;
+      // Hide drafted/failed outbound messages — user should only see what the
+      // team actually sent or what they themselves submitted.
+      if (
+        m.direction === "outbound" &&
+        m.deliveryStatus !== "sent_manual" &&
+        m.deliveryStatus !== "received"
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    res.json(visible.map(serializePublicMessage));
+  },
+);
+
+router.post(
+  "/support/public/tickets/:ticketReference/reply",
+  async (req, res): Promise<void> => {
+    const row = await authorisedPublicTicket(req, String(req.params.ticketReference ?? ""));
+    if (!row) {
+      res.status(401).json({ error: "Access link expired or invalid." });
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const messageBody =
+      typeof body["messageBody"] === "string" ? body["messageBody"].trim() : "";
+    const contactName =
+      typeof body["contactName"] === "string"
+        ? body["contactName"].trim().slice(0, 200)
+        : "";
+    if (!messageBody) {
+      res.status(400).json({ error: "Please write a message." });
+      return;
+    }
+    if (messageBody.length > 10000) {
+      res.status(400).json({ error: "Message is too long." });
+      return;
+    }
+
+    const senderName =
+      contactName.length > 0
+        ? contactName
+        : (row.ticket.reporterName ?? "Reporter");
+
+    const [inserted] = await db
+      .insert(supportTicketMessagesTable)
+      .values({
+        supportTicketId: row.ticket.id,
+        direction: "inbound",
+        channel: "in_app",
+        messageType: "user_reply",
+        deliveryStatus: "received",
+        senderName,
+        senderRole: "public_user",
+        recipientName: "Eride Support",
+        messageBody,
+        relatedPublicStatus: row.ticket.publicStatus,
+        relatedInternalStatus: row.ticket.internalStatus,
+      })
+      .returning();
+
+    if (!inserted) {
+      res.status(500).json({ error: "Could not save your reply." });
+      return;
+    }
+
+    // Auto-reopen if the ticket was already closed/fixed/resolved.
+    const REOPEN_FROM = new Set<SupportTicket["publicStatus"]>([
+      "fixed",
+      "resolved",
+      "closed",
+    ]);
+    if (REOPEN_FROM.has(row.ticket.publicStatus)) {
+      const oldPublic = row.ticket.publicStatus;
+      const oldInternal = row.ticket.internalStatus;
+      const [updated] = await db
+        .update(supportTicketsTable)
+        .set({
+          publicStatus: "under_review",
+          internalStatus: "support_review",
+          updatedAt: new Date(),
+        })
+        .where(eq(supportTicketsTable.id, row.ticket.id))
+        .returning();
+      if (updated) {
+        await db.insert(supportTicketStatusHistoryTable).values({
+          supportTicketId: row.ticket.id,
+          oldPublicStatus: oldPublic,
+          newPublicStatus: "under_review",
+          oldInternalStatus: oldInternal,
+          newInternalStatus: "support_review",
+          changedByName: senderName,
+          changeReason: "[public_reply] Reopened by user reply",
+        });
+      }
+    }
+
+    res.status(201).json(serializePublicMessage(inserted));
+  },
+);
+
+router.post(
+  "/support/public/tickets/:ticketReference/attachments",
+  upload.single("file"),
+  async (req, res): Promise<void> => {
+    const row = await authorisedPublicTicket(req, String(req.params.ticketReference ?? ""));
+    if (!row) {
+      res.status(401).json({ error: "Access link expired or invalid." });
+      return;
+    }
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({
+        error:
+          "No file accepted. Use PNG, JPG, WEBP, PDF, MP4, or MOV under the size limit.",
+      });
+      return;
+    }
+    const validation = validateAttachment({
+      mimeType: file.mimetype,
+      originalFileName: file.originalname,
+      size: file.size,
+    });
+    if (!validation.ok) {
+      res.status(400).json({ error: validation.reason });
+      return;
+    }
+    const contentCheck = validateAttachmentContent({
+      declaredMimeType: validation.allowed.mimeType,
+      buffer: file.buffer,
+    });
+    if (!contentCheck.ok) {
+      res.status(400).json({ error: contentCheck.reason });
+      return;
+    }
+
+    await ensureStorageReady();
+    const stored = await buildStoragePath(
+      row.ticket.id,
+      validation.allowed.extension,
+    );
+
+    let wroteFile = false;
+    try {
+      await writeFile(stored.storagePath, file.buffer);
+      wroteFile = true;
+
+      const [att] = await db
+        .insert(supportTicketAttachmentsTable)
+        .values({
+          supportTicketId: row.ticket.id,
+          fileName: stored.fileName,
+          originalFileName: file.originalname.slice(0, 255),
+          fileType: validation.allowed.fileType,
+          mimeType: validation.allowed.mimeType,
+          fileSize: file.size,
+          storagePath: stored.storagePath,
+          uploadedByName: row.ticket.reporterName ?? null,
+          uploadedByEmail: row.ticket.reporterEmail || null,
+          uploadedByRole: "public_user",
+        })
+        .returning();
+
+      if (!att) {
+        await removeStored(stored.storagePath);
+        res.status(500).json({ error: "Could not save attachment" });
+        return;
+      }
+
+      res.status(201).json({
+        id: att.id,
+        fileName: att.fileName,
+        originalFileName: att.originalFileName,
+        fileType: att.fileType,
+        mimeType: att.mimeType,
+        fileSize: att.fileSize,
+        createdAt: att.createdAt.toISOString(),
+      });
+    } catch (err) {
+      if (wroteFile) await removeStored(stored.storagePath);
+      req.log.error({ err }, "Failed to save public attachment");
+      res.status(500).json({ error: "Could not save attachment" });
+    }
   },
 );
 

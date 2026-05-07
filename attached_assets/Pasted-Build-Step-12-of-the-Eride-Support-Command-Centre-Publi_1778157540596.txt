@@ -1,0 +1,295 @@
+Build Step 12 of the Eride Support Command Centre: Public Ticket Tracking Page.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- organisations/products/tickets
+- ticket reference generation
+
+Step 2 is complete:
+- /help/report-problem
+- public ticket creation
+
+Step 3 is complete:
+- /admin/support/tickets
+- internal ticket dashboard
+
+Step 4 is complete:
+- /admin/support/tickets/:id
+- ticket detail page
+- status updates
+- notes
+- status history
+
+Step 5 is complete:
+- screenshot and attachment uploads
+
+Step 6 is complete:
+- /admin/support/wallboard
+- live support wallboard
+
+Step 7 is complete:
+- support_ticket_messages
+- communication log and manual message recording
+
+Step 8 is complete:
+- workflow action buttons
+
+Step 9 is complete:
+- engineering escalation and manual Linear handoff
+
+Step 10 is complete:
+- Sentry setup and Sentry links
+
+Step 11 is complete:
+- email notification setup using Resend
+- POST /api/support/tickets/:id/send-email
+- Email Actions card
+- automatic ticket received email attempt
+- email records logged in support_ticket_messages
+
+Goal:
+Create a public ticket tracking experience so users can check the status of a support ticket after submission.
+
+Important:
+- Do not expose admin data.
+- Do not expose internal notes.
+- Do not expose internalStatus.
+- Do not expose Linear, Sentry, GitHub, Replit, stack traces, provider errors, or developer handoff text.
+- Do not expose other users’ tickets.
+- Do not build full login/auth yet unless existing patterns already exist.
+- Use a simple secure verification flow for now.
+- Do not add WhatsApp OTP automation yet.
+
+Routes:
+1. /help/track-ticket
+2. /help/ticket/:ticketReference
+
+Public route 1:
+Create /help/track-ticket
+
+Purpose:
+Allow a user to find a ticket by reference.
+
+Page title:
+Track Your Support Ticket
+
+Intro text:
+“Enter your ticket reference and contact email or WhatsApp number to view the latest public status.”
+
+Fields:
+- ticketReference required
+- contactEmail optional
+- contactWhatsapp optional
+
+Validation:
+- ticketReference required
+- either contactEmail or contactWhatsapp required
+
+Behavior:
+- on submit call backend verification endpoint
+- if matched, navigate to /help/ticket/:ticketReference with a short-lived access token or safe query token
+- if not matched, show:
+“We could not verify this ticket. Please check your reference and contact details.”
+
+Public route 2:
+Create /help/ticket/:ticketReference
+
+Purpose:
+Show a public-safe ticket detail view.
+
+Access:
+- must require a verified access token/query token/session from /help/track-ticket
+- if no valid access, show a verification panel requiring email/WhatsApp matching
+- do not allow public ticket viewing by reference alone
+
+Backend:
+
+1. POST /api/support/public/verify-ticket
+
+Input:
+- ticketReference required
+- contactEmail optional
+- contactWhatsapp optional
+
+Behavior:
+- find ticket scoped to Eride Technologies organisation
+- match ticketReference exactly, case-insensitive if possible
+- verify contactEmail matches reporterEmail OR contactWhatsapp matches reporterWhatsapp
+- if matched, return:
+  - success true
+  - ticketReference
+  - accessToken or signed token valid for short period
+- if not matched, return 404 or success false without revealing whether ticket exists
+
+Token:
+- implement simple signed token using existing server secret if available
+- if no existing secret, use SUPPORT_PUBLIC_TICKET_SECRET env
+- fallback to a dev-only secret with clear warning in code/replit.md
+- token should include ticketId and expiry
+- expiry: 30 minutes
+
+2. GET /api/support/public/tickets/:ticketReference
+
+Requires:
+- valid token
+
+Return only public-safe fields:
+- ticketReference
+- productName
+- productCode
+- publicStatus
+- category
+- priority maybe omit or expose only if safe
+- issueSummary
+- pageOrStep
+- createdAt
+- updatedAt
+- resolvedAt
+- closedAt
+
+Do not return:
+- internalStatus
+- internal notes
+- status history
+- Linear links
+- Sentry links
+- provider errors
+- developer handoff
+- assigned developer IDs
+- raw attachments from admin unless uploaded by public user and safe
+
+3. GET /api/support/public/tickets/:ticketReference/messages
+
+Requires:
+- valid token
+
+Return only public-safe messages:
+- direction
+- channel
+- messageType
+- messageBody
+- createdAt
+
+Filter rules:
+- include outbound messages sent to the user through email, whatsapp, in_app, manual
+- include inbound user replies if they were recorded as user-facing
+- exclude internal messages
+- exclude internal_note channel
+- exclude providerMessageId
+- exclude errorMessage
+- exclude internal status references
+
+4. POST /api/support/public/tickets/:ticketReference/reply
+
+Requires:
+- valid token
+
+Input:
+- messageBody required
+- uploadedByName optional
+
+Behavior:
+- create support_ticket_messages row:
+  direction = inbound
+  channel = in_app
+  messageType = user_reply
+  deliveryStatus = received
+  senderName = ticket.reporterName
+  recipientName = Eride Support
+  messageBody = input messageBody
+  relatedPublicStatus = current publicStatus
+  relatedInternalStatus = current internalStatus
+- do not expose relatedInternalStatus publicly in response
+- optionally set internalStatus = support_review if ticket was waiting for user info
+- record status history if status changes
+
+5. Public attachment upload:
+Either reuse existing attachment endpoint with token support or create:
+POST /api/support/public/tickets/:ticketReference/attachments
+
+Requires:
+- valid token
+
+Behavior:
+- allow user to upload more screenshots/evidence
+- use same file validation rules from Step 5
+- attach file to ticket
+- uploadedByName = ticket.reporterName
+- uploadedByEmail = ticket.reporterEmail
+- uploadedByRole = public_user
+
+Frontend /help/ticket/:ticketReference:
+
+Display:
+
+Header:
+- Eride Support
+- Ticket reference
+- Product badge
+- Public status badge
+
+Main sections:
+
+1. Status card
+Show:
+- publicStatus human label
+- createdAt
+- updatedAt
+- resolvedAt if available
+- closedAt if available
+
+2. Ticket summary card
+Show:
+- issueSummary
+- category human label
+- pageOrStep if available
+- productName
+
+3. Latest updates / messages card
+Show public-safe timeline:
+- date/time
+- channel
+- messageType
+- messageBody
+Do not show internal messages.
+
+4. Add more information card
+Allow user to submit:
+- messageBody
+- optional screenshot/attachment upload
+
+After submit:
+- show success:
+“Thank you. Your update has been added to the ticket.”
+
+5. Reopen helper
+If publicStatus is fixed, resolved, or closed:
+Show:
+“If the issue continues, send us an update and our team will review it.”
+
+For now, sending an update can reopen by setting:
+publicStatus = under_review
+internalStatus = support_review
+if ticket was closed/resolved/fixed.
+
+6. Back links:
+- Back to Help
+- Report another problem
+
+Privacy warning:
+“Only share information related to this support request. Do not send passwords, payment card details, or sensitive documents unless support specifically asks for them.”
+
+Acceptance criteria:
+- /help/track-ticket loads
+- user can verify ticket with reference + reporter email
+- wrong email/WhatsApp does not reveal ticket
+- verified user can view public-safe ticket details
+- public page does not show internalStatus, Linear, Sentry, GitHub, Replit, internal notes, provider IDs, provider errors, or developer handoff
+- user can add a reply
+- user reply appears in public-safe timeline
+- user can upload an additional screenshot/attachment
+- adding reply to closed/resolved/fixed ticket moves it back to under_review/support_review if implemented
+- admin communication timeline shows the public reply
+- typecheck passes
+- basic browser test covers verify, view, reply, upload, and privacy exclusions
