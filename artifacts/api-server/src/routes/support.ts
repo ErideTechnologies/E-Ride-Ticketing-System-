@@ -9,6 +9,7 @@ import {
   supportTicketAttachmentsTable,
   supportTicketInternalNotesTable,
   supportTicketLinearLinksTable,
+  supportTicketSentryLinksTable,
   supportTicketMessagesTable,
   supportTicketStatusHistoryTable,
   supportTicketsTable,
@@ -40,7 +41,9 @@ import {
   ListSupportTicketsQueryParams,
   UpdateSupportTicketBody,
   UpsertSupportTicketLinearLinkBody,
+  CreateSupportTicketSentryLinkBody,
 } from "@workspace/api-zod";
+import * as Sentry from "@sentry/node";
 
 const router: IRouter = Router();
 
@@ -873,6 +876,135 @@ router.post(
     res.json(serializeLinearLink(saved));
   },
 );
+
+function serializeSentryLink(
+  l: typeof supportTicketSentryLinksTable.$inferSelect,
+) {
+  return {
+    id: l.id,
+    supportTicketId: l.supportTicketId,
+    sentryIssueId: l.sentryIssueId,
+    sentryEventId: l.sentryEventId,
+    sentryProject: l.sentryProject,
+    sentryUrl: l.sentryUrl,
+    environment: l.environment,
+    createdByName: l.createdByName,
+    createdAt: l.createdAt.toISOString(),
+    updatedAt: l.updatedAt.toISOString(),
+  };
+}
+
+router.get(
+  "/support/tickets/:id/sentry-links",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(supportTicketSentryLinksTable)
+      .where(
+        eq(supportTicketSentryLinksTable.supportTicketId, existing.ticket.id),
+      )
+      .orderBy(desc(supportTicketSentryLinksTable.createdAt));
+    res.json(rows.map(serializeSentryLink));
+  },
+);
+
+router.post(
+  "/support/tickets/:id/sentry-links",
+  async (req, res): Promise<void> => {
+    const parsed = CreateSupportTicketSentryLinkBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid Sentry link" });
+      return;
+    }
+    const body = parsed.data;
+    const issueId = body.sentryIssueId?.trim() || null;
+    const eventId = body.sentryEventId?.trim() || null;
+    const url = body.sentryUrl?.trim() || null;
+    if (!issueId && !eventId && !url) {
+      res.status(400).json({
+        error:
+          "At least one of sentryIssueId, sentryEventId, or sentryUrl is required",
+      });
+      return;
+    }
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const [saved] = await db
+      .insert(supportTicketSentryLinksTable)
+      .values({
+        supportTicketId: existing.ticket.id,
+        sentryIssueId: issueId,
+        sentryEventId: eventId,
+        sentryProject: body.sentryProject?.trim() || null,
+        sentryUrl: url,
+        environment: body.environment?.trim() || null,
+        createdByName: body.createdByName?.trim() || null,
+      })
+      .returning();
+    if (!saved) {
+      res.status(500).json({ error: "Could not save Sentry link" });
+      return;
+    }
+    res.json(serializeSentryLink(saved));
+  },
+);
+
+router.delete(
+  "/support/tickets/:id/sentry-links/:sentryLinkId",
+  async (req, res): Promise<void> => {
+    const sentryLinkId = req.params.sentryLinkId;
+    if (!UUID_RE.test(sentryLinkId)) {
+      res.status(404).json({ error: "Sentry link not found" });
+      return;
+    }
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const [link] = await db
+      .select()
+      .from(supportTicketSentryLinksTable)
+      .where(
+        and(
+          eq(supportTicketSentryLinksTable.id, sentryLinkId),
+          eq(supportTicketSentryLinksTable.supportTicketId, existing.ticket.id),
+        ),
+      )
+      .limit(1);
+    if (!link) {
+      res.status(404).json({ error: "Sentry link not found" });
+      return;
+    }
+    await db
+      .delete(supportTicketSentryLinksTable)
+      .where(eq(supportTicketSentryLinksTable.id, sentryLinkId));
+    res.status(204).end();
+  },
+);
+
+// SMOKE TEST ENDPOINT — Step 10. WARNING: disable or remove after verifying
+// Sentry capture in production. Only throws when NODE_ENV !== "production"
+// or ENABLE_SENTRY_TEST_ENDPOINT === "true".
+router.get("/_sentry-test", (_req, res): void => {
+  const enabled =
+    process.env["NODE_ENV"] !== "production" ||
+    process.env["ENABLE_SENTRY_TEST_ENDPOINT"] === "true";
+  if (!enabled) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  Sentry.setTag("route", "/_sentry-test");
+  throw new Error("Sentry smoke test error — safe to ignore");
+});
 
 router.delete(
   "/support/tickets/:id/linear-link",

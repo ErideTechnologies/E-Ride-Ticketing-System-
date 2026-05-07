@@ -30,6 +30,8 @@ export * from "./supportTicketMessageCreate";
 export * from "./supportTicketNote";
 export * from "./supportTicketNoteCreate";
 export * from "./supportTicketPriority";
+export * from "./supportTicketSentryLink";
+export * from "./supportTicketSentryLinkCreate";
 export * from "./supportTicketSeverity";
 export * from "./supportTicketStatusHistoryItem";
 export * from "./supportTicketSubmission";

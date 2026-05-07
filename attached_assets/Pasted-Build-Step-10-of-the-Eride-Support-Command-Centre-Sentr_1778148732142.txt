@@ -1,0 +1,231 @@
+Build Step 10 of the Eride Support Command Centre: Sentry Setup and Automatic Production Error Capture.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- support organisations
+- support products
+- support tickets
+- ticket reference generation
+
+Step 2 is complete:
+- public report problem page
+- public ticket creation
+
+Step 3 is complete:
+- internal support ticket dashboard
+
+Step 4 is complete:
+- internal ticket detail page
+- status editing
+- notes
+- status history
+
+Step 5 is complete:
+- screenshot and attachment uploads
+
+Step 6 is complete:
+- live support wallboard
+
+Step 7 is complete:
+- communication log and manual message recording
+
+Step 8 is complete:
+- workflow action buttons
+
+Step 9 is complete:
+- engineering escalation
+- manual Linear handoff
+- support_ticket_linear_links
+- Linear issue generator
+- Replit fix prompt generator
+
+Goal:
+Add Sentry instrumentation for backend and frontend production error monitoring.
+
+Important:
+Do not add automatic Linear API creation yet.
+Do not auto-create support tickets from every Sentry issue yet.
+Do not expose Sentry details to public users.
+Do not send PII to Sentry.
+Do not enable session replay yet.
+This step only adds Sentry capture, PII redaction, safe error fallback, and a support admin field/linking structure for Sentry references.
+
+Environment variables:
+Add support for:
+- SENTRY_DSN_API
+- VITE_SENTRY_DSN_WEB
+
+Backend requirements:
+
+1. Install Sentry packages for the API/server:
+- @sentry/node
+- @sentry/profiling-node if compatible with current stack
+
+2. Initialise Sentry in the API/server entrypoint before other middleware.
+
+Use:
+- dsn = process.env.SENTRY_DSN_API
+- environment = process.env.NODE_ENV ?? "development"
+- tracesSampleRate = 0.1
+- profilesSampleRate = 0.1 if profiling is enabled
+
+3. Add beforeSend redaction.
+
+Redact these fields wherever they appear in request data, contexts, tags, breadcrumbs, or extra data if practical:
+- email
+- reporterEmail
+- reporterWhatsapp
+- whatsappNumber
+- whatsappNumberRaw
+- whatsappNumberCanonical
+- fullName
+- reporterName
+- password
+- token
+- accessToken
+- refreshToken
+- idNumber
+- passportNumber
+- paymentCard
+- cardNumber
+- cvv
+- details
+- whatWentWrong if it may contain sensitive info
+
+Replace with:
+[REDACTED]
+
+4. Add safe tags where available:
+- productCode
+- ticketReference if the route relates to a support ticket
+- applicationReference only if already non-sensitive and safe
+- environment
+- route
+
+5. Add Express/Node Sentry error handler after routes but before the existing error handler.
+
+6. Add temporary smoke test endpoint:
+GET /api/_sentry-test
+
+It should intentionally throw an error only when:
+NODE_ENV !== "production" OR process.env.ENABLE_SENTRY_TEST_ENDPOINT === "true"
+
+Return warning in comments that this endpoint must be disabled or removed after verification.
+
+Frontend requirements:
+
+1. Install:
+- @sentry/react
+
+2. Initialise Sentry in the frontend entrypoint.
+
+Use:
+- dsn = import.meta.env.VITE_SENTRY_DSN_WEB
+- environment = import.meta.env.MODE
+- tracesSampleRate = 0.1
+- replaysSessionSampleRate = 0
+- replaysOnErrorSampleRate = 0
+
+3. Add a React error boundary around the app.
+
+Fallback UI:
+Title:
+Something went wrong.
+
+Message:
+Our team has been notified. Please try again or report the problem if it continues.
+
+Button:
+Report a Problem → /help/report-problem
+
+Optional:
+Show a safe reference if Sentry event ID is available, but do not show stack traces.
+
+4. Do not expose stack traces or raw error messages to public users.
+
+Support ticket Sentry linking:
+
+Create support_ticket_sentry_links table:
+- id
+- supportTicketId
+- sentryIssueId nullable
+- sentryEventId nullable
+- sentryProject nullable
+- sentryUrl nullable
+- environment nullable
+- createdByName nullable
+- createdAt
+- updatedAt
+
+Create endpoints:
+
+GET /api/support/tickets/:id/sentry-links
+- return Sentry links newest first
+- verify ticket belongs to Eride Technologies organisation
+
+POST /api/support/tickets/:id/sentry-links
+Input:
+- sentryIssueId optional
+- sentryEventId optional
+- sentryProject optional
+- sentryUrl optional
+- environment optional
+- createdByName optional
+
+Validation:
+- at least one of sentryIssueId, sentryEventId, or sentryUrl must be provided
+- sentryUrl must be valid URL if provided
+- ticket must belong to Eride Technologies organisation
+
+DELETE /api/support/tickets/:id/sentry-links/:sentryLinkId
+- delete incorrect link
+- verify ticket and link belong together
+
+Frontend ticket detail update:
+
+On /admin/support/tickets/:id add a Sentry Links card.
+
+Show:
+- list of linked Sentry issues/events
+- project
+- environment
+- event ID
+- issue ID
+- URL button if available
+- linked by
+- createdAt
+- delete button
+
+Add form:
+- Sentry issue ID
+- Sentry event ID
+- Sentry project
+- Sentry URL
+- Environment
+- Linked by name
+- Save Sentry Link
+
+Helper text:
+“Sentry links are internal only. Do not send Sentry URLs, stack traces, or event details to public users.”
+
+Update developer handoff / Replit prompt generator:
+If Sentry links exist, include:
+Sentry:
+{{sentryProject}} / {{sentryIssueId or sentryEventId}}
+
+Do not include raw stack trace.
+
+Acceptance criteria:
+- Backend Sentry initialises when SENTRY_DSN_API is present
+- Frontend Sentry initialises when VITE_SENTRY_DSN_WEB is present
+- App still runs if DSNs are missing
+- PII redaction runs before sending events
+- Frontend error boundary works
+- Error fallback links to /help/report-problem
+- Smoke test endpoint can trigger test error only when safely enabled
+- support_ticket_sentry_links table exists
+- Admin can add/list/delete Sentry links on a ticket
+- Sentry links appear in developer handoff/Replit prompt without raw stack traces
+- Typecheck passes
+- Basic browser test covers Sentry link add/list/delete and error boundary route if feasible

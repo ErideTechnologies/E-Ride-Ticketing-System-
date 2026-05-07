@@ -16,8 +16,13 @@ import {
   useUpsertSupportTicketLinearLink,
   useDeleteSupportTicketLinearLink,
   getGetSupportTicketLinearLinkQueryKey,
+  useListSupportTicketSentryLinks,
+  useCreateSupportTicketSentryLink,
+  useDeleteSupportTicketSentryLink,
+  getListSupportTicketSentryLinksQueryKey,
   type SupportTicketWorkflowAction,
   type SupportTicketLinearLink,
+  type SupportTicketSentryLink,
   getGetSupportTicketQueryKey,
   getListSupportTicketNotesQueryKey,
   getListSupportTicketStatusHistoryQueryKey,
@@ -350,6 +355,7 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <StatusHistoryCard ticketId={ticket.id} />
           <CommunicationLogCard ticket={ticket} />
           <EngineeringEscalationCard ticket={ticket} />
+          <SentryLinksCard ticket={ticket} />
           <HandoffCard ticket={ticket} />
         </div>
       </div>
@@ -1831,7 +1837,18 @@ Compliance Notes:
 function buildReplitPrompt(
   t: SupportTicketDetail,
   linearKey: string | null,
+  sentryLinks: SupportTicketSentryLink[] = [],
 ): string {
+  const sentrySection = sentryLinks.length
+    ? "\n\nSentry:\n" +
+      sentryLinks
+        .map((s) => {
+          const project = s.sentryProject ?? "unknown-project";
+          const ref = s.sentryIssueId ?? s.sentryEventId ?? s.sentryUrl ?? "—";
+          return `${project} / ${ref}`;
+        })
+        .join("\n")
+    : "";
   return `BUG FIX REQUEST — Eride Technologies
 
 Product:
@@ -1841,7 +1858,7 @@ Support Ticket:
 ${t.ticketReference}
 
 Linear Issue:
-${linearKey ?? "Not linked yet"}
+${linearKey ?? "Not linked yet"}${sentrySection}
 
 Environment:
 ${t.environment}
@@ -1893,6 +1910,7 @@ function EngineeringEscalationCard({
   const linkQuery = useGetSupportTicketLinearLink(ticket.id);
   const attachmentsQuery = useListSupportTicketAttachments(ticket.id);
   const notesQuery = useListSupportTicketNotes(ticket.id);
+  const sentryLinksQuery = useListSupportTicketSentryLinks(ticket.id);
   const upsertMutation = useUpsertSupportTicketLinearLink();
   const deleteMutation = useDeleteSupportTicketLinearLink();
 
@@ -1947,7 +1965,11 @@ function EngineeringEscalationCard({
 
   function generateReplit() {
     setReplitText(
-      buildReplitPrompt(ticket, link?.linearIssueKey ?? null),
+      buildReplitPrompt(
+        ticket,
+        link?.linearIssueKey ?? null,
+        sentryLinksQuery.data ?? [],
+      ),
     );
   }
 
@@ -2245,6 +2267,236 @@ function EngineeringEscalationCard({
               QA/support must verify the fix on production before user notification.
             </div>
           )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SentryLinksCard({ ticket }: { ticket: SupportTicketDetail }) {
+  const qc = useQueryClient();
+  const linksQuery = useListSupportTicketSentryLinks(ticket.id);
+  const createMutation = useCreateSupportTicketSentryLink();
+  const deleteMutation = useDeleteSupportTicketSentryLink();
+  const links = linksQuery.data ?? [];
+
+  const [issueId, setIssueId] = useState("");
+  const [eventId, setEventId] = useState("");
+  const [project, setProject] = useState("");
+  const [url, setUrl] = useState("");
+  const [environment, setEnvironment] = useState("");
+  const [linkedBy, setLinkedBy] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function invalidate() {
+    qc.invalidateQueries({
+      queryKey: getListSupportTicketSentryLinksQueryKey(ticket.id),
+    });
+  }
+
+  async function save() {
+    setError(null);
+    if (!issueId.trim() && !eventId.trim() && !url.trim()) {
+      setError(
+        "Provide at least one of Sentry issue ID, event ID, or Sentry URL.",
+      );
+      return;
+    }
+    if (url.trim() && !/^https?:\/\//i.test(url.trim())) {
+      setError("Sentry URL must start with http:// or https://.");
+      return;
+    }
+    try {
+      await createMutation.mutateAsync({
+        id: ticket.id,
+        data: {
+          sentryIssueId: issueId.trim() || null,
+          sentryEventId: eventId.trim() || null,
+          sentryProject: project.trim() || null,
+          sentryUrl: url.trim() || null,
+          environment: environment.trim() || null,
+          createdByName: linkedBy.trim() || null,
+        },
+      });
+      invalidate();
+      setIssueId("");
+      setEventId("");
+      setProject("");
+      setUrl("");
+      setEnvironment("");
+      setLinkedBy("");
+    } catch {
+      setError("Could not save Sentry link (check the URL is valid).");
+    }
+  }
+
+  async function remove(linkId: string) {
+    try {
+      await deleteMutation.mutateAsync({
+        id: ticket.id,
+        sentryLinkId: linkId,
+      });
+      invalidate();
+    } catch {
+      setError("Could not remove Sentry link.");
+    }
+  }
+
+  return (
+    <Card className="lg:col-span-2" data-testid="card-sentry-links">
+      <CardHeader>
+        <CardTitle className="text-base">Sentry links</CardTitle>
+        <CardDescription>
+          Sentry links are internal only. Do not send Sentry URLs, stack
+          traces, or event details to public users.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div data-testid="sentry-links-list" className="space-y-2">
+          {links.length === 0 && (
+            <div
+              className="text-xs text-muted-foreground"
+              data-testid="sentry-links-empty"
+            >
+              No Sentry references linked yet.
+            </div>
+          )}
+          {links.map((l) => (
+            <div
+              key={l.id}
+              className="rounded-md border bg-muted/30 p-3 text-sm"
+              data-testid={`sentry-link-row-${l.id}`}
+            >
+              <div className="grid gap-1 sm:grid-cols-2">
+                <div>
+                  <span className="text-muted-foreground">Project:</span>{" "}
+                  {l.sentryProject ?? "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Environment:</span>{" "}
+                  {l.environment ?? "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Issue ID:</span>{" "}
+                  <span className="font-mono">{l.sentryIssueId ?? "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Event ID:</span>{" "}
+                  <span className="font-mono">{l.sentryEventId ?? "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Linked by:</span>{" "}
+                  {l.createdByName ?? "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Created:</span>{" "}
+                  {formatDateTime(l.createdAt)}
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {l.sentryUrl && (
+                  <a href={l.sentryUrl} target="_blank" rel="noreferrer">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-testid={`button-open-sentry-${l.id}`}
+                    >
+                      Open in Sentry
+                    </Button>
+                  </a>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => remove(l.id)}
+                  disabled={deleteMutation.isPending}
+                  data-testid={`button-delete-sentry-${l.id}`}
+                >
+                  <Trash2 className="mr-1 h-3 w-3" /> Delete
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-md border p-3" data-testid="sentry-link-form">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Add Sentry link
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="sentry-issue-id" className="text-xs text-muted-foreground">Sentry issue ID</Label>
+              <Input
+                id="sentry-issue-id"
+                value={issueId}
+                onChange={(e) => setIssueId(e.target.value)}
+                data-testid="input-sentry-issue-id"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sentry-event-id" className="text-xs text-muted-foreground">Sentry event ID</Label>
+              <Input
+                id="sentry-event-id"
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
+                data-testid="input-sentry-event-id"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sentry-project" className="text-xs text-muted-foreground">Sentry project</Label>
+              <Input
+                id="sentry-project"
+                value={project}
+                onChange={(e) => setProject(e.target.value)}
+                data-testid="input-sentry-project"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sentry-url" className="text-xs text-muted-foreground">Sentry URL</Label>
+              <Input
+                id="sentry-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://sentry.io/..."
+                data-testid="input-sentry-url"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sentry-env" className="text-xs text-muted-foreground">Environment</Label>
+              <Input
+                id="sentry-env"
+                value={environment}
+                onChange={(e) => setEnvironment(e.target.value)}
+                placeholder="production, staging…"
+                data-testid="input-sentry-environment"
+              />
+            </div>
+            <div>
+              <Label htmlFor="sentry-linked-by" className="text-xs text-muted-foreground">Linked by name</Label>
+              <Input
+                id="sentry-linked-by"
+                value={linkedBy}
+                onChange={(e) => setLinkedBy(e.target.value)}
+                data-testid="input-sentry-linked-by"
+              />
+            </div>
+          </div>
+          {error && (
+            <Alert variant="destructive" className="mt-2" data-testid="alert-sentry-error">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <div className="mt-3">
+            <Button
+              size="sm"
+              onClick={save}
+              disabled={createMutation.isPending}
+              data-testid="button-save-sentry-link"
+            >
+              {createMutation.isPending ? "Saving…" : "Save Sentry Link"}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

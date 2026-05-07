@@ -8,6 +8,7 @@ import ReportProblemPage from "@/pages/report-problem";
 import AdminTicketsPage from "@/pages/admin-tickets";
 import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
 import AdminWallboardPage from "@/pages/admin-wallboard";
+import ErrorBoundaryTestPage from "@/pages/error-boundary-test";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/admin/support/wallboard" component={AdminWallboardPage} />
       <Route path="/admin/support/tickets" component={AdminTicketsPage} />
       <Route path="/admin/support/tickets/:id" component={AdminTicketDetailPage} />
+      <Route path="/__boundary-test" component={ErrorBoundaryTestPage} />
       <Route component={NotFound} />
     </Switch>
   );

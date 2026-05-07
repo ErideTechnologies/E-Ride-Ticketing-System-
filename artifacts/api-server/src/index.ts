@@ -1,5 +1,11 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import { initSentry } from "./lib/sentry";
+
+// Sentry must be initialised before importing the app so its instrumentation
+// can patch Express/Node before any handlers are registered.
+initSentry();
+
+const { default: app } = await import("./app");
+const { logger } = await import("./lib/logger");
 
 const rawPort = process.env["PORT"];
 

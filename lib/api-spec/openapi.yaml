@@ -245,6 +245,85 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/sentry-links:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: listSupportTicketSentryLinks
+      tags: [support]
+      summary: List Sentry links recorded against a ticket (newest first)
+      responses:
+        "200":
+          description: List of Sentry links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportTicketSentryLink"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createSupportTicketSentryLink
+      tags: [support]
+      summary: Manually record a Sentry issue/event link for a ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketSentryLinkCreate"
+      responses:
+        "200":
+          description: Created Sentry link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketSentryLink"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /support/tickets/{id}/sentry-links/{sentryLinkId}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: sentryLinkId
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      operationId: deleteSupportTicketSentryLink
+      tags: [support]
+      summary: Remove a Sentry link from a ticket
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Ticket or Sentry link not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets/{id}/workflow-action:
     parameters:
       - in: path
@@ -1010,6 +1089,31 @@ components:
         linearStatus: { type: ["string", "null"] }
         createdByName: { type: ["string", "null"] }
       required: [linearIssueKey]
+
+    SupportTicketSentryLink:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        supportTicketId: { type: string, format: uuid }
+        sentryIssueId: { type: ["string", "null"] }
+        sentryEventId: { type: ["string", "null"] }
+        sentryProject: { type: ["string", "null"] }
+        sentryUrl: { type: ["string", "null"] }
+        environment: { type: ["string", "null"] }
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, supportTicketId, createdAt, updatedAt]
+
+    SupportTicketSentryLinkCreate:
+      type: object
+      properties:
+        sentryIssueId: { type: ["string", "null"] }
+        sentryEventId: { type: ["string", "null"] }
+        sentryProject: { type: ["string", "null"] }
+        sentryUrl: { type: ["string", "null"], format: uri }
+        environment: { type: ["string", "null"] }
+        createdByName: { type: ["string", "null"] }
 
     SupportTicketWorkflowAction:
       type: string

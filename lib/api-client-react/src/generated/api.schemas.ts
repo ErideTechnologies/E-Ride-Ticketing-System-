@@ -399,6 +399,40 @@ export interface SupportTicketLinearLinkUpsert {
   createdByName?: string | null;
 }
 
+export interface SupportTicketSentryLink {
+  id: string;
+  supportTicketId: string;
+  /** @nullable */
+  sentryIssueId?: string | null;
+  /** @nullable */
+  sentryEventId?: string | null;
+  /** @nullable */
+  sentryProject?: string | null;
+  /** @nullable */
+  sentryUrl?: string | null;
+  /** @nullable */
+  environment?: string | null;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportTicketSentryLinkCreate {
+  /** @nullable */
+  sentryIssueId?: string | null;
+  /** @nullable */
+  sentryEventId?: string | null;
+  /** @nullable */
+  sentryProject?: string | null;
+  /** @nullable */
+  sentryUrl?: string | null;
+  /** @nullable */
+  environment?: string | null;
+  /** @nullable */
+  createdByName?: string | null;
+}
+
 export type SupportTicketWorkflowAction =
   (typeof SupportTicketWorkflowAction)[keyof typeof SupportTicketWorkflowAction];
 

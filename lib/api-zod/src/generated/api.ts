@@ -409,6 +409,66 @@ export const DeleteSupportTicketLinearLinkParams = zod.object({
 });
 
 /**
+ * @summary List Sentry links recorded against a ticket (newest first)
+ */
+export const ListSupportTicketSentryLinksParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const ListSupportTicketSentryLinksResponseItem = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  sentryIssueId: zod.string().nullish(),
+  sentryEventId: zod.string().nullish(),
+  sentryProject: zod.string().nullish(),
+  sentryUrl: zod.string().nullish(),
+  environment: zod.string().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSupportTicketSentryLinksResponse = zod.array(
+  ListSupportTicketSentryLinksResponseItem,
+);
+
+/**
+ * @summary Manually record a Sentry issue/event link for a ticket
+ */
+export const CreateSupportTicketSentryLinkParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const CreateSupportTicketSentryLinkBody = zod.object({
+  sentryIssueId: zod.string().nullish(),
+  sentryEventId: zod.string().nullish(),
+  sentryProject: zod.string().nullish(),
+  sentryUrl: zod.string().url().nullish(),
+  environment: zod.string().nullish(),
+  createdByName: zod.string().nullish(),
+});
+
+export const CreateSupportTicketSentryLinkResponse = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  sentryIssueId: zod.string().nullish(),
+  sentryEventId: zod.string().nullish(),
+  sentryProject: zod.string().nullish(),
+  sentryUrl: zod.string().nullish(),
+  environment: zod.string().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a Sentry link from a ticket
+ */
+export const DeleteSupportTicketSentryLinkParams = zod.object({
+  id: zod.coerce.string().uuid(),
+  sentryLinkId: zod.coerce.string().uuid(),
+});
+
+/**
  * Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.
  * @summary Apply a named workflow shortcut to a support ticket
  */

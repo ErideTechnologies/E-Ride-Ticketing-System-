@@ -1,6 +1,12 @@
-import express, { type Express } from "express";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import * as Sentry from "@sentry/node";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -30,5 +36,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Sentry error handler — must come after routes, before any other error handler.
+Sentry.setupExpressErrorHandler(app);
+
+// Final fallback error handler. Keeps responses minimal and never leaks stack traces.
+app.use(
+  (err: Error, req: Request, res: Response, _next: NextFunction): void => {
+    req.log?.error?.({ err }, "Unhandled error");
+    if (res.headersSent) return;
+    res.status(500).json({ error: "Internal server error" });
+  },
+);
 
 export default app;
