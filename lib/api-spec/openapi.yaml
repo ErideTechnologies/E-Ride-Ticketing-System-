@@ -177,6 +177,74 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/linear-link:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getSupportTicketLinearLink
+      tags: [support]
+      summary: Get the manually-recorded Linear link for a ticket
+      responses:
+        "200":
+          description: Linear link or null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SupportTicketLinearLink"
+                  - type: "null"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: upsertSupportTicketLinearLink
+      tags: [support]
+      summary: Create or update the manually-linked Linear issue for a ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketLinearLinkUpsert"
+      responses:
+        "200":
+          description: Saved Linear link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketLinearLink"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSupportTicketLinearLink
+      tags: [support]
+      summary: Remove the Linear link for a ticket
+      responses:
+        "204":
+          description: Deleted (or never existed)
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets/{id}/workflow-action:
     parameters:
       - in: path
@@ -915,6 +983,33 @@ components:
         changeReason: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
       required: [id, supportTicketId, createdAt]
+
+    SupportTicketLinearLink:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        supportTicketId: { type: string, format: uuid }
+        linearIssueId: { type: ["string", "null"] }
+        linearIssueKey: { type: ["string", "null"] }
+        linearIssueUrl: { type: ["string", "null"] }
+        linearTeamKey: { type: ["string", "null"] }
+        linearStatus: { type: ["string", "null"] }
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        lastSyncedAt: { type: ["string", "null"], format: date-time }
+      required: [id, supportTicketId, createdAt, updatedAt]
+
+    SupportTicketLinearLinkUpsert:
+      type: object
+      properties:
+        linearIssueId: { type: ["string", "null"] }
+        linearIssueKey: { type: string, minLength: 1 }
+        linearIssueUrl: { type: ["string", "null"], format: uri }
+        linearTeamKey: { type: ["string", "null"] }
+        linearStatus: { type: ["string", "null"] }
+        createdByName: { type: ["string", "null"] }
+      required: [linearIssueKey]
 
     SupportTicketWorkflowAction:
       type: string

@@ -1,0 +1,323 @@
+Build Step 9 of the Eride Support Command Centre: Engineering Escalation and Linear Handoff.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- support organisations
+- support products
+- support tickets
+- ticket reference generation
+
+Step 2 is complete:
+- public report problem page
+- public ticket creation
+
+Step 3 is complete:
+- internal support ticket dashboard
+
+Step 4 is complete:
+- internal ticket detail page
+- status editing
+- notes
+- status history
+- communication templates
+- developer handoff generator
+
+Step 5 is complete:
+- screenshot and attachment uploads
+
+Step 6 is complete:
+- live support wallboard
+
+Step 7 is complete:
+- support_ticket_messages
+- communication log
+- manual message recording
+
+Step 8 is complete:
+- workflow action buttons
+- POST /api/support/tickets/:id/workflow-action
+- all 14 workflow actions verified
+
+Goal:
+Build the engineering escalation layer so support/admin can prepare a technical ticket for developers and link it to Linear manually.
+
+Important:
+Do not add actual Linear API integration yet.
+Do not add Sentry integration yet.
+Do not add GitHub integration yet.
+Do not add automatic Replit execution.
+This step is only manual Linear handoff, Linear link storage, and structured developer/Replit prompt generation.
+
+Database:
+
+Create support_ticket_linear_links table:
+- id
+- supportTicketId
+- linearIssueId nullable
+- linearIssueKey nullable
+- linearIssueUrl nullable
+- linearTeamKey nullable
+- linearStatus nullable
+- createdByName nullable
+- createdAt
+- updatedAt
+- lastSyncedAt nullable
+
+Relationship:
+- linear link belongs to support ticket
+- cascade delete if support ticket is deleted
+
+Backend endpoints:
+
+1. GET /api/support/tickets/:id/linear-link
+
+Purpose:
+Return the Linear link record for a ticket if it exists.
+
+Must:
+- verify ticket belongs to active Eride Technologies organisation
+
+2. POST /api/support/tickets/:id/linear-link
+
+Purpose:
+Create or update the manually linked Linear issue details.
+
+Input:
+- linearIssueId optional
+- linearIssueKey required
+- linearIssueUrl optional
+- linearTeamKey optional
+- linearStatus optional
+- createdByName optional
+
+Validation:
+- ticket must belong to active Eride Technologies organisation
+- linearIssueKey cannot be empty
+- if linearIssueUrl is provided, validate it is a URL
+- upsert behavior: one Linear link per support ticket for now
+
+3. DELETE /api/support/tickets/:id/linear-link
+
+Purpose:
+Remove an incorrect Linear link.
+
+Must:
+- verify ticket belongs to Eride organisation
+
+Frontend:
+
+Update /admin/support/tickets/:id
+
+Add a new card:
+Engineering Escalation
+
+Place it near the workflow actions and developer handoff area.
+
+The card must include:
+
+A. Escalation readiness summary
+
+Show:
+- Ticket reference
+- Product
+- Priority
+- Severity
+- Category
+- Current internal status
+- Whether ticket has attachments
+- Whether ticket has internal notes
+- Whether ticket has a Linear link
+
+Add visual indication:
+- Ready for engineering if category is technical_bug, payment_issue, otp_verification_issue, document_upload_issue, performance_issue, system_downtime, or security_privacy_concern
+- Otherwise show: “This may be a support-only ticket. Escalate only if technical work is required.”
+
+B. Generate Linear Issue button
+
+When clicked, generate copy-ready Linear issue text.
+
+Linear issue title format:
+[Priority] [ProductCode] [Category] — [Issue Summary]
+
+Example:
+[High] [EMA] OTP Verification Issue — WhatsApp OTP not sending
+
+Linear issue body format:
+
+SUPPORT TICKET ESCALATION
+
+Support Ticket:
+{{ticketReference}}
+
+Product:
+{{productName}} ({{productCode}})
+
+Priority:
+{{priority}}
+
+Severity:
+{{severity}}
+
+Category:
+{{category}}
+
+Reporter Type:
+{{reporterType}}
+
+Environment:
+{{environment}}
+
+Page / Step:
+{{pageOrStep}}
+
+Application Reference:
+{{applicationReference}}
+
+Account Reference:
+{{accountReference}}
+
+Issue Summary:
+{{issueSummary}}
+
+What the user was trying to do:
+{{whatWereYouTryingToDo}}
+
+What went wrong:
+{{whatWentWrong}}
+
+Attachments:
+{{attachment summary or “No attachments uploaded”}}
+
+Current Support Status:
+Public: {{publicStatus}}
+Internal: {{internalStatus}}
+
+Expected Engineering Action:
+1. Reproduce the issue.
+2. Identify the root cause.
+3. Fix the issue.
+4. Add or update a regression test.
+5. Submit for review.
+6. Return to support/QA for production verification.
+
+Compliance Notes:
+- Do not expose PII in logs, console output, Sentry, or Linear beyond what is necessary.
+- Do not expose internal notes publicly.
+- Do not use legal-decision language such as approved, rejected, or guaranteed.
+- Preserve existing database IDs unless a schema change is explicitly required.
+- The fixer cannot verify their own work.
+- QA/support must verify on production before the user is told the issue is fixed.
+
+C. Copy Linear Issue button
+
+- Copy the generated Linear title and body.
+- Show “Copied Linear issue text.”
+
+D. Generate Replit Fix Prompt button
+
+When clicked, generate copy-ready Replit prompt:
+
+BUG FIX REQUEST — Eride Technologies
+
+Product:
+{{productName}} ({{productCode}})
+
+Support Ticket:
+{{ticketReference}}
+
+Linear Issue:
+{{linearIssueKey or “Not linked yet”}}
+
+Environment:
+{{environment}}
+
+Page / Screen:
+{{pageOrStep}}
+
+User Role Affected:
+{{reporterType}}
+
+Issue:
+{{issueSummary}}
+
+Steps / User Context:
+{{whatWereYouTryingToDo}}
+
+Actual Problem:
+{{whatWentWrong}}
+
+Priority:
+{{priority}}
+
+Severity:
+{{severity}}
+
+Fix Required:
+Investigate, reproduce, fix, and add a regression test for this issue.
+
+Regression Test Required:
+Add or update a test proving this issue does not happen again.
+
+Verification:
+After merge/deployment, QA/support must verify the original reproduction path on production.
+
+Compliance Constraints:
+- Do not expose PII in logs, Sentry, or public responses.
+- Do not use legal-decision language such as approved, rejected, or guaranteed.
+- Do not alter existing database IDs unless required.
+- Preserve current UI styling unless the issue is UI-related.
+- Fixer cannot verify their own work.
+
+E. Linear link form
+
+Fields:
+- Linear issue key
+- Linear issue URL
+- Linear team key
+- Linear status
+- Linked by name
+
+Buttons:
+- Save Linear Link
+- Remove Linear Link
+
+When Linear link is saved:
+- Store in support_ticket_linear_links
+- Show the linked issue key and URL
+- Optionally suggest running workflow action: mark_in_engineering or linear_created
+- Do not automatically change the ticket status unless user clicks workflow action
+
+F. Current Linear link display
+
+If a link exists, show:
+- Linear issue key
+- Linear status
+- Linear URL as clickable button
+- Linked by
+- Created at
+- Updated at
+
+G. Status reminders
+
+Show helper text:
+- If no Linear link and internalStatus is engineering_escalation_required:
+  “This ticket is marked for engineering but has no Linear issue linked yet.”
+- If Linear link exists:
+  “Engineering issue linked. Developer work should continue in Linear.”
+- If internalStatus is in_qa_verification:
+  “QA/support must verify the fix on production before user notification.”
+
+Backend/Frontend acceptance criteria:
+- support_ticket_linear_links table exists
+- GET linear link endpoint works
+- POST linear link endpoint creates/updates link
+- DELETE linear link endpoint removes link
+- Ticket detail page shows Engineering Escalation card
+- Linear issue title/body generator works
+- Copy Linear issue button works
+- Replit fix prompt generator works
+- Linear link form saves and displays linked issue
+- Removing Linear link works
+- Typecheck passes
+- Basic browser test covers generating Linear issue text, copying it, saving a Linear link, displaying it, removing it, and generating Replit fix prompt

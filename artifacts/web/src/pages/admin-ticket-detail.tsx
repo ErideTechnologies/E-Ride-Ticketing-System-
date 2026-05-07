@@ -12,7 +12,12 @@ import {
   useListSupportTicketMessages,
   useCreateSupportTicketMessage,
   useApplySupportTicketWorkflowAction,
+  useGetSupportTicketLinearLink,
+  useUpsertSupportTicketLinearLink,
+  useDeleteSupportTicketLinearLink,
+  getGetSupportTicketLinearLinkQueryKey,
   type SupportTicketWorkflowAction,
+  type SupportTicketLinearLink,
   getGetSupportTicketQueryKey,
   getListSupportTicketNotesQueryKey,
   getListSupportTicketStatusHistoryQueryKey,
@@ -344,6 +349,7 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <NotesCard ticketId={ticket.id} />
           <StatusHistoryCard ticketId={ticket.id} />
           <CommunicationLogCard ticket={ticket} />
+          <EngineeringEscalationCard ticket={ticket} />
           <HandoffCard ticket={ticket} />
         </div>
       </div>
@@ -1730,6 +1736,518 @@ function MessageRow({ message }: { message: SupportTicketMessage }) {
         {message.messageBody}
       </pre>
     </li>
+  );
+}
+
+const TECHNICAL_CATEGORIES = new Set([
+  "technical_bug",
+  "payment_issue",
+  "otp_verification_issue",
+  "document_upload_issue",
+  "performance_issue",
+  "system_downtime",
+  "security_privacy_concern",
+]);
+
+function titleCase(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buildLinearTitle(t: SupportTicketDetail): string {
+  return `[${titleCase(t.priority)}] [${t.productCode}] ${titleCase(
+    t.category,
+  )} — ${t.issueSummary}`;
+}
+
+function buildLinearBody(
+  t: SupportTicketDetail,
+  attachmentSummary: string,
+): string {
+  return `SUPPORT TICKET ESCALATION
+
+Support Ticket:
+${t.ticketReference}
+
+Product:
+${t.productName} (${t.productCode})
+
+Priority:
+${t.priority}
+
+Severity:
+${t.severity}
+
+Category:
+${t.category}
+
+Reporter Type:
+${t.reporterType}
+
+Environment:
+${t.environment}
+
+Page / Step:
+${t.pageOrStep ?? ""}
+
+Application Reference:
+${t.applicationReference ?? ""}
+
+Account Reference:
+${t.accountReference ?? ""}
+
+Issue Summary:
+${t.issueSummary}
+
+What the user was trying to do:
+${t.whatWereYouTryingToDo ?? ""}
+
+What went wrong:
+${t.whatWentWrong}
+
+Attachments:
+${attachmentSummary}
+
+Current Support Status:
+Public: ${t.publicStatus}
+Internal: ${t.internalStatus}
+
+Expected Engineering Action:
+1. Reproduce the issue.
+2. Identify the root cause.
+3. Fix the issue.
+4. Add or update a regression test.
+5. Submit for review.
+6. Return to support/QA for production verification.
+
+Compliance Notes:
+- Do not expose PII in logs, console output, Sentry, or Linear beyond what is necessary.
+- Do not expose internal notes publicly.
+- Do not use legal-decision language such as approved, rejected, or guaranteed.
+- Preserve existing database IDs unless a schema change is explicitly required.
+- The fixer cannot verify their own work.
+- QA/support must verify on production before the user is told the issue is fixed.`;
+}
+
+function buildReplitPrompt(
+  t: SupportTicketDetail,
+  linearKey: string | null,
+): string {
+  return `BUG FIX REQUEST — Eride Technologies
+
+Product:
+${t.productName} (${t.productCode})
+
+Support Ticket:
+${t.ticketReference}
+
+Linear Issue:
+${linearKey ?? "Not linked yet"}
+
+Environment:
+${t.environment}
+
+Page / Screen:
+${t.pageOrStep ?? ""}
+
+User Role Affected:
+${t.reporterType}
+
+Issue:
+${t.issueSummary}
+
+Steps / User Context:
+${t.whatWereYouTryingToDo ?? ""}
+
+Actual Problem:
+${t.whatWentWrong}
+
+Priority:
+${t.priority}
+
+Severity:
+${t.severity}
+
+Fix Required:
+Investigate, reproduce, fix, and add a regression test for this issue.
+
+Regression Test Required:
+Add or update a test proving this issue does not happen again.
+
+Verification:
+After merge/deployment, QA/support must verify the original reproduction path on production.
+
+Compliance Constraints:
+- Do not expose PII in logs, Sentry, or public responses.
+- Do not use legal-decision language such as approved, rejected, or guaranteed.
+- Do not alter existing database IDs unless required.
+- Preserve current UI styling unless the issue is UI-related.
+- Fixer cannot verify their own work.`;
+}
+
+function EngineeringEscalationCard({
+  ticket,
+}: {
+  ticket: SupportTicketDetail;
+}) {
+  const qc = useQueryClient();
+  const linkQuery = useGetSupportTicketLinearLink(ticket.id);
+  const attachmentsQuery = useListSupportTicketAttachments(ticket.id);
+  const notesQuery = useListSupportTicketNotes(ticket.id);
+  const upsertMutation = useUpsertSupportTicketLinearLink();
+  const deleteMutation = useDeleteSupportTicketLinearLink();
+
+  const link = (linkQuery.data ?? null) as SupportTicketLinearLink | null;
+  const attachments = attachmentsQuery.data ?? [];
+  const notes = notesQuery.data ?? [];
+
+  const [linearText, setLinearText] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
+  const [replitText, setReplitText] = useState<string | null>(null);
+
+  const [issueKey, setIssueKey] = useState("");
+  const [issueUrl, setIssueUrl] = useState("");
+  const [teamKey, setTeamKey] = useState("");
+  const [linearStatus, setLinearStatus] = useState("");
+  const [linkedByName, setLinkedByName] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // When server data arrives, prefill form fields if empty.
+  useMemo(() => {
+    if (link) {
+      setIssueKey((v) => v || link.linearIssueKey || "");
+      setIssueUrl((v) => v || link.linearIssueUrl || "");
+      setTeamKey((v) => v || link.linearTeamKey || "");
+      setLinearStatus((v) => v || link.linearStatus || "");
+      setLinkedByName((v) => v || link.createdByName || "");
+    }
+  }, [link]);
+
+  const isTechnical = TECHNICAL_CATEGORIES.has(ticket.category);
+
+  const attachmentSummary =
+    attachments.length === 0
+      ? "No attachments uploaded"
+      : attachments
+          .map(
+            (a, i) =>
+              `${i + 1}. ${a.originalFileName} (${a.fileType}, ${Math.round(
+                a.fileSize / 1024,
+              )} KB)`,
+          )
+          .join("\n");
+
+  function generateLinear() {
+    setLinearText({
+      title: buildLinearTitle(ticket),
+      body: buildLinearBody(ticket, attachmentSummary),
+    });
+  }
+
+  function generateReplit() {
+    setReplitText(
+      buildReplitPrompt(ticket, link?.linearIssueKey ?? null),
+    );
+  }
+
+  async function saveLink() {
+    setLinkError(null);
+    if (!issueKey.trim()) {
+      setLinkError("Linear issue key is required");
+      return;
+    }
+    try {
+      await upsertMutation.mutateAsync({
+        id: ticket.id,
+        data: {
+          linearIssueKey: issueKey.trim(),
+          linearIssueUrl: issueUrl.trim() || null,
+          linearTeamKey: teamKey.trim() || null,
+          linearStatus: linearStatus.trim() || null,
+          createdByName: linkedByName.trim() || null,
+        },
+      });
+      qc.invalidateQueries({
+        queryKey: getGetSupportTicketLinearLinkQueryKey(ticket.id),
+      });
+    } catch {
+      setLinkError("Could not save Linear link (check the URL is valid)");
+    }
+  }
+
+  async function removeLink() {
+    setLinkError(null);
+    try {
+      await deleteMutation.mutateAsync({ id: ticket.id });
+      qc.invalidateQueries({
+        queryKey: getGetSupportTicketLinearLinkQueryKey(ticket.id),
+      });
+      setIssueKey("");
+      setIssueUrl("");
+      setTeamKey("");
+      setLinearStatus("");
+      setLinkedByName("");
+    } catch {
+      setLinkError("Could not remove Linear link");
+    }
+  }
+
+  return (
+    <Card className="lg:col-span-2" data-testid="card-engineering-escalation">
+      <CardHeader>
+        <CardTitle className="text-base">Engineering escalation</CardTitle>
+        <CardDescription>
+          Prepare a technical handoff for developers and record the manual
+          Linear link. Linear API integration arrives later.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* A. Readiness summary */}
+        <div
+          className="rounded-md border bg-muted/40 p-3 text-sm"
+          data-testid="readiness-summary"
+        >
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Escalation readiness
+          </div>
+          <div className="grid gap-1 sm:grid-cols-2">
+            <div><span className="text-muted-foreground">Reference:</span> <span className="font-mono">{ticket.ticketReference}</span></div>
+            <div><span className="text-muted-foreground">Product:</span> {ticket.productName} ({ticket.productCode})</div>
+            <div><span className="text-muted-foreground">Priority:</span> {humanLabel(PRIORITY_LABELS, ticket.priority)}</div>
+            <div><span className="text-muted-foreground">Severity:</span> {humanLabel(SEVERITY_LABELS, ticket.severity)}</div>
+            <div><span className="text-muted-foreground">Category:</span> {humanLabel(CATEGORY_LABELS, ticket.category)}</div>
+            <div><span className="text-muted-foreground">Internal status:</span> {humanLabel(INTERNAL_STATUS_LABELS, ticket.internalStatus)}</div>
+            <div data-testid="readiness-attachments"><span className="text-muted-foreground">Attachments:</span> {attachments.length > 0 ? `Yes (${attachments.length})` : "No"}</div>
+            <div data-testid="readiness-notes"><span className="text-muted-foreground">Internal notes:</span> {notes.length > 0 ? `Yes (${notes.length})` : "No"}</div>
+            <div data-testid="readiness-linear"><span className="text-muted-foreground">Linear link:</span> {link ? `Yes (${link.linearIssueKey ?? "—"})` : "No"}</div>
+          </div>
+          <div
+            className={
+              "mt-2 text-xs " +
+              (isTechnical
+                ? "text-emerald-700"
+                : "text-amber-700")
+            }
+            data-testid="text-readiness-verdict"
+          >
+            {isTechnical
+              ? "Ready for engineering."
+              : "This may be a support-only ticket. Escalate only if technical work is required."}
+          </div>
+        </div>
+
+        {/* B + C. Linear issue text */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={generateLinear}
+              data-testid="button-generate-linear"
+            >
+              Generate Linear Issue
+            </Button>
+            {linearText && (
+              <CopyButton
+                text={`${linearText.title}\n\n${linearText.body}`}
+                label="Copy Linear issue text"
+                testId="button-copy-linear"
+              />
+            )}
+          </div>
+          {linearText && (
+            <div className="space-y-2">
+              <div>
+                <div className="text-xs text-muted-foreground">Title</div>
+                <pre
+                  className="whitespace-pre-wrap break-words rounded-md border bg-background p-2 text-xs"
+                  data-testid="text-linear-title"
+                >
+                  {linearText.title}
+                </pre>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Body</div>
+                <pre
+                  className="whitespace-pre-wrap break-words rounded-md border bg-background p-3 text-xs"
+                  data-testid="text-linear-body"
+                >
+                  {linearText.body}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* D. Replit fix prompt */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={generateReplit}
+              data-testid="button-generate-replit-prompt"
+            >
+              Generate Replit Fix Prompt
+            </Button>
+            {replitText && (
+              <CopyButton
+                text={replitText}
+                label="Copy Replit fix prompt"
+                testId="button-copy-replit-prompt"
+              />
+            )}
+          </div>
+          {replitText && (
+            <pre
+              className="whitespace-pre-wrap break-words rounded-md border bg-background p-3 text-xs"
+              data-testid="text-replit-prompt"
+            >
+              {replitText}
+            </pre>
+          )}
+        </div>
+
+        {/* E. Linear link form */}
+        <div className="rounded-md border p-3" data-testid="linear-link-form">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Linear link
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="linear-issue-key" className="text-xs text-muted-foreground">Issue key *</Label>
+              <Input
+                id="linear-issue-key"
+                value={issueKey}
+                onChange={(e) => setIssueKey(e.target.value)}
+                placeholder="e.g. ENG-123"
+                data-testid="input-linear-issue-key"
+              />
+            </div>
+            <div>
+              <Label htmlFor="linear-issue-url" className="text-xs text-muted-foreground">Issue URL</Label>
+              <Input
+                id="linear-issue-url"
+                value={issueUrl}
+                onChange={(e) => setIssueUrl(e.target.value)}
+                placeholder="https://linear.app/..."
+                data-testid="input-linear-issue-url"
+              />
+            </div>
+            <div>
+              <Label htmlFor="linear-team-key" className="text-xs text-muted-foreground">Team key</Label>
+              <Input
+                id="linear-team-key"
+                value={teamKey}
+                onChange={(e) => setTeamKey(e.target.value)}
+                placeholder="e.g. ENG"
+                data-testid="input-linear-team-key"
+              />
+            </div>
+            <div>
+              <Label htmlFor="linear-status" className="text-xs text-muted-foreground">Linear status</Label>
+              <Input
+                id="linear-status"
+                value={linearStatus}
+                onChange={(e) => setLinearStatus(e.target.value)}
+                placeholder="Backlog, In Progress, Done…"
+                data-testid="input-linear-status"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Label htmlFor="linear-linked-by" className="text-xs text-muted-foreground">Linked by name</Label>
+              <Input
+                id="linear-linked-by"
+                value={linkedByName}
+                onChange={(e) => setLinkedByName(e.target.value)}
+                placeholder="Your name"
+                data-testid="input-linear-linked-by"
+              />
+            </div>
+          </div>
+          {linkError && (
+            <Alert variant="destructive" className="mt-2" data-testid="alert-linear-error">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{linkError}</AlertDescription>
+            </Alert>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              onClick={saveLink}
+              disabled={upsertMutation.isPending}
+              data-testid="button-save-linear-link"
+            >
+              {upsertMutation.isPending ? "Saving…" : "Save Linear Link"}
+            </Button>
+            {link && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={removeLink}
+                disabled={deleteMutation.isPending}
+                data-testid="button-remove-linear-link"
+              >
+                {deleteMutation.isPending ? "Removing…" : "Remove Linear Link"}
+              </Button>
+            )}
+          </div>
+          {link && (
+            <div className="mt-2 text-xs text-muted-foreground" data-testid="text-linear-suggestion">
+              Suggested next step: apply <span className="font-medium">Mark In Engineering</span> from Workflow Actions to reflect this in the ticket status.
+            </div>
+          )}
+        </div>
+
+        {/* F. Current Linear link display */}
+        {link && (
+          <div className="rounded-md border bg-emerald-50 p-3 text-sm" data-testid="linear-link-display">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+              Current Linear link
+            </div>
+            <div className="grid gap-1 sm:grid-cols-2">
+              <div><span className="text-emerald-700">Issue key:</span> <span className="font-mono" data-testid="text-linked-issue-key">{link.linearIssueKey ?? "—"}</span></div>
+              <div><span className="text-emerald-700">Status:</span> {link.linearStatus ?? "—"}</div>
+              <div><span className="text-emerald-700">Linked by:</span> {link.createdByName ?? "—"}</div>
+              <div><span className="text-emerald-700">Created:</span> {formatDateTime(link.createdAt)}</div>
+              <div><span className="text-emerald-700">Updated:</span> {formatDateTime(link.updatedAt)}</div>
+              {link.linearIssueUrl && (
+                <div className="sm:col-span-2 mt-1">
+                  <a
+                    href={link.linearIssueUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Button size="sm" variant="outline" data-testid="button-open-linear">
+                      Open in Linear
+                    </Button>
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* G. Status reminders */}
+        <div className="space-y-1 text-xs" data-testid="linear-reminders">
+          {!link && ticket.internalStatus === "engineering_escalation_required" && (
+            <div className="text-amber-700" data-testid="reminder-no-link">
+              This ticket is marked for engineering but has no Linear issue linked yet.
+            </div>
+          )}
+          {link && (
+            <div className="text-emerald-700" data-testid="reminder-link-exists">
+              Engineering issue linked. Developer work should continue in Linear.
+            </div>
+          )}
+          {ticket.internalStatus === "in_qa_verification" && (
+            <div className="text-sky-700" data-testid="reminder-qa">
+              QA/support must verify the fix on production before user notification.
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -25,6 +25,8 @@ import type {
   SupportTicketAttachment,
   SupportTicketAttachmentUpload,
   SupportTicketDetail,
+  SupportTicketLinearLink,
+  SupportTicketLinearLinkUpsert,
   SupportTicketListItem,
   SupportTicketMessage,
   SupportTicketMessageCreate,
@@ -646,6 +648,275 @@ export function useListSupportTicketStatusHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get the manually-recorded Linear link for a ticket
+ */
+export const getGetSupportTicketLinearLinkUrl = (id: string) => {
+  return `/api/support/tickets/${id}/linear-link`;
+};
+
+export const getSupportTicketLinearLink = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupportTicketLinearLink | null> => {
+  return customFetch<SupportTicketLinearLink | null>(
+    getGetSupportTicketLinearLinkUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSupportTicketLinearLinkQueryKey = (id: string) => {
+  return [`/api/support/tickets/${id}/linear-link`] as const;
+};
+
+export const getGetSupportTicketLinearLinkQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportTicketLinearLink>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportTicketLinearLink>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupportTicketLinearLinkQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportTicketLinearLink>>
+  > = ({ signal }) =>
+    getSupportTicketLinearLink(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportTicketLinearLink>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportTicketLinearLinkQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportTicketLinearLink>>
+>;
+export type GetSupportTicketLinearLinkQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get the manually-recorded Linear link for a ticket
+ */
+
+export function useGetSupportTicketLinearLink<
+  TData = Awaited<ReturnType<typeof getSupportTicketLinearLink>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportTicketLinearLink>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportTicketLinearLinkQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update the manually-linked Linear issue for a ticket
+ */
+export const getUpsertSupportTicketLinearLinkUrl = (id: string) => {
+  return `/api/support/tickets/${id}/linear-link`;
+};
+
+export const upsertSupportTicketLinearLink = async (
+  id: string,
+  supportTicketLinearLinkUpsert: SupportTicketLinearLinkUpsert,
+  options?: RequestInit,
+): Promise<SupportTicketLinearLink> => {
+  return customFetch<SupportTicketLinearLink>(
+    getUpsertSupportTicketLinearLinkUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportTicketLinearLinkUpsert),
+    },
+  );
+};
+
+export const getUpsertSupportTicketLinearLinkMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertSupportTicketLinearLink>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketLinearLinkUpsert> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertSupportTicketLinearLink>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketLinearLinkUpsert> },
+  TContext
+> => {
+  const mutationKey = ["upsertSupportTicketLinearLink"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertSupportTicketLinearLink>>,
+    { id: string; data: BodyType<SupportTicketLinearLinkUpsert> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return upsertSupportTicketLinearLink(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertSupportTicketLinearLinkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertSupportTicketLinearLink>>
+>;
+export type UpsertSupportTicketLinearLinkMutationBody =
+  BodyType<SupportTicketLinearLinkUpsert>;
+export type UpsertSupportTicketLinearLinkMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create or update the manually-linked Linear issue for a ticket
+ */
+export const useUpsertSupportTicketLinearLink = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertSupportTicketLinearLink>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketLinearLinkUpsert> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertSupportTicketLinearLink>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketLinearLinkUpsert> },
+  TContext
+> => {
+  return useMutation(getUpsertSupportTicketLinearLinkMutationOptions(options));
+};
+
+/**
+ * @summary Remove the Linear link for a ticket
+ */
+export const getDeleteSupportTicketLinearLinkUrl = (id: string) => {
+  return `/api/support/tickets/${id}/linear-link`;
+};
+
+export const deleteSupportTicketLinearLink = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteSupportTicketLinearLinkUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSupportTicketLinearLinkMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSupportTicketLinearLink>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSupportTicketLinearLink>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteSupportTicketLinearLink"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSupportTicketLinearLink>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSupportTicketLinearLink(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSupportTicketLinearLinkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSupportTicketLinearLink>>
+>;
+
+export type DeleteSupportTicketLinearLinkMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Remove the Linear link for a ticket
+ */
+export const useDeleteSupportTicketLinearLink = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSupportTicketLinearLink>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSupportTicketLinearLink>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteSupportTicketLinearLinkMutationOptions(options));
+};
 
 /**
  * Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.

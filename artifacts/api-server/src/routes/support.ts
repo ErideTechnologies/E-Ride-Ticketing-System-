@@ -8,6 +8,7 @@ import {
   supportProductsTable,
   supportTicketAttachmentsTable,
   supportTicketInternalNotesTable,
+  supportTicketLinearLinksTable,
   supportTicketMessagesTable,
   supportTicketStatusHistoryTable,
   supportTicketsTable,
@@ -38,6 +39,7 @@ import {
   ListPublicSupportProductsResponse,
   ListSupportTicketsQueryParams,
   UpdateSupportTicketBody,
+  UpsertSupportTicketLinearLinkBody,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -785,6 +787,107 @@ router.post(
         productCode: existing.productCode,
       }),
     );
+  },
+);
+
+function serializeLinearLink(
+  l: typeof supportTicketLinearLinksTable.$inferSelect,
+) {
+  return {
+    id: l.id,
+    supportTicketId: l.supportTicketId,
+    linearIssueId: l.linearIssueId,
+    linearIssueKey: l.linearIssueKey,
+    linearIssueUrl: l.linearIssueUrl,
+    linearTeamKey: l.linearTeamKey,
+    linearStatus: l.linearStatus,
+    createdByName: l.createdByName,
+    createdAt: l.createdAt.toISOString(),
+    updatedAt: l.updatedAt.toISOString(),
+    lastSyncedAt: l.lastSyncedAt ? l.lastSyncedAt.toISOString() : null,
+  };
+}
+
+router.get(
+  "/support/tickets/:id/linear-link",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const [link] = await db
+      .select()
+      .from(supportTicketLinearLinksTable)
+      .where(
+        eq(supportTicketLinearLinksTable.supportTicketId, existing.ticket.id),
+      )
+      .limit(1);
+    res.json(link ? serializeLinearLink(link) : null);
+  },
+);
+
+router.post(
+  "/support/tickets/:id/linear-link",
+  async (req, res): Promise<void> => {
+    const parsed = UpsertSupportTicketLinearLinkBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid Linear link" });
+      return;
+    }
+    const body = parsed.data;
+    if (!body.linearIssueKey.trim()) {
+      res.status(400).json({ error: "Linear issue key is required" });
+      return;
+    }
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const values = {
+      linearIssueId: body.linearIssueId?.trim() || null,
+      linearIssueKey: body.linearIssueKey.trim(),
+      linearIssueUrl: body.linearIssueUrl?.trim() || null,
+      linearTeamKey: body.linearTeamKey?.trim() || null,
+      linearStatus: body.linearStatus?.trim() || null,
+      createdByName: body.createdByName?.trim() || null,
+    };
+
+    const [saved] = await db
+      .insert(supportTicketLinearLinksTable)
+      .values({
+        supportTicketId: existing.ticket.id,
+        ...values,
+      })
+      .onConflictDoUpdate({
+        target: supportTicketLinearLinksTable.supportTicketId,
+        set: { ...values, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (!saved) {
+      res.status(500).json({ error: "Could not save Linear link" });
+      return;
+    }
+    res.json(serializeLinearLink(saved));
+  },
+);
+
+router.delete(
+  "/support/tickets/:id/linear-link",
+  async (req, res): Promise<void> => {
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    await db
+      .delete(supportTicketLinearLinksTable)
+      .where(
+        eq(supportTicketLinearLinksTable.supportTicketId, existing.ticket.id),
+      );
+    res.status(204).end();
   },
 );
 

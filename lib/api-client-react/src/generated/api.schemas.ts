@@ -363,6 +363,42 @@ export interface SupportTicketStatusHistoryItem {
   createdAt: string;
 }
 
+export interface SupportTicketLinearLink {
+  id: string;
+  supportTicketId: string;
+  /** @nullable */
+  linearIssueId?: string | null;
+  /** @nullable */
+  linearIssueKey?: string | null;
+  /** @nullable */
+  linearIssueUrl?: string | null;
+  /** @nullable */
+  linearTeamKey?: string | null;
+  /** @nullable */
+  linearStatus?: string | null;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  lastSyncedAt?: string | null;
+}
+
+export interface SupportTicketLinearLinkUpsert {
+  /** @nullable */
+  linearIssueId?: string | null;
+  /** @minLength 1 */
+  linearIssueKey: string;
+  /** @nullable */
+  linearIssueUrl?: string | null;
+  /** @nullable */
+  linearTeamKey?: string | null;
+  /** @nullable */
+  linearStatus?: string | null;
+  /** @nullable */
+  createdByName?: string | null;
+}
+
 export type SupportTicketWorkflowAction =
   (typeof SupportTicketWorkflowAction)[keyof typeof SupportTicketWorkflowAction];
 

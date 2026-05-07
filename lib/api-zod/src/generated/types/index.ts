@@ -22,6 +22,8 @@ export * from "./supportTicketAttachment";
 export * from "./supportTicketAttachmentUpload";
 export * from "./supportTicketCategory";
 export * from "./supportTicketDetail";
+export * from "./supportTicketLinearLink";
+export * from "./supportTicketLinearLinkUpsert";
 export * from "./supportTicketListItem";
 export * from "./supportTicketMessage";
 export * from "./supportTicketMessageCreate";

@@ -348,6 +348,67 @@ export const ListSupportTicketStatusHistoryResponse = zod.array(
 );
 
 /**
+ * @summary Get the manually-recorded Linear link for a ticket
+ */
+export const GetSupportTicketLinearLinkParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetSupportTicketLinearLinkResponse = zod.union([
+  zod.object({
+    id: zod.string().uuid(),
+    supportTicketId: zod.string().uuid(),
+    linearIssueId: zod.string().nullish(),
+    linearIssueKey: zod.string().nullish(),
+    linearIssueUrl: zod.string().nullish(),
+    linearTeamKey: zod.string().nullish(),
+    linearStatus: zod.string().nullish(),
+    createdByName: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+    lastSyncedAt: zod.coerce.date().nullish(),
+  }),
+  zod.null(),
+]);
+
+/**
+ * @summary Create or update the manually-linked Linear issue for a ticket
+ */
+export const UpsertSupportTicketLinearLinkParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpsertSupportTicketLinearLinkBody = zod.object({
+  linearIssueId: zod.string().nullish(),
+  linearIssueKey: zod.string().min(1),
+  linearIssueUrl: zod.string().url().nullish(),
+  linearTeamKey: zod.string().nullish(),
+  linearStatus: zod.string().nullish(),
+  createdByName: zod.string().nullish(),
+});
+
+export const UpsertSupportTicketLinearLinkResponse = zod.object({
+  id: zod.string().uuid(),
+  supportTicketId: zod.string().uuid(),
+  linearIssueId: zod.string().nullish(),
+  linearIssueKey: zod.string().nullish(),
+  linearIssueUrl: zod.string().nullish(),
+  linearTeamKey: zod.string().nullish(),
+  linearStatus: zod.string().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  lastSyncedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Remove the Linear link for a ticket
+ */
+export const DeleteSupportTicketLinearLinkParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+/**
  * Sets public/internal status (and resolvedAt/closedAt) for the named action and writes a status-history row. Eride org only.
  * @summary Apply a named workflow shortcut to a support ticket
  */
