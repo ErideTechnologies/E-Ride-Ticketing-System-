@@ -865,6 +865,261 @@ export const DeleteSupportTicketAttachmentParams = zod.object({
 });
 
 /**
+ * @summary Get current support settings (Eride org)
+ */
+export const GetSupportSettingsResponse = zod.object({
+  id: zod.string().uuid(),
+  organisationId: zod.string().uuid(),
+  supportDisplayName: zod.string(),
+  supportEmailFrom: zod.string(),
+  supportEmailReplyTo: zod.string(),
+  defaultSenderName: zod.string(),
+  defaultSenderRole: zod.string(),
+  publicTicketTokenTtlMinutes: zod.number(),
+  allowPublicReplies: zod.boolean(),
+  allowPublicAttachments: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update support settings (Eride org)
+ */
+export const updateSupportSettingsBodySupportDisplayNameMax = 200;
+
+export const updateSupportSettingsBodySupportEmailFromMin = 3;
+export const updateSupportSettingsBodySupportEmailFromMax = 200;
+
+export const updateSupportSettingsBodySupportEmailReplyToMin = 3;
+export const updateSupportSettingsBodySupportEmailReplyToMax = 200;
+
+export const updateSupportSettingsBodyDefaultSenderNameMax = 200;
+
+export const updateSupportSettingsBodyDefaultSenderRoleMax = 100;
+
+export const updateSupportSettingsBodyPublicTicketTokenTtlMinutesMin = 5;
+export const updateSupportSettingsBodyPublicTicketTokenTtlMinutesMax = 1440;
+
+export const UpdateSupportSettingsBody = zod.object({
+  supportDisplayName: zod
+    .string()
+    .min(1)
+    .max(updateSupportSettingsBodySupportDisplayNameMax)
+    .optional(),
+  supportEmailFrom: zod
+    .string()
+    .min(updateSupportSettingsBodySupportEmailFromMin)
+    .max(updateSupportSettingsBodySupportEmailFromMax)
+    .optional(),
+  supportEmailReplyTo: zod
+    .string()
+    .min(updateSupportSettingsBodySupportEmailReplyToMin)
+    .max(updateSupportSettingsBodySupportEmailReplyToMax)
+    .optional(),
+  defaultSenderName: zod
+    .string()
+    .min(1)
+    .max(updateSupportSettingsBodyDefaultSenderNameMax)
+    .optional(),
+  defaultSenderRole: zod
+    .string()
+    .min(1)
+    .max(updateSupportSettingsBodyDefaultSenderRoleMax)
+    .optional(),
+  publicTicketTokenTtlMinutes: zod
+    .number()
+    .min(updateSupportSettingsBodyPublicTicketTokenTtlMinutesMin)
+    .max(updateSupportSettingsBodyPublicTicketTokenTtlMinutesMax)
+    .optional(),
+  allowPublicReplies: zod.boolean().optional(),
+  allowPublicAttachments: zod.boolean().optional(),
+});
+
+export const UpdateSupportSettingsResponse = zod.object({
+  id: zod.string().uuid(),
+  organisationId: zod.string().uuid(),
+  supportDisplayName: zod.string(),
+  supportEmailFrom: zod.string(),
+  supportEmailReplyTo: zod.string(),
+  defaultSenderName: zod.string(),
+  defaultSenderRole: zod.string(),
+  publicTicketTokenTtlMinutes: zod.number(),
+  allowPublicReplies: zod.boolean(),
+  allowPublicAttachments: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List support message templates (Eride org)
+ */
+export const ListSupportMessageTemplatesQueryParams = zod.object({
+  channel: zod.enum(["email", "whatsapp", "manual", "in_app"]).optional(),
+  templateKey: zod
+    .enum([
+      "ticket_received",
+      "under_review",
+      "more_info_needed",
+      "escalated_to_engineering",
+      "fixed",
+      "resolved",
+      "closed",
+      "reopened",
+      "custom",
+    ])
+    .optional(),
+  isActive: zod.coerce.boolean().optional(),
+});
+
+export const ListSupportMessageTemplatesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  organisationId: zod.string().uuid(),
+  templateKey: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+  ]),
+  templateName: zod.string(),
+  channel: zod.enum(["email", "whatsapp", "manual", "in_app"]),
+  subject: zod.string().nullish(),
+  bodyText: zod.string(),
+  bodyHtml: zod.string().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSupportMessageTemplatesResponse = zod.array(
+  ListSupportMessageTemplatesResponseItem,
+);
+
+/**
+ * @summary Get a single template
+ */
+export const GetSupportMessageTemplateParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetSupportMessageTemplateResponse = zod.object({
+  id: zod.string().uuid(),
+  organisationId: zod.string().uuid(),
+  templateKey: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+  ]),
+  templateName: zod.string(),
+  channel: zod.enum(["email", "whatsapp", "manual", "in_app"]),
+  subject: zod.string().nullish(),
+  bodyText: zod.string(),
+  bodyHtml: zod.string().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a template
+ */
+export const UpdateSupportMessageTemplateParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const updateSupportMessageTemplateBodyTemplateNameMax = 200;
+
+export const updateSupportMessageTemplateBodySubjectMax = 300;
+
+export const updateSupportMessageTemplateBodyBodyTextMax = 20000;
+
+export const updateSupportMessageTemplateBodyBodyHtmlMax = 40000;
+
+export const UpdateSupportMessageTemplateBody = zod.object({
+  templateName: zod
+    .string()
+    .min(1)
+    .max(updateSupportMessageTemplateBodyTemplateNameMax)
+    .optional(),
+  subject: zod
+    .string()
+    .max(updateSupportMessageTemplateBodySubjectMax)
+    .nullish(),
+  bodyText: zod
+    .string()
+    .min(1)
+    .max(updateSupportMessageTemplateBodyBodyTextMax)
+    .optional(),
+  bodyHtml: zod
+    .string()
+    .max(updateSupportMessageTemplateBodyBodyHtmlMax)
+    .nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateSupportMessageTemplateResponse = zod.object({
+  id: zod.string().uuid(),
+  organisationId: zod.string().uuid(),
+  templateKey: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+  ]),
+  templateName: zod.string(),
+  channel: zod.enum(["email", "whatsapp", "manual", "in_app"]),
+  subject: zod.string().nullish(),
+  bodyText: zod.string(),
+  bodyHtml: zod.string().nullish(),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Render a template against a real or sample ticket
+ */
+export const PreviewSupportMessageTemplateBody = zod.object({
+  templateKey: zod.enum([
+    "ticket_received",
+    "under_review",
+    "more_info_needed",
+    "escalated_to_engineering",
+    "fixed",
+    "resolved",
+    "closed",
+    "reopened",
+    "custom",
+  ]),
+  channel: zod.enum(["email", "whatsapp", "manual", "in_app"]),
+  ticketId: zod.string().uuid().nullish(),
+  bodyText: zod.string().nullish(),
+  subject: zod.string().nullish(),
+  bodyHtml: zod.string().nullish(),
+});
+
+export const PreviewSupportMessageTemplateResponse = zod.object({
+  renderedSubject: zod.string().nullish(),
+  renderedBodyText: zod.string(),
+  renderedBodyHtml: zod.string().nullish(),
+  usedSampleTicket: zod.boolean(),
+});
+
+/**
  * Aggregated counts, product breakdown, and watchlists for the office wallboard. Eride org only.
  * @summary Live support wallboard data for the Eride organisation
  */

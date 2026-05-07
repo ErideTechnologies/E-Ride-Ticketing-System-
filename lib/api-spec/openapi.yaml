@@ -553,6 +553,147 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/settings:
+    get:
+      operationId: getSupportSettings
+      tags: [support]
+      summary: Get current support settings (Eride org)
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportSettings"
+    patch:
+      operationId: updateSupportSettings
+      tags: [support]
+      summary: Update support settings (Eride org)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportSettings"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /support/templates:
+    get:
+      operationId: listSupportMessageTemplates
+      tags: [support]
+      summary: List support message templates (Eride org)
+      parameters:
+        - in: query
+          name: channel
+          required: false
+          schema: { $ref: "#/components/schemas/SupportTemplateChannel" }
+        - in: query
+          name: templateKey
+          required: false
+          schema: { $ref: "#/components/schemas/SupportTemplateKey" }
+        - in: query
+          name: isActive
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupportMessageTemplate" }
+
+  /support/templates/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getSupportMessageTemplate
+      tags: [support]
+      summary: Get a single template
+      responses:
+        "200":
+          description: Template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportMessageTemplate"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateSupportMessageTemplate
+      tags: [support]
+      summary: Update a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportMessageTemplateUpdate"
+      responses:
+        "200":
+          description: Updated template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportMessageTemplate"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /support/templates/preview:
+    post:
+      operationId: previewSupportMessageTemplate
+      tags: [support]
+      summary: Render a template against a real or sample ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportMessageTemplatePreviewRequest"
+      responses:
+        "200":
+          description: Preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewSupportMessageTemplateResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/wallboard:
     get:
       operationId: getSupportWallboard
@@ -1287,6 +1428,119 @@ components:
         relatedInternalStatus:
           { $ref: "#/components/schemas/InternalSupportTicketStatus" }
       required: [direction, channel, messageType, messageBody, deliveryStatus]
+
+    SupportTemplateKey:
+      type: string
+      enum:
+        - ticket_received
+        - under_review
+        - more_info_needed
+        - escalated_to_engineering
+        - fixed
+        - resolved
+        - closed
+        - reopened
+        - custom
+
+    SupportTemplateChannel:
+      type: string
+      enum: [email, whatsapp, manual, in_app]
+
+    SupportSettings:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        organisationId: { type: string, format: uuid }
+        supportDisplayName: { type: string }
+        supportEmailFrom: { type: string }
+        supportEmailReplyTo: { type: string }
+        defaultSenderName: { type: string }
+        defaultSenderRole: { type: string }
+        publicTicketTokenTtlMinutes: { type: integer }
+        allowPublicReplies: { type: boolean }
+        allowPublicAttachments: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - organisationId
+        - supportDisplayName
+        - supportEmailFrom
+        - supportEmailReplyTo
+        - defaultSenderName
+        - defaultSenderRole
+        - publicTicketTokenTtlMinutes
+        - allowPublicReplies
+        - allowPublicAttachments
+        - createdAt
+        - updatedAt
+
+    SupportSettingsUpdate:
+      type: object
+      properties:
+        supportDisplayName: { type: string, minLength: 1, maxLength: 200 }
+        supportEmailFrom: { type: string, minLength: 3, maxLength: 200 }
+        supportEmailReplyTo: { type: string, minLength: 3, maxLength: 200 }
+        defaultSenderName: { type: string, minLength: 1, maxLength: 200 }
+        defaultSenderRole: { type: string, minLength: 1, maxLength: 100 }
+        publicTicketTokenTtlMinutes:
+          { type: integer, minimum: 5, maximum: 1440 }
+        allowPublicReplies: { type: boolean }
+        allowPublicAttachments: { type: boolean }
+
+    SupportMessageTemplate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        organisationId: { type: string, format: uuid }
+        templateKey: { $ref: "#/components/schemas/SupportTemplateKey" }
+        templateName: { type: string }
+        channel: { $ref: "#/components/schemas/SupportTemplateChannel" }
+        subject: { type: ["string", "null"] }
+        bodyText: { type: string }
+        bodyHtml: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - organisationId
+        - templateKey
+        - templateName
+        - channel
+        - bodyText
+        - isActive
+        - createdAt
+        - updatedAt
+
+    SupportMessageTemplateUpdate:
+      type: object
+      properties:
+        templateName: { type: string, minLength: 1, maxLength: 200 }
+        subject: { type: ["string", "null"], maxLength: 300 }
+        bodyText: { type: string, minLength: 1, maxLength: 20000 }
+        bodyHtml: { type: ["string", "null"], maxLength: 40000 }
+        isActive: { type: boolean }
+
+    SupportMessageTemplatePreviewRequest:
+      type: object
+      properties:
+        templateKey: { $ref: "#/components/schemas/SupportTemplateKey" }
+        channel: { $ref: "#/components/schemas/SupportTemplateChannel" }
+        ticketId: { type: ["string", "null"], format: uuid }
+        bodyText: { type: ["string", "null"] }
+        subject: { type: ["string", "null"] }
+        bodyHtml: { type: ["string", "null"] }
+      required: [templateKey, channel]
+
+    PreviewSupportMessageTemplateResult:
+      type: object
+      properties:
+        renderedSubject: { type: ["string", "null"] }
+        renderedBodyText: { type: string }
+        renderedBodyHtml: { type: ["string", "null"] }
+        usedSampleTicket: { type: boolean }
+      required: [renderedBodyText, usedSampleTicket]
 
     CreatedSupportTicket:
       type: object

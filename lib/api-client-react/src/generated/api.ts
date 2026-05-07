@@ -20,9 +20,16 @@ import type {
   CreatedSupportTicket,
   ErrorResponse,
   HealthStatus,
+  ListSupportMessageTemplatesParams,
   ListSupportTicketsParams,
+  PreviewSupportMessageTemplateResult,
   PublicSupportProduct,
   SendSupportTicketEmailResult,
+  SupportMessageTemplate,
+  SupportMessageTemplatePreviewRequest,
+  SupportMessageTemplateUpdate,
+  SupportSettings,
+  SupportSettingsUpdate,
   SupportTicketAttachment,
   SupportTicketAttachmentUpload,
   SupportTicketDetail,
@@ -1964,6 +1971,548 @@ export const useDeleteSupportTicketAttachment = <
   TContext
 > => {
   return useMutation(getDeleteSupportTicketAttachmentMutationOptions(options));
+};
+
+/**
+ * @summary Get current support settings (Eride org)
+ */
+export const getGetSupportSettingsUrl = () => {
+  return `/api/support/settings`;
+};
+
+export const getSupportSettings = async (
+  options?: RequestInit,
+): Promise<SupportSettings> => {
+  return customFetch<SupportSettings>(getGetSupportSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupportSettingsQueryKey = () => {
+  return [`/api/support/settings`] as const;
+};
+
+export const getGetSupportSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSupportSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportSettings>>
+  > = ({ signal }) => getSupportSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportSettings>>
+>;
+export type GetSupportSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current support settings (Eride org)
+ */
+
+export function useGetSupportSettings<
+  TData = Awaited<ReturnType<typeof getSupportSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update support settings (Eride org)
+ */
+export const getUpdateSupportSettingsUrl = () => {
+  return `/api/support/settings`;
+};
+
+export const updateSupportSettings = async (
+  supportSettingsUpdate: SupportSettingsUpdate,
+  options?: RequestInit,
+): Promise<SupportSettings> => {
+  return customFetch<SupportSettings>(getUpdateSupportSettingsUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supportSettingsUpdate),
+  });
+};
+
+export const getUpdateSupportSettingsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSupportSettings>>,
+    TError,
+    { data: BodyType<SupportSettingsUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSupportSettings>>,
+  TError,
+  { data: BodyType<SupportSettingsUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateSupportSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSupportSettings>>,
+    { data: BodyType<SupportSettingsUpdate> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateSupportSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSupportSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSupportSettings>>
+>;
+export type UpdateSupportSettingsMutationBody = BodyType<SupportSettingsUpdate>;
+export type UpdateSupportSettingsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update support settings (Eride org)
+ */
+export const useUpdateSupportSettings = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSupportSettings>>,
+    TError,
+    { data: BodyType<SupportSettingsUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSupportSettings>>,
+  TError,
+  { data: BodyType<SupportSettingsUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateSupportSettingsMutationOptions(options));
+};
+
+/**
+ * @summary List support message templates (Eride org)
+ */
+export const getListSupportMessageTemplatesUrl = (
+  params?: ListSupportMessageTemplatesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/support/templates?${stringifiedParams}`
+    : `/api/support/templates`;
+};
+
+export const listSupportMessageTemplates = async (
+  params?: ListSupportMessageTemplatesParams,
+  options?: RequestInit,
+): Promise<SupportMessageTemplate[]> => {
+  return customFetch<SupportMessageTemplate[]>(
+    getListSupportMessageTemplatesUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSupportMessageTemplatesQueryKey = (
+  params?: ListSupportMessageTemplatesParams,
+) => {
+  return [`/api/support/templates`, ...(params ? [params] : [])] as const;
+};
+
+export const getListSupportMessageTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupportMessageTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSupportMessageTemplatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportMessageTemplates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupportMessageTemplatesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupportMessageTemplates>>
+  > = ({ signal }) =>
+    listSupportMessageTemplates(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupportMessageTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupportMessageTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupportMessageTemplates>>
+>;
+export type ListSupportMessageTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List support message templates (Eride org)
+ */
+
+export function useListSupportMessageTemplates<
+  TData = Awaited<ReturnType<typeof listSupportMessageTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSupportMessageTemplatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupportMessageTemplates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupportMessageTemplatesQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single template
+ */
+export const getGetSupportMessageTemplateUrl = (id: string) => {
+  return `/api/support/templates/${id}`;
+};
+
+export const getSupportMessageTemplate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupportMessageTemplate> => {
+  return customFetch<SupportMessageTemplate>(
+    getGetSupportMessageTemplateUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSupportMessageTemplateQueryKey = (id: string) => {
+  return [`/api/support/templates/${id}`] as const;
+};
+
+export const getGetSupportMessageTemplateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportMessageTemplate>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportMessageTemplate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupportMessageTemplateQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportMessageTemplate>>
+  > = ({ signal }) =>
+    getSupportMessageTemplate(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportMessageTemplate>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportMessageTemplateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportMessageTemplate>>
+>;
+export type GetSupportMessageTemplateQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a single template
+ */
+
+export function useGetSupportMessageTemplate<
+  TData = Awaited<ReturnType<typeof getSupportMessageTemplate>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupportMessageTemplate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportMessageTemplateQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a template
+ */
+export const getUpdateSupportMessageTemplateUrl = (id: string) => {
+  return `/api/support/templates/${id}`;
+};
+
+export const updateSupportMessageTemplate = async (
+  id: string,
+  supportMessageTemplateUpdate: SupportMessageTemplateUpdate,
+  options?: RequestInit,
+): Promise<SupportMessageTemplate> => {
+  return customFetch<SupportMessageTemplate>(
+    getUpdateSupportMessageTemplateUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportMessageTemplateUpdate),
+    },
+  );
+};
+
+export const getUpdateSupportMessageTemplateMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSupportMessageTemplate>>,
+    TError,
+    { id: string; data: BodyType<SupportMessageTemplateUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSupportMessageTemplate>>,
+  TError,
+  { id: string; data: BodyType<SupportMessageTemplateUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateSupportMessageTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSupportMessageTemplate>>,
+    { id: string; data: BodyType<SupportMessageTemplateUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSupportMessageTemplate(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSupportMessageTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSupportMessageTemplate>>
+>;
+export type UpdateSupportMessageTemplateMutationBody =
+  BodyType<SupportMessageTemplateUpdate>;
+export type UpdateSupportMessageTemplateMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a template
+ */
+export const useUpdateSupportMessageTemplate = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSupportMessageTemplate>>,
+    TError,
+    { id: string; data: BodyType<SupportMessageTemplateUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSupportMessageTemplate>>,
+  TError,
+  { id: string; data: BodyType<SupportMessageTemplateUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateSupportMessageTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Render a template against a real or sample ticket
+ */
+export const getPreviewSupportMessageTemplateUrl = () => {
+  return `/api/support/templates/preview`;
+};
+
+export const previewSupportMessageTemplate = async (
+  supportMessageTemplatePreviewRequest: SupportMessageTemplatePreviewRequest,
+  options?: RequestInit,
+): Promise<PreviewSupportMessageTemplateResult> => {
+  return customFetch<PreviewSupportMessageTemplateResult>(
+    getPreviewSupportMessageTemplateUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportMessageTemplatePreviewRequest),
+    },
+  );
+};
+
+export const getPreviewSupportMessageTemplateMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewSupportMessageTemplate>>,
+    TError,
+    { data: BodyType<SupportMessageTemplatePreviewRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewSupportMessageTemplate>>,
+  TError,
+  { data: BodyType<SupportMessageTemplatePreviewRequest> },
+  TContext
+> => {
+  const mutationKey = ["previewSupportMessageTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewSupportMessageTemplate>>,
+    { data: BodyType<SupportMessageTemplatePreviewRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewSupportMessageTemplate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewSupportMessageTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewSupportMessageTemplate>>
+>;
+export type PreviewSupportMessageTemplateMutationBody =
+  BodyType<SupportMessageTemplatePreviewRequest>;
+export type PreviewSupportMessageTemplateMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Render a template against a real or sample ticket
+ */
+export const usePreviewSupportMessageTemplate = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewSupportMessageTemplate>>,
+    TError,
+    { data: BodyType<SupportMessageTemplatePreviewRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewSupportMessageTemplate>>,
+  TError,
+  { data: BodyType<SupportMessageTemplatePreviewRequest> },
+  TContext
+> => {
+  return useMutation(getPreviewSupportMessageTemplateMutationOptions(options));
 };
 
 /**

@@ -10,6 +10,8 @@ import PublicTicketPage from "@/pages/public-ticket";
 import AdminTicketsPage from "@/pages/admin-tickets";
 import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
 import AdminWallboardPage from "@/pages/admin-wallboard";
+import AdminTemplatesPage from "@/pages/admin-templates";
+import AdminSettingsPage from "@/pages/admin-settings";
 import ErrorBoundaryTestPage from "@/pages/error-boundary-test";
 
 const queryClient = new QueryClient();
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/help/track-ticket" component={TrackTicketPage} />
       <Route path="/help/ticket/:ticketReference" component={PublicTicketPage} />
       <Route path="/admin/support/wallboard" component={AdminWallboardPage} />
+      <Route path="/admin/support/templates" component={AdminTemplatesPage} />
+      <Route path="/admin/support/settings" component={AdminSettingsPage} />
       <Route path="/admin/support/tickets" component={AdminTicketsPage} />
       <Route path="/admin/support/tickets/:id" component={AdminTicketDetailPage} />
       <Route path="/__boundary-test" component={ErrorBoundaryTestPage} />

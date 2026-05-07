@@ -593,6 +593,143 @@ export interface SupportTicketMessageCreate {
   relatedInternalStatus?: InternalSupportTicketStatus;
 }
 
+export type SupportTemplateKey =
+  (typeof SupportTemplateKey)[keyof typeof SupportTemplateKey];
+
+export const SupportTemplateKey = {
+  ticket_received: "ticket_received",
+  under_review: "under_review",
+  more_info_needed: "more_info_needed",
+  escalated_to_engineering: "escalated_to_engineering",
+  fixed: "fixed",
+  resolved: "resolved",
+  closed: "closed",
+  reopened: "reopened",
+  custom: "custom",
+} as const;
+
+export type SupportTemplateChannel =
+  (typeof SupportTemplateChannel)[keyof typeof SupportTemplateChannel];
+
+export const SupportTemplateChannel = {
+  email: "email",
+  whatsapp: "whatsapp",
+  manual: "manual",
+  in_app: "in_app",
+} as const;
+
+export interface SupportSettings {
+  id: string;
+  organisationId: string;
+  supportDisplayName: string;
+  supportEmailFrom: string;
+  supportEmailReplyTo: string;
+  defaultSenderName: string;
+  defaultSenderRole: string;
+  publicTicketTokenTtlMinutes: number;
+  allowPublicReplies: boolean;
+  allowPublicAttachments: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportSettingsUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  supportDisplayName?: string;
+  /**
+   * @minLength 3
+   * @maxLength 200
+   */
+  supportEmailFrom?: string;
+  /**
+   * @minLength 3
+   * @maxLength 200
+   */
+  supportEmailReplyTo?: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  defaultSenderName?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  defaultSenderRole?: string;
+  /**
+   * @minimum 5
+   * @maximum 1440
+   */
+  publicTicketTokenTtlMinutes?: number;
+  allowPublicReplies?: boolean;
+  allowPublicAttachments?: boolean;
+}
+
+export interface SupportMessageTemplate {
+  id: string;
+  organisationId: string;
+  templateKey: SupportTemplateKey;
+  templateName: string;
+  channel: SupportTemplateChannel;
+  /** @nullable */
+  subject?: string | null;
+  bodyText: string;
+  /** @nullable */
+  bodyHtml?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportMessageTemplateUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  templateName?: string;
+  /**
+   * @maxLength 300
+   * @nullable
+   */
+  subject?: string | null;
+  /**
+   * @minLength 1
+   * @maxLength 20000
+   */
+  bodyText?: string;
+  /**
+   * @maxLength 40000
+   * @nullable
+   */
+  bodyHtml?: string | null;
+  isActive?: boolean;
+}
+
+export interface SupportMessageTemplatePreviewRequest {
+  templateKey: SupportTemplateKey;
+  channel: SupportTemplateChannel;
+  /** @nullable */
+  ticketId?: string | null;
+  /** @nullable */
+  bodyText?: string | null;
+  /** @nullable */
+  subject?: string | null;
+  /** @nullable */
+  bodyHtml?: string | null;
+}
+
+export interface PreviewSupportMessageTemplateResult {
+  /** @nullable */
+  renderedSubject?: string | null;
+  renderedBodyText: string;
+  /** @nullable */
+  renderedBodyHtml?: string | null;
+  usedSampleTicket: boolean;
+}
+
 export interface CreatedSupportTicket {
   id: string;
   ticketReference: string;
@@ -600,6 +737,12 @@ export interface CreatedSupportTicket {
   productName: string;
   createdAt: string;
 }
+
+export type ListSupportMessageTemplatesParams = {
+  channel?: SupportTemplateChannel;
+  templateKey?: SupportTemplateKey;
+  isActive?: boolean;
+};
 
 export type ListSupportTicketsParams = {
   productId?: string;

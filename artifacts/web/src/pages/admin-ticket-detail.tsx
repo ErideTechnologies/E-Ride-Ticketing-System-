@@ -21,6 +21,8 @@ import {
   useCreateSupportTicketSentryLink,
   useDeleteSupportTicketSentryLink,
   getListSupportTicketSentryLinksQueryKey,
+  useListSupportMessageTemplates,
+  useGetSupportSettings,
   type SupportTicketWorkflowAction,
   type SupportTicketLinearLink,
   type SupportTicketSentryLink,
@@ -117,8 +119,13 @@ function formatDateTime(iso: string | null | undefined): string {
 function fillTemplate(
   template: string,
   ticket: SupportTicketDetail,
+  extras: Record<string, string | null | undefined> = {},
 ): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    if (key in extras) {
+      const v = extras[key];
+      return v == null || v === "" ? "" : String(v);
+    }
     const v = (ticket as unknown as Record<string, unknown>)[key];
     return v == null || v === "" ? "" : String(v);
   });
@@ -1388,15 +1395,39 @@ function CommunicationLogCard({ ticket }: { ticket: SupportTicketDetail }) {
   const [manualSaving, setManualSaving] = useState(false);
   const [manualError, setManualError] = useState<string | null>(null);
 
-  const templates = useMemo(
-    () =>
-      COMM_TEMPLATES.map((t) => ({
-        ...t,
-        text: fillTemplate(t.body, ticket),
-        messageType: TEMPLATE_TO_MESSAGE_TYPE[t.key] ?? "custom",
-      })),
-    [ticket],
-  );
+  const adminTemplatesQuery = useListSupportMessageTemplates({
+    channel: "manual",
+    isActive: true,
+  });
+  const settingsQuery = useGetSupportSettings();
+
+  const templates = useMemo(() => {
+    const adminByKey = new Map<string, { name: string; body: string }>();
+    for (const row of adminTemplatesQuery.data ?? []) {
+      adminByKey.set(row.templateKey, {
+        name: row.templateName,
+        body: row.bodyText,
+      });
+    }
+    const extras = {
+      supportDisplayName: settingsQuery.data?.supportDisplayName ?? "Eride Support",
+      supportEmailReplyTo:
+        settingsQuery.data?.supportEmailReplyTo ?? "support@eridetech.africa",
+      productCode: ticket.productCode,
+      productName: ticket.productName,
+    };
+    return COMM_TEMPLATES.map((t) => {
+      const messageType = TEMPLATE_TO_MESSAGE_TYPE[t.key] ?? "custom";
+      const admin = adminByKey.get(messageType);
+      return {
+        key: t.key,
+        label: admin?.name ?? t.label,
+        text: fillTemplate(admin?.body ?? t.body, ticket, extras),
+        messageType,
+        source: admin ? ("admin" as const) : ("builtin" as const),
+      };
+    });
+  }, [ticket, adminTemplatesQuery.data, settingsQuery.data]);
 
   function invalidate() {
     qc.invalidateQueries({

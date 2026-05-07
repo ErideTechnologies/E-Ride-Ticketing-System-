@@ -152,13 +152,29 @@ export default function AdminTicketsPage() {
               View and triage support tickets submitted across Eride products.
             </p>
           </div>
-          <Button
-            asChild
-            variant="outline"
-            data-testid="link-wallboard"
-          >
-            <a href="/admin/support/wallboard">Open Live Wallboard</a>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              asChild
+              variant="outline"
+              data-testid="link-templates"
+            >
+              <a href="/admin/support/templates">Templates</a>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              data-testid="link-settings"
+            >
+              <a href="/admin/support/settings">Settings</a>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              data-testid="link-wallboard"
+            >
+              <a href="/admin/support/wallboard">Open Live Wallboard</a>
+            </Button>
+          </div>
         </header>
 
         <section

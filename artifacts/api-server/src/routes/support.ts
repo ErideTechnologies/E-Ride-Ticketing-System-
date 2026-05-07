@@ -13,9 +13,13 @@ import {
   supportTicketMessagesTable,
   supportTicketStatusHistoryTable,
   supportTicketsTable,
+  supportMessageTemplatesTable,
+  supportSettingsTable,
   type SupportTicket,
   type SupportTicketAttachment,
   type SupportTicketMessage,
+  type SupportMessageTemplate,
+  type SupportSettings,
   type TicketCategory,
   type TicketPriority,
   type TicketSeverity,
@@ -43,6 +47,10 @@ import {
   UpsertSupportTicketLinearLinkBody,
   CreateSupportTicketSentryLinkBody,
   SendSupportTicketEmailBody,
+  UpdateSupportSettingsBody,
+  UpdateSupportMessageTemplateBody,
+  PreviewSupportMessageTemplateBody,
+  ListSupportMessageTemplatesQueryParams,
 } from "@workspace/api-zod";
 import * as Sentry from "@sentry/node";
 import {
@@ -59,6 +67,15 @@ import {
   signPublicTicketToken,
   verifyPublicTicketToken,
 } from "../lib/publicTicketToken";
+import {
+  isSafeTemplateHtml,
+  renderTemplateString,
+  ALLOWED_TEMPLATE_KEYS,
+  ALLOWED_TEMPLATE_CHANNELS,
+  type AllowedTemplateKey,
+  type AllowedTemplateChannel,
+  type TemplateContext,
+} from "../lib/templateRender";
 
 const router: IRouter = Router();
 
@@ -495,7 +512,7 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
 
   // Fire-and-forget: attempt to send a "ticket received" email.
   // Never block ticket creation on email outcome.
-  sendTicketReceivedEmailIfPossible(ticket, product.productName).catch(
+  sendTicketReceivedEmailIfPossible(ticket, product.productName, product.productCode).catch(
     (err) => {
       req.log.warn({ err }, "Failed to send ticket_received email");
     },
@@ -1252,17 +1269,83 @@ function deliveryStatusFor(sendResult: {
   return "failed";
 }
 
+/**
+ * Look up an active admin-managed email template for the given key/org and,
+ * if found, render it against the current ticket + settings. Returns null if
+ * no active template exists — callers should fall back to the hardcoded
+ * `renderSupportEmailTemplate`.
+ */
+async function renderAdminEmailIfActive(
+  orgId: string,
+  templateKey: SupportEmailTemplateKey,
+  ticket: SupportTicket,
+  productName: string,
+  productCode: string,
+  settings: SupportSettings,
+): Promise<{ subject: string; text: string; html: string } | null> {
+  const row = await db.query.supportMessageTemplatesTable.findFirst({
+    where: and(
+      eq(supportMessageTemplatesTable.organisationId, orgId),
+      eq(supportMessageTemplatesTable.templateKey, templateKey),
+      eq(supportMessageTemplatesTable.channel, "email"),
+      eq(supportMessageTemplatesTable.isActive, true),
+    ),
+  });
+  if (!row) return null;
+  const ctx: TemplateContext = {
+    ticketReference: ticket.ticketReference,
+    productName,
+    productCode,
+    reporterName: ticket.reporterName ?? "",
+    publicStatus: ticket.publicStatus,
+    issueSummary: ticket.issueSummary,
+    supportDisplayName: settings.supportDisplayName,
+    supportEmailReplyTo: settings.supportEmailReplyTo,
+  };
+  const subject = renderTemplateString(
+    row.subject ?? `[${ticket.ticketReference}] ${row.templateName}`,
+    ctx,
+  );
+  const text = renderTemplateString(row.bodyText, ctx);
+  // Prefer admin-supplied bodyHtml (already passed isSafeTemplateHtml on save);
+  // otherwise wrap rendered text using the standard custom-email shell.
+  const html =
+    row.bodyHtml && row.bodyHtml.trim()
+      ? renderTemplateString(row.bodyHtml, ctx)
+      : renderCustomEmailHtml({
+          ticketReference: ticket.ticketReference,
+          productName,
+          publicStatus: ticket.publicStatus,
+          reporterName: ticket.reporterName ?? null,
+          bodyText: text,
+        });
+  return { subject, text, html };
+}
+
 export async function sendTicketReceivedEmailIfPossible(
   ticket: SupportTicket,
   productName: string,
+  productCode: string,
 ): Promise<void> {
   const recipient = ticket.reporterEmail?.trim();
   if (!recipient || !EMAIL_RE.test(recipient)) return;
 
-  const rendered = renderSupportEmailTemplate("ticket_received", {
+  const settingsResult = await getOrCreateErideSettings();
+  const adminRendered = settingsResult
+    ? await renderAdminEmailIfActive(
+        settingsResult.orgId,
+        "ticket_received",
+        ticket,
+        productName,
+        productCode,
+        settingsResult.settings,
+      )
+    : null;
+  const fallback = renderSupportEmailTemplate("ticket_received", {
     ticket,
     productName,
   });
+  const rendered = adminRendered ?? fallback;
 
   // Always create the audit row first so we never send without a record.
   let pending: SupportTicketMessage | null = null;
@@ -1365,10 +1448,23 @@ router.post(
         });
         return;
       }
-      const rendered = renderSupportEmailTemplate(messageType, {
-        ticket: t,
-        productName: existing.productName,
-      });
+      const settingsResult = await getOrCreateErideSettings();
+      const adminRendered = settingsResult
+        ? await renderAdminEmailIfActive(
+            settingsResult.orgId,
+            messageType,
+            t,
+            existing.productName,
+            existing.productCode,
+            settingsResult.settings,
+          )
+        : null;
+      const rendered =
+        adminRendered ??
+        renderSupportEmailTemplate(messageType, {
+          ticket: t,
+          productName: existing.productName,
+        });
       subject = rendered.subject;
       text = rendered.text;
       html = rendered.html;
@@ -2040,6 +2136,353 @@ router.post(
     }
   },
 );
+
+// ─── Settings ───────────────────────────────────────────────────────────────
+
+const ERIDE_DEFAULT_SETTINGS = {
+  supportDisplayName: "Eride Support",
+  supportEmailFrom: "Eride Support <support@eridetech.africa>",
+  supportEmailReplyTo: "support@eridetech.africa",
+  defaultSenderName: "Eride Support",
+  defaultSenderRole: "support",
+  publicTicketTokenTtlMinutes: 30,
+  allowPublicReplies: true,
+  allowPublicAttachments: true,
+} as const;
+
+export async function getOrCreateErideSettings(): Promise<
+  { settings: SupportSettings; orgId: string } | null
+> {
+  const org = await getErideOrganisation();
+  if (!org) return null;
+  const existing = await db.query.supportSettingsTable.findFirst({
+    where: eq(supportSettingsTable.organisationId, org.id),
+  });
+  if (existing) return { settings: existing, orgId: org.id };
+  const [created] = await db
+    .insert(supportSettingsTable)
+    .values({ organisationId: org.id, ...ERIDE_DEFAULT_SETTINGS })
+    .onConflictDoNothing({ target: supportSettingsTable.organisationId })
+    .returning();
+  if (created) return { settings: created, orgId: org.id };
+  const fallback = await db.query.supportSettingsTable.findFirst({
+    where: eq(supportSettingsTable.organisationId, org.id),
+  });
+  return fallback ? { settings: fallback, orgId: org.id } : null;
+}
+
+function serializeSettings(s: SupportSettings) {
+  return {
+    id: s.id,
+    organisationId: s.organisationId,
+    supportDisplayName: s.supportDisplayName,
+    supportEmailFrom: s.supportEmailFrom,
+    supportEmailReplyTo: s.supportEmailReplyTo,
+    defaultSenderName: s.defaultSenderName,
+    defaultSenderRole: s.defaultSenderRole,
+    publicTicketTokenTtlMinutes: s.publicTicketTokenTtlMinutes,
+    allowPublicReplies: s.allowPublicReplies,
+    allowPublicAttachments: s.allowPublicAttachments,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+// "support@example.com" or "Display Name <support@example.com>"
+const FROM_EMAIL_RE =
+  /^(?:[^<>]+<\s*[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+\s*>|[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+)$/;
+
+router.get("/support/settings", async (_req, res): Promise<void> => {
+  const result = await getOrCreateErideSettings();
+  if (!result) {
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+  res.json(serializeSettings(result.settings));
+});
+
+router.patch("/support/settings", async (req, res): Promise<void> => {
+  const parsed = UpdateSupportSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid settings update" });
+    return;
+  }
+  const data = parsed.data;
+  // Extra validation for email-shaped fields.
+  if (data.supportEmailFrom !== undefined && !FROM_EMAIL_RE.test(data.supportEmailFrom)) {
+    res.status(400).json({ error: "supportEmailFrom is not a valid email or 'Name <email>' format." });
+    return;
+  }
+  if (data.supportEmailReplyTo !== undefined && !EMAIL_RE.test(data.supportEmailReplyTo)) {
+    res.status(400).json({ error: "supportEmailReplyTo is not a valid email." });
+    return;
+  }
+  const existing = await getOrCreateErideSettings();
+  if (!existing) {
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+  const patch: Partial<typeof supportSettingsTable.$inferInsert> = {};
+  if (data.supportDisplayName !== undefined) patch.supportDisplayName = data.supportDisplayName.trim();
+  if (data.supportEmailFrom !== undefined) patch.supportEmailFrom = data.supportEmailFrom.trim();
+  if (data.supportEmailReplyTo !== undefined) patch.supportEmailReplyTo = data.supportEmailReplyTo.trim();
+  if (data.defaultSenderName !== undefined) patch.defaultSenderName = data.defaultSenderName.trim();
+  if (data.defaultSenderRole !== undefined) patch.defaultSenderRole = data.defaultSenderRole.trim();
+  if (data.publicTicketTokenTtlMinutes !== undefined) patch.publicTicketTokenTtlMinutes = data.publicTicketTokenTtlMinutes;
+  if (data.allowPublicReplies !== undefined) patch.allowPublicReplies = data.allowPublicReplies;
+  if (data.allowPublicAttachments !== undefined) patch.allowPublicAttachments = data.allowPublicAttachments;
+  if (Object.keys(patch).length === 0) {
+    res.json(serializeSettings(existing.settings));
+    return;
+  }
+  const [updated] = await db
+    .update(supportSettingsTable)
+    .set(patch)
+    .where(eq(supportSettingsTable.id, existing.settings.id))
+    .returning();
+  res.json(serializeSettings(updated ?? existing.settings));
+});
+
+// ─── Message templates ──────────────────────────────────────────────────────
+
+function serializeTemplate(t: SupportMessageTemplate) {
+  return {
+    id: t.id,
+    organisationId: t.organisationId,
+    templateKey: t.templateKey,
+    templateName: t.templateName,
+    channel: t.channel,
+    subject: t.subject,
+    bodyText: t.bodyText,
+    bodyHtml: t.bodyHtml,
+    isActive: t.isActive,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+  };
+}
+
+function isAllowedTemplateKey(v: string): v is AllowedTemplateKey {
+  return (ALLOWED_TEMPLATE_KEYS as readonly string[]).includes(v);
+}
+function isAllowedTemplateChannel(v: string): v is AllowedTemplateChannel {
+  return (ALLOWED_TEMPLATE_CHANNELS as readonly string[]).includes(v);
+}
+
+router.get("/support/templates", async (req, res): Promise<void> => {
+  const parsed = ListSupportMessageTemplatesQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid template filters" });
+    return;
+  }
+  const { channel, templateKey, isActive } = parsed.data;
+  const org = await getErideOrganisation();
+  if (!org) {
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+  const conditions: SQL[] = [
+    eq(supportMessageTemplatesTable.organisationId, org.id),
+  ];
+  if (channel) conditions.push(eq(supportMessageTemplatesTable.channel, channel));
+  if (templateKey) conditions.push(eq(supportMessageTemplatesTable.templateKey, templateKey));
+  if (isActive !== undefined) conditions.push(eq(supportMessageTemplatesTable.isActive, isActive));
+  const rows = await db
+    .select()
+    .from(supportMessageTemplatesTable)
+    .where(and(...conditions))
+    .orderBy(supportMessageTemplatesTable.channel, supportMessageTemplatesTable.templateKey);
+  res.json(rows.map(serializeTemplate));
+});
+
+async function loadErideTemplate(id: string): Promise<SupportMessageTemplate | null> {
+  if (!UUID_RE.test(id)) return null;
+  const org = await getErideOrganisation();
+  if (!org) return null;
+  const row = await db.query.supportMessageTemplatesTable.findFirst({
+    where: and(
+      eq(supportMessageTemplatesTable.id, id),
+      eq(supportMessageTemplatesTable.organisationId, org.id),
+    ),
+  });
+  return row ?? null;
+}
+
+router.get("/support/templates/:id", async (req, res): Promise<void> => {
+  const row = await loadErideTemplate(req.params.id);
+  if (!row) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+  res.json(serializeTemplate(row));
+});
+
+router.patch("/support/templates/:id", async (req, res): Promise<void> => {
+  const existing = await loadErideTemplate(req.params.id);
+  if (!existing) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+  const parsed = UpdateSupportMessageTemplateBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid template update" });
+    return;
+  }
+  const data = parsed.data;
+
+  // Subject required for email channel (except `custom` which may omit).
+  if (existing.channel === "email" && existing.templateKey !== "custom") {
+    const finalSubject =
+      data.subject !== undefined ? (data.subject ?? "").trim() : (existing.subject ?? "").trim();
+    if (!finalSubject) {
+      res.status(400).json({
+        error: "Email templates require a subject.",
+      });
+      return;
+    }
+  }
+
+  if (data.bodyText !== undefined && !data.bodyText.trim()) {
+    res.status(400).json({ error: "bodyText is required and cannot be empty." });
+    return;
+  }
+
+  if (data.bodyHtml !== undefined && data.bodyHtml !== null && data.bodyHtml.trim()) {
+    const safety = isSafeTemplateHtml(data.bodyHtml);
+    if (!safety.ok) {
+      res.status(400).json({ error: safety.reason });
+      return;
+    }
+  }
+
+  const patch: Partial<typeof supportMessageTemplatesTable.$inferInsert> = {};
+  if (data.templateName !== undefined) patch.templateName = data.templateName.trim();
+  if (data.subject !== undefined) patch.subject = data.subject == null ? null : data.subject.trim();
+  if (data.bodyText !== undefined) patch.bodyText = data.bodyText;
+  if (data.bodyHtml !== undefined)
+    patch.bodyHtml = data.bodyHtml == null ? null : data.bodyHtml;
+  if (data.isActive !== undefined) patch.isActive = data.isActive;
+
+  if (Object.keys(patch).length === 0) {
+    res.json(serializeTemplate(existing));
+    return;
+  }
+
+  const [updated] = await db
+    .update(supportMessageTemplatesTable)
+    .set(patch)
+    .where(eq(supportMessageTemplatesTable.id, existing.id))
+    .returning();
+  res.json(serializeTemplate(updated ?? existing));
+});
+
+const SAMPLE_TEMPLATE_CONTEXT: Required<TemplateContext> = {
+  ticketReference: "EMA-SUP-2026-000123",
+  productName: "E-Migration Assist",
+  productCode: "EMA",
+  reporterName: "Sample Reporter",
+  publicStatus: "under_review",
+  issueSummary: "Sample issue summary for previewing this template.",
+  supportDisplayName: "Eride Support",
+  supportEmailReplyTo: "support@eridetech.africa",
+};
+
+async function buildTemplateContextForTicket(
+  ticketId: string | null | undefined,
+): Promise<{ ctx: TemplateContext; usedSample: boolean }> {
+  const settingsResult = await getOrCreateErideSettings();
+  const settings = settingsResult?.settings;
+  if (ticketId && UUID_RE.test(ticketId)) {
+    const row = await loadErideTicket(ticketId);
+    if (row) {
+      const t = row.ticket;
+      return {
+        usedSample: false,
+        ctx: {
+          ticketReference: t.ticketReference,
+          productName: row.productName,
+          productCode: row.productCode,
+          reporterName: t.reporterName ?? "",
+          publicStatus: t.publicStatus,
+          issueSummary: t.issueSummary,
+          supportDisplayName:
+            settings?.supportDisplayName ?? SAMPLE_TEMPLATE_CONTEXT.supportDisplayName,
+          supportEmailReplyTo:
+            settings?.supportEmailReplyTo ?? SAMPLE_TEMPLATE_CONTEXT.supportEmailReplyTo,
+        },
+      };
+    }
+  }
+  return {
+    usedSample: true,
+    ctx: {
+      ...SAMPLE_TEMPLATE_CONTEXT,
+      supportDisplayName:
+        settings?.supportDisplayName ?? SAMPLE_TEMPLATE_CONTEXT.supportDisplayName,
+      supportEmailReplyTo:
+        settings?.supportEmailReplyTo ?? SAMPLE_TEMPLATE_CONTEXT.supportEmailReplyTo,
+    },
+  };
+}
+
+router.post("/support/templates/preview", async (req, res): Promise<void> => {
+  const parsed = PreviewSupportMessageTemplateBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid preview request" });
+    return;
+  }
+  const data = parsed.data;
+  if (!isAllowedTemplateKey(data.templateKey)) {
+    res.status(400).json({ error: "Unsupported templateKey" });
+    return;
+  }
+  if (!isAllowedTemplateChannel(data.channel)) {
+    res.status(400).json({ error: "Unsupported channel" });
+    return;
+  }
+
+  // If no overrides provided, fall back to the saved template content.
+  let subject = data.subject ?? null;
+  let bodyText = data.bodyText ?? null;
+  let bodyHtml = data.bodyHtml ?? null;
+
+  if (subject === null || bodyText === null || bodyHtml === null) {
+    const org = await getErideOrganisation();
+    if (org) {
+      const saved = await db.query.supportMessageTemplatesTable.findFirst({
+        where: and(
+          eq(supportMessageTemplatesTable.organisationId, org.id),
+          eq(supportMessageTemplatesTable.templateKey, data.templateKey),
+          eq(supportMessageTemplatesTable.channel, data.channel),
+        ),
+      });
+      if (saved) {
+        if (subject === null) subject = saved.subject;
+        if (bodyText === null) bodyText = saved.bodyText;
+        if (bodyHtml === null) bodyHtml = saved.bodyHtml;
+      }
+    }
+  }
+
+  if (bodyHtml && bodyHtml.trim()) {
+    const safety = isSafeTemplateHtml(bodyHtml);
+    if (!safety.ok) {
+      res.status(400).json({ error: safety.reason });
+      return;
+    }
+  }
+
+  const { ctx, usedSample } = await buildTemplateContextForTicket(data.ticketId ?? null);
+  const renderedSubject = subject ? renderTemplateString(subject, ctx) : null;
+  const renderedBodyText = renderTemplateString(bodyText ?? "", ctx);
+  const renderedBodyHtml = bodyHtml ? renderTemplateString(bodyHtml, ctx) : null;
+
+  res.json({
+    renderedSubject,
+    renderedBodyText,
+    renderedBodyHtml,
+    usedSampleTicket: usedSample,
+  });
+});
 
 // Multer error handler (file too large, etc.)
 router.use(

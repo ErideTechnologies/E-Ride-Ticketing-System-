@@ -1,0 +1,304 @@
+Build Step 13 of the Eride Support Command Centre: Admin Templates and Support Settings.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- organisations/products/tickets
+- ticket reference generation
+
+Step 2 is complete:
+- public report problem page
+
+Step 3 is complete:
+- internal ticket dashboard
+
+Step 4 is complete:
+- ticket detail page
+
+Step 5 is complete:
+- attachment uploads
+
+Step 6 is complete:
+- live wallboard
+
+Step 7 is complete:
+- communication log
+
+Step 8 is complete:
+- workflow action buttons
+
+Step 9 is complete:
+- engineering escalation and Linear manual handoff
+
+Step 10 is complete:
+- Sentry setup and Sentry links
+
+Step 11 is complete:
+- email notification setup using Resend
+
+Step 12 is complete:
+- public ticket tracking with token-gated access
+
+Goal:
+Create admin-managed support templates and support settings so Eride can update support wording and defaults without code changes.
+
+Important:
+- Do not add WhatsApp API automation yet.
+- Do not add Linear API integration yet.
+- Do not add full role-based permissions yet.
+- Do not build SaaS billing or external company onboarding yet.
+- Keep this Eride-scoped for now, but database should remain organisation-aware.
+
+Database:
+
+1. Create support_message_templates table:
+- id
+- organisationId
+- templateKey
+- templateName
+- channel
+- subject nullable
+- bodyText
+- bodyHtml nullable
+- isActive
+- createdAt
+- updatedAt
+
+Allowed templateKey values:
+- ticket_received
+- under_review
+- more_info_needed
+- escalated_to_engineering
+- fixed
+- resolved
+- closed
+- reopened
+- custom
+
+Allowed channel values:
+- email
+- whatsapp
+- manual
+- in_app
+
+Rules:
+- templateKey + channel + organisationId should be unique
+- templates belong to Eride Technologies organisation for MVP
+
+2. Create support_settings table:
+- id
+- organisationId
+- supportDisplayName
+- supportEmailFrom
+- supportEmailReplyTo
+- defaultSenderName
+- defaultSenderRole
+- publicTicketTokenTtlMinutes
+- allowPublicReplies
+- allowPublicAttachments
+- createdAt
+- updatedAt
+
+Seed default settings for Eride:
+- supportDisplayName = Eride Support
+- supportEmailFrom = Eride Support <support@eridetech.africa>
+- supportEmailReplyTo = support@eridetech.africa
+- defaultSenderName = Eride Support
+- defaultSenderRole = support
+- publicTicketTokenTtlMinutes = 30
+- allowPublicReplies = true
+- allowPublicAttachments = true
+
+Seed default templates for Eride for:
+- ticket_received email
+- under_review email
+- more_info_needed email
+- escalated_to_engineering email
+- fixed email
+- resolved email
+- closed email
+- reopened email
+- more_info_needed manual
+- escalated_to_engineering manual
+- fixed manual
+- closed manual
+
+Template variables:
+Support these variables in subject/body:
+- {{ticketReference}}
+- {{productName}}
+- {{productCode}}
+- {{reporterName}}
+- {{publicStatus}}
+- {{issueSummary}}
+- {{supportDisplayName}}
+- {{supportEmailReplyTo}}
+
+Backend endpoints:
+
+1. GET /api/support/settings
+
+Return current Eride support settings.
+
+2. PATCH /api/support/settings
+
+Allow updating:
+- supportDisplayName
+- supportEmailFrom
+- supportEmailReplyTo
+- defaultSenderName
+- defaultSenderRole
+- publicTicketTokenTtlMinutes
+- allowPublicReplies
+- allowPublicAttachments
+
+Validation:
+- email fields must be valid or safe formatted email strings
+- token TTL must be between 5 and 1440 minutes
+- organisation must be Eride Technologies
+
+3. GET /api/support/templates
+
+Filters:
+- channel optional
+- templateKey optional
+- isActive optional
+
+Return templates for Eride organisation.
+
+4. GET /api/support/templates/:id
+
+Return one template.
+
+5. PATCH /api/support/templates/:id
+
+Allow updating:
+- templateName
+- subject
+- bodyText
+- bodyHtml
+- isActive
+
+Validation:
+- bodyText required
+- subject required for email templates except custom if existing convention allows
+- template must belong to Eride Technologies organisation
+- do not allow unsafe script tags in bodyHtml
+- if bodyHtml is provided, sanitize or reject unsafe HTML
+
+6. POST /api/support/templates/preview
+
+Input:
+- templateKey
+- channel
+- ticketId optional
+- bodyText optional
+- subject optional
+
+Return:
+- renderedSubject
+- renderedBodyText
+- renderedBodyHtml if available
+
+Use an existing ticket if ticketId is provided, otherwise use sample ticket data.
+
+Backend integration changes:
+
+1. Update email template generation:
+When sending template email, first try to load active support_message_templates for:
+organisationId = Eride
+templateKey = messageType
+channel = email
+
+If found:
+- render with ticket variables
+- use admin-managed template
+
+If not found:
+- fallback to existing hardcoded safe template
+
+2. Update communication draft/template copy buttons:
+For manual templates, first use support_message_templates channel = manual where available.
+Fallback to existing hardcoded templates.
+
+Frontend:
+
+Create route:
+- /admin/support/templates
+
+Page title:
+Support Message Templates
+
+Subtitle:
+“Manage the messages used for support emails and manual user updates.”
+
+Features:
+- list templates
+- filter by channel
+- filter by template key
+- active/inactive filter
+- edit template
+- preview template
+- save template
+
+Template list columns/cards:
+- templateName
+- templateKey
+- channel
+- isActive
+- updatedAt
+- Edit button
+
+Template edit view:
+- templateName input
+- channel display/read-only
+- templateKey display/read-only
+- subject input if email
+- bodyText textarea
+- bodyHtml textarea optional
+- isActive toggle
+- Preview button
+- Save button
+
+Preview:
+Show rendered subject and body using sample ticket variables.
+
+Create route:
+- /admin/support/settings
+
+Page title:
+Support Settings
+
+Sections:
+1. Email settings
+- support display name
+- from email
+- reply-to email
+- default sender name
+- default sender role
+
+2. Public ticket settings
+- public ticket token TTL minutes
+- allow public replies toggle
+- allow public attachments toggle
+
+3. Help text:
+“Settings are Eride-scoped for now. Future organisations can have their own settings.”
+
+Navigation:
+Add links/buttons from:
+- /admin/support/tickets to Templates and Settings
+- /admin/support/wallboard to Ticket Dashboard only; do not clutter wallboard too much
+
+Acceptance criteria:
+- support_message_templates table exists and seeded
+- support_settings table exists and seeded
+- /admin/support/templates loads and lists templates
+- admin can edit and save a template
+- admin can preview a template
+- /admin/support/settings loads and saves settings
+- email sending uses admin-managed email templates when active
+- manual copy templates use admin-managed manual templates when active
+- fallback templates still work if DB template missing/inactive
+- typecheck passes
+- basic browser test covers editing a template, previewing it, saving settings, and verifying a sent/previewed email uses updated template text
