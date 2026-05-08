@@ -1,0 +1,206 @@
+Build Step 14 of the Eride Support Command Centre: Linear API Integration.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- organisations/products/tickets
+- ticket reference generation
+
+Step 2 is complete:
+- public report problem page
+
+Step 3 is complete:
+- internal ticket dashboard
+
+Step 4 is complete:
+- ticket detail page
+
+Step 5 is complete:
+- attachment uploads
+
+Step 6 is complete:
+- live wallboard
+
+Step 7 is complete:
+- communication log
+
+Step 8 is complete:
+- workflow action buttons
+
+Step 9 is complete:
+- engineering escalation and manual Linear handoff
+- support_ticket_linear_links
+
+Step 10 is complete:
+- Sentry setup and Sentry links
+
+Step 11 is complete:
+- email notification setup
+
+Step 12 is complete:
+- public ticket tracking
+
+Step 13 is complete:
+- admin templates and support settings
+
+Goal:
+Add Linear API integration so support/admin can create a Linear engineering issue directly from a support ticket.
+
+Important:
+- Do not automatically create Linear issues for every ticket.
+- Only create a Linear issue when an admin/support user clicks “Create Linear Issue”.
+- Keep the existing manual Linear link flow.
+- If Linear API is not configured, the UI must gracefully fall back to manual copy/paste.
+- Do not expose Linear details to public users.
+- Do not send sensitive user information unnecessarily to Linear.
+- Do not include raw Sentry stack traces in Linear.
+- Do not create GitHub integration yet.
+- Do not add Sentry-to-Linear automation yet.
+
+Environment variables:
+- LINEAR_API_KEY
+- LINEAR_TEAM_ID_EMA optional
+- LINEAR_TEAM_ID_8BT optional
+- LINEAR_TEAM_ID_ERD optional
+- LINEAR_DEFAULT_TEAM_ID optional
+
+Backend:
+
+1. Create Linear helper module.
+
+Suggested file:
+artifacts/api-server/src/lib/linearClient.ts
+
+It must:
+- initialise only if LINEAR_API_KEY exists
+- expose createLinearIssue(params)
+- gracefully return disabled result if LINEAR_API_KEY is missing
+- never crash app if Linear is not configured
+
+createLinearIssue params:
+- teamId
+- title
+- description
+- priority optional
+- labels optional
+
+Return:
+- success boolean
+- disabled boolean
+- linearIssueId optional
+- linearIssueKey optional
+- linearIssueUrl optional
+- errorMessage optional
+
+2. Product-to-Linear team mapping.
+
+Resolve Linear team ID using:
+- productCode EMA → LINEAR_TEAM_ID_EMA
+- productCode 8BT → LINEAR_TEAM_ID_8BT
+- productCode ERD → LINEAR_TEAM_ID_ERD
+- fallback → LINEAR_DEFAULT_TEAM_ID
+
+If no team ID exists:
+- return disabled/configuration error
+- do not crash
+- tell UI manual copy/paste is required
+
+3. Create endpoint:
+POST /api/support/tickets/:id/create-linear-issue
+
+Input:
+- createdByName optional
+- linearTeamId optional override
+- title optional
+- description optional
+
+Behavior:
+- verify ticket belongs to active Eride Technologies organisation
+- verify ticket does not already have a support_ticket_linear_links record with linearIssueKey
+- generate Linear title/body using the same Engineering Escalation template from Step 9 if title/description not provided
+- determine Linear team ID
+- call Linear API
+- if successful:
+  - upsert support_ticket_linear_links with:
+    linearIssueId
+    linearIssueKey
+    linearIssueUrl
+    linearTeamKey or team ID
+    linearStatus = created
+    createdByName
+    lastSyncedAt = now
+  - optionally add support_ticket_status_history row if internalStatus changes
+  - update ticket internalStatus to linear_created if current status is engineering_escalation_required or support_review
+  - publicStatus should remain being_fixed if already being_fixed, otherwise do not force publicStatus unless necessary
+- if disabled or failed:
+  - do not create link
+  - return clear error/disabled response
+
+Response:
+- success
+- disabled
+- errorMessage
+- linearLink if created
+- generatedTitle
+- generatedDescription
+
+4. Logging:
+When Linear issue is created successfully, create an internal message or note:
+- direction = internal
+- channel = internal_note
+- messageType = internal_update
+- messageBody = “Linear issue {{linearIssueKey}} created for this support ticket.”
+- deliveryStatus = not_applicable
+
+Frontend:
+
+Update /admin/support/tickets/:id Engineering Escalation card.
+
+Add section:
+Linear API Creation
+
+Show:
+- Current Linear configuration status:
+  - “Linear API configured” if backend reports available
+  - “Linear API not configured — use manual copy/paste” if missing
+- Create Linear Issue button
+- Optional override title textarea/input
+- Optional override description textarea
+
+Button behavior:
+- Show confirmation:
+  “Create a Linear issue for this support ticket?”
+- On confirm, call:
+  POST /api/support/tickets/:id/create-linear-issue
+- If successful:
+  - show success: “Linear issue {{key}} created.”
+  - refresh Linear link display
+  - refresh ticket status/badges
+  - refresh communication/internal timeline
+- If disabled:
+  - show: “Linear API is not configured. Use Copy Linear Issue instead.”
+- If failed:
+  - show readable error
+
+Rules:
+- If a Linear link already exists, disable Create Linear Issue button and show:
+  “This ticket is already linked to {{linearIssueKey}}.”
+- Keep manual Save Linear Link form available.
+- Keep Copy Linear Issue button available.
+- Keep Generate Replit Fix Prompt button available.
+
+Update wallboard/dashboard:
+Tickets with internalStatus linear_created should count as engineering-related work if not already included.
+
+Acceptance criteria:
+- App works when LINEAR_API_KEY is missing
+- UI shows Linear not configured state
+- Manual copy/paste still works
+- If Linear env vars exist, backend can create a Linear issue
+- Created Linear issue is saved in support_ticket_linear_links
+- Existing Linear link prevents duplicate creation
+- Successful creation updates internalStatus to linear_created when appropriate
+- Internal communication/note is recorded after successful creation
+- Public ticket pages do not expose Linear details
+- Typecheck passes
+- Basic browser test covers missing-config fallback, existing-link duplicate prevention, and successful mocked Linear creation if test mocking exists

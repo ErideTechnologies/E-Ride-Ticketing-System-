@@ -23,6 +23,9 @@ import {
   getListSupportTicketSentryLinksQueryKey,
   useListSupportMessageTemplates,
   useGetSupportSettings,
+  useCreateSupportTicketLinearIssue,
+  useGetLinearIntegrationStatus,
+  getGetLinearIntegrationStatusQueryKey,
   type SupportTicketWorkflowAction,
   type SupportTicketLinearLink,
   type SupportTicketSentryLink,
@@ -2349,6 +2352,20 @@ function EngineeringEscalationCard({
   const sentryLinksQuery = useListSupportTicketSentryLinks(ticket.id);
   const upsertMutation = useUpsertSupportTicketLinearLink();
   const deleteMutation = useDeleteSupportTicketLinearLink();
+  const linearStatusQuery = useGetLinearIntegrationStatus();
+  const createLinearMutation = useCreateSupportTicketLinearIssue();
+  const [overrideTitle, setOverrideTitle] = useState("");
+  const [overrideDescription, setOverrideDescription] = useState("");
+  const [createdByName, setCreatedByName] = useState("");
+  const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+  const [createOutcome, setCreateOutcome] = useState<
+    | null
+    | {
+        kind: "success" | "disabled" | "error";
+        message: string;
+        linearIssueKey?: string | null;
+      }
+  >(null);
 
   const link = (linkQuery.data ?? null) as SupportTicketLinearLink | null;
   const attachments = attachmentsQuery.data ?? [];
@@ -2431,6 +2448,61 @@ function EngineeringEscalationCard({
       });
     } catch {
       setLinkError("Could not save Linear link (check the URL is valid)");
+    }
+  }
+
+  async function createLinearIssueViaApi() {
+    setShowCreateConfirm(false);
+    setCreateOutcome(null);
+    try {
+      const result = await createLinearMutation.mutateAsync({
+        id: ticket.id,
+        data: {
+          createdByName: createdByName.trim() || null,
+          title: overrideTitle.trim() || null,
+          description: overrideDescription.trim() || null,
+        },
+      });
+      if (result.success) {
+        setCreateOutcome({
+          kind: "success",
+          message: `Linear issue ${result.linearLink?.linearIssueKey ?? ""} created.`,
+          linearIssueKey: result.linearLink?.linearIssueKey ?? null,
+        });
+        qc.invalidateQueries({
+          queryKey: getGetSupportTicketLinearLinkQueryKey(ticket.id),
+        });
+        qc.invalidateQueries({
+          queryKey: getGetSupportTicketQueryKey(ticket.id),
+        });
+        qc.invalidateQueries({
+          queryKey: getListSupportTicketStatusHistoryQueryKey(ticket.id),
+        });
+        qc.invalidateQueries({
+          queryKey: getListSupportTicketMessagesQueryKey(ticket.id),
+        });
+        setOverrideTitle("");
+        setOverrideDescription("");
+      } else if (result.disabled) {
+        setCreateOutcome({
+          kind: "disabled",
+          message:
+            result.errorMessage ??
+            "Linear API is not configured. Use Copy Linear Issue instead.",
+        });
+      } else {
+        setCreateOutcome({
+          kind: "error",
+          message: result.errorMessage ?? "Could not create Linear issue.",
+        });
+      }
+    } catch (err) {
+      const e = err as { data?: { error?: string }; message?: string };
+      setCreateOutcome({
+        kind: "error",
+        message:
+          e?.data?.error ?? e?.message ?? "Could not create Linear issue.",
+      });
     }
   }
 
@@ -2563,6 +2635,159 @@ function EngineeringEscalationCard({
             >
               {replitText}
             </pre>
+          )}
+        </div>
+
+        {/* D2. Linear API creation */}
+        <div
+          className="rounded-md border p-3"
+          data-testid="linear-api-creation"
+        >
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Linear API creation
+            </div>
+            {linearStatusQuery.data?.configured ? (
+              <Badge
+                className="bg-emerald-600"
+                data-testid="badge-linear-configured"
+              >
+                Linear API configured
+              </Badge>
+            ) : (
+              <Badge variant="secondary" data-testid="badge-linear-not-configured">
+                Linear API not configured — use manual copy/paste
+              </Badge>
+            )}
+            {linearStatusQuery.data?.configured &&
+              linearStatusQuery.data.hasTeamForProductCode &&
+              linearStatusQuery.data.hasTeamForProductCode[
+                ticket.productCode
+              ] === false && (
+                <Badge
+                  variant="destructive"
+                  data-testid="badge-linear-no-team"
+                >
+                  No Linear team mapped for {ticket.productCode}
+                </Badge>
+              )}
+          </div>
+
+          {link?.linearIssueKey ? (
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="text-linear-already-linked"
+            >
+              This ticket is already linked to{" "}
+              <span className="font-mono font-medium">
+                {link.linearIssueKey}
+              </span>
+              . Remove the existing link below to create a new Linear issue.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <div>
+                <Label
+                  htmlFor="linear-override-title"
+                  className="text-xs text-muted-foreground"
+                >
+                  Override title (optional)
+                </Label>
+                <Input
+                  id="linear-override-title"
+                  value={overrideTitle}
+                  onChange={(e) => setOverrideTitle(e.target.value)}
+                  placeholder="Leave blank to use the standard escalation title"
+                  data-testid="input-linear-override-title"
+                />
+              </div>
+              <div>
+                <Label
+                  htmlFor="linear-override-description"
+                  className="text-xs text-muted-foreground"
+                >
+                  Override description (optional)
+                </Label>
+                <Textarea
+                  id="linear-override-description"
+                  rows={4}
+                  value={overrideDescription}
+                  onChange={(e) => setOverrideDescription(e.target.value)}
+                  placeholder="Leave blank to use the standard escalation body"
+                  data-testid="textarea-linear-override-description"
+                />
+              </div>
+              <div>
+                <Label
+                  htmlFor="linear-created-by"
+                  className="text-xs text-muted-foreground"
+                >
+                  Created by (your name)
+                </Label>
+                <Input
+                  id="linear-created-by"
+                  value={createdByName}
+                  onChange={(e) => setCreatedByName(e.target.value)}
+                  placeholder="Your name"
+                  data-testid="input-linear-created-by"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setCreateOutcome(null);
+                    setShowCreateConfirm(true);
+                  }}
+                  disabled={createLinearMutation.isPending}
+                  data-testid="button-create-linear-issue"
+                >
+                  {createLinearMutation.isPending
+                    ? "Creating…"
+                    : "Create Linear Issue"}
+                </Button>
+                {showCreateConfirm && (
+                  <div
+                    className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                    data-testid="confirm-create-linear"
+                  >
+                    <span>Create a Linear issue for this support ticket?</span>
+                    <Button
+                      size="sm"
+                      onClick={createLinearIssueViaApi}
+                      data-testid="button-confirm-create-linear"
+                    >
+                      Confirm
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowCreateConfirm(false)}
+                      data-testid="button-cancel-create-linear"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {createOutcome && (
+            <Alert
+              className="mt-3"
+              variant={
+                createOutcome.kind === "error" ? "destructive" : "default"
+              }
+              data-testid={`alert-create-linear-${createOutcome.kind}`}
+            >
+              {createOutcome.kind === "success" ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" />
+              )}
+              <AlertDescription>{createOutcome.message}</AlertDescription>
+            </Alert>
           )}
         </div>
 

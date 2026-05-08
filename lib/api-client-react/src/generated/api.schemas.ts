@@ -399,6 +399,36 @@ export interface SupportTicketLinearLinkUpsert {
   createdByName?: string | null;
 }
 
+export interface SupportTicketCreateLinearIssueRequest {
+  /** @nullable */
+  createdByName?: string | null;
+  /** @nullable */
+  linearTeamId?: string | null;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface SupportTicketCreateLinearIssueResult {
+  success: boolean;
+  disabled: boolean;
+  /** @nullable */
+  errorMessage?: string | null;
+  generatedTitle: string;
+  generatedDescription: string;
+  linearLink?: SupportTicketLinearLink | null;
+}
+
+export type SupportLinearIntegrationStatusHasTeamForProductCode = {
+  [key: string]: boolean;
+};
+
+export interface SupportLinearIntegrationStatus {
+  configured: boolean;
+  hasTeamForProductCode?: SupportLinearIntegrationStatusHasTeamForProductCode;
+}
+
 export interface SupportTicketSentryLink {
   id: string;
   supportTicketId: string;

@@ -409,6 +409,54 @@ export const DeleteSupportTicketLinearLinkParams = zod.object({
 });
 
 /**
+ * @summary Create a Linear engineering issue from a support ticket via the Linear API
+ */
+export const CreateSupportTicketLinearIssueParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const CreateSupportTicketLinearIssueBody = zod.object({
+  createdByName: zod.string().nullish(),
+  linearTeamId: zod.string().nullish(),
+  title: zod.string().nullish(),
+  description: zod.string().nullish(),
+});
+
+export const CreateSupportTicketLinearIssueResponse = zod.object({
+  success: zod.boolean(),
+  disabled: zod.boolean(),
+  errorMessage: zod.string().nullish(),
+  generatedTitle: zod.string(),
+  generatedDescription: zod.string(),
+  linearLink: zod
+    .union([
+      zod.object({
+        id: zod.string().uuid(),
+        supportTicketId: zod.string().uuid(),
+        linearIssueId: zod.string().nullish(),
+        linearIssueKey: zod.string().nullish(),
+        linearIssueUrl: zod.string().nullish(),
+        linearTeamKey: zod.string().nullish(),
+        linearStatus: zod.string().nullish(),
+        createdByName: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+        lastSyncedAt: zod.coerce.date().nullish(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
+
+/**
+ * @summary Whether the Linear API is configured (admin UI gating)
+ */
+export const GetLinearIntegrationStatusResponse = zod.object({
+  configured: zod.boolean(),
+  hasTeamForProductCode: zod.record(zod.string(), zod.boolean()).optional(),
+});
+
+/**
  * @summary List Sentry links recorded against a ticket (newest first)
  */
 export const ListSupportTicketSentryLinksParams = zod.object({

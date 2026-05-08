@@ -245,6 +245,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /support/tickets/{id}/create-linear-issue:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: createSupportTicketLinearIssue
+      tags: [support]
+      summary: Create a Linear engineering issue from a support ticket via the Linear API
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportTicketCreateLinearIssueRequest"
+      responses:
+        "200":
+          description: Linear issue creation outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportTicketCreateLinearIssueResult"
+        "400":
+          description: Validation error or Linear configuration missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Ticket already linked to a Linear issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /support/integrations/linear/status:
+    get:
+      operationId: getLinearIntegrationStatus
+      tags: [support]
+      summary: Whether the Linear API is configured (admin UI gating)
+      responses:
+        "200":
+          description: Linear integration status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportLinearIntegrationStatus"
+
   /support/tickets/{id}/sentry-links:
     parameters:
       - in: path
@@ -1272,6 +1327,37 @@ components:
         linearStatus: { type: ["string", "null"] }
         createdByName: { type: ["string", "null"] }
       required: [linearIssueKey]
+
+    SupportTicketCreateLinearIssueRequest:
+      type: object
+      properties:
+        createdByName: { type: ["string", "null"] }
+        linearTeamId: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+
+    SupportTicketCreateLinearIssueResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        disabled: { type: boolean }
+        errorMessage: { type: ["string", "null"] }
+        generatedTitle: { type: string }
+        generatedDescription: { type: string }
+        linearLink:
+          oneOf:
+            - $ref: "#/components/schemas/SupportTicketLinearLink"
+            - type: "null"
+      required: [success, disabled, generatedTitle, generatedDescription]
+
+    SupportLinearIntegrationStatus:
+      type: object
+      properties:
+        configured: { type: boolean }
+        hasTeamForProductCode:
+          type: object
+          additionalProperties: { type: boolean }
+      required: [configured]
 
     SupportTicketSentryLink:
       type: object

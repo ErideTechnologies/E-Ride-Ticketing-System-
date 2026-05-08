@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { and, desc, eq, gte, ilike, lte, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   db,
   generateSupportTicketReference,
@@ -51,7 +51,13 @@ import {
   UpdateSupportMessageTemplateBody,
   PreviewSupportMessageTemplateBody,
   ListSupportMessageTemplatesQueryParams,
+  CreateSupportTicketLinearIssueBody,
 } from "@workspace/api-zod";
+import {
+  createLinearIssue,
+  isLinearEnabled,
+  resolveLinearTeamId,
+} from "../lib/linearClient";
 import * as Sentry from "@sentry/node";
 import {
   isSupportEmailEnabled,
@@ -1045,6 +1051,318 @@ router.get("/_sentry-test", (_req, res): void => {
   Sentry.setTag("route", "/_sentry-test");
   throw new Error("Sentry smoke test error — safe to ignore");
 });
+
+// ── Linear API integration ──────────────────────────────────────────────────
+
+const PRIORITY_TO_LINEAR_PRIORITY: Record<string, number> = {
+  urgent: 1,
+  high: 2,
+  medium: 3,
+  low: 4,
+};
+
+function linearTitleCase(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buildServerLinearTitle(t: SupportTicket, productCode: string): string {
+  return `[${linearTitleCase(t.priority)}] [${productCode}] ${linearTitleCase(
+    t.category,
+  )} — ${t.issueSummary}`;
+}
+
+function buildServerLinearBody(
+  t: SupportTicket,
+  productName: string,
+  productCode: string,
+  attachmentCount: number,
+): string {
+  const attachmentSummary =
+    attachmentCount === 0
+      ? "No attachments uploaded"
+      : `${attachmentCount} attachment(s) on the support ticket — review in the support dashboard.`;
+  return `SUPPORT TICKET ESCALATION
+
+Support Ticket:
+${t.ticketReference}
+
+Product:
+${productName} (${productCode})
+
+Priority:
+${t.priority}
+
+Severity:
+${t.severity}
+
+Category:
+${t.category}
+
+Reporter Type:
+${t.reporterType}
+
+Environment:
+${t.environment}
+
+Page / Step:
+${t.pageOrStep ?? ""}
+
+Application Reference:
+${t.applicationReference ?? ""}
+
+Account Reference:
+${t.accountReference ?? ""}
+
+Issue Summary:
+${t.issueSummary}
+
+What the user was trying to do:
+${t.whatWereYouTryingToDo ?? ""}
+
+What went wrong:
+${t.whatWentWrong}
+
+Attachments:
+${attachmentSummary}
+
+Current Support Status:
+Public: ${t.publicStatus}
+Internal: ${t.internalStatus}
+
+Expected Engineering Action:
+1. Reproduce the issue.
+2. Identify the root cause.
+3. Fix the issue.
+4. Add or update a regression test.
+5. Submit for review.
+6. Return to support/QA for production verification.
+
+Compliance Notes:
+- Do not expose PII in logs, console output, Sentry, or Linear beyond what is necessary.
+- Do not expose internal notes publicly.
+- Do not use legal-decision language such as approved, rejected, or guaranteed.
+- Preserve existing database IDs unless a schema change is explicitly required.
+- The fixer cannot verify their own work.
+- QA/support must verify on production before the user is told the issue is fixed.`;
+}
+
+router.get(
+  "/support/integrations/linear/status",
+  async (_req, res): Promise<void> => {
+    const configured = isLinearEnabled();
+    const hasTeamForProductCode: Record<string, boolean> = {};
+    for (const code of ["EMA", "8BT", "ERD"]) {
+      hasTeamForProductCode[code] = Boolean(
+        resolveLinearTeamId(code) && configured,
+      );
+    }
+    res.json({ configured, hasTeamForProductCode });
+  },
+);
+
+router.post(
+  "/support/tickets/:id/create-linear-issue",
+  async (req, res): Promise<void> => {
+    const parsed = CreateSupportTicketLinearIssueBody.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+    const body = parsed.data;
+
+    const existing = await loadErideTicket(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const ticket = existing.ticket;
+
+    // Build title/body from request overrides or server-side template.
+    const attachmentCount = await db
+      .select({ id: supportTicketAttachmentsTable.id })
+      .from(supportTicketAttachmentsTable)
+      .where(
+        eq(supportTicketAttachmentsTable.supportTicketId, ticket.id),
+      );
+    const generatedTitle =
+      body.title?.trim() ||
+      buildServerLinearTitle(ticket, existing.productCode);
+    const generatedDescription =
+      body.description?.trim() ||
+      buildServerLinearBody(
+        ticket,
+        existing.productName,
+        existing.productCode,
+        attachmentCount.length,
+      );
+
+    // Resolve team ID: explicit override → product mapping → default.
+    const teamId =
+      body.linearTeamId?.trim() ||
+      resolveLinearTeamId(existing.productCode);
+
+    if (!isLinearEnabled()) {
+      res.status(200).json({
+        success: false,
+        disabled: true,
+        errorMessage:
+          "Linear API is not configured. Use the manual Save Linear Link form or copy/paste instead.",
+        generatedTitle,
+        generatedDescription,
+        linearLink: null,
+      });
+      return;
+    }
+    if (!teamId) {
+      res.status(200).json({
+        success: false,
+        disabled: false,
+        errorMessage: `No Linear team configured for product ${existing.productCode}. Set LINEAR_TEAM_ID_${existing.productCode.toUpperCase()} or LINEAR_DEFAULT_TEAM_ID.`,
+        generatedTitle,
+        generatedDescription,
+        linearLink: null,
+      });
+      return;
+    }
+
+    // Serialize concurrent create-issue requests for this ticket so two
+    // clicks can't both pass the duplicate-link check, both call Linear,
+    // and orphan one of the resulting issues. pg_advisory_xact_lock blocks
+    // peers in other transactions until this one commits/rolls back.
+    type CreateOutcome =
+      | { kind: "duplicate"; existingKey: string }
+      | {
+          kind: "linear_failed";
+          disabled: boolean;
+          errorMessage: string;
+        }
+      | {
+          kind: "ok";
+          savedLink: typeof supportTicketLinearLinksTable.$inferSelect;
+          linearIssueKey: string;
+          linearIssueUrl: string | null;
+        };
+
+    const outcome = await db.transaction<CreateOutcome>(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ticket.id}))`);
+
+      const [currentLink] = await tx
+        .select()
+        .from(supportTicketLinearLinksTable)
+        .where(
+          eq(supportTicketLinearLinksTable.supportTicketId, ticket.id),
+        )
+        .limit(1);
+      if (currentLink && currentLink.linearIssueKey) {
+        return { kind: "duplicate", existingKey: currentLink.linearIssueKey };
+      }
+
+      const result = await createLinearIssue({
+        teamId,
+        title: generatedTitle,
+        description: generatedDescription,
+        priority: PRIORITY_TO_LINEAR_PRIORITY[ticket.priority],
+      });
+
+      if (!result.success) {
+        return {
+          kind: "linear_failed",
+          disabled: result.disabled,
+          errorMessage: result.errorMessage ?? "Linear API call failed.",
+        };
+      }
+
+      const linkValues = {
+        linearIssueId: result.linearIssueId ?? null,
+        linearIssueKey: result.linearIssueKey ?? null,
+        linearIssueUrl: result.linearIssueUrl ?? null,
+        linearTeamKey: result.linearTeamKey ?? teamId,
+        linearStatus: "created",
+        createdByName: body.createdByName?.trim() || null,
+        lastSyncedAt: new Date(),
+      };
+      const [savedLink] = await tx
+        .insert(supportTicketLinearLinksTable)
+        .values({ supportTicketId: ticket.id, ...linkValues })
+        .onConflictDoUpdate({
+          target: supportTicketLinearLinksTable.supportTicketId,
+          set: { ...linkValues, updatedAt: new Date() },
+        })
+        .returning();
+
+      const eligibleInternal = new Set([
+        "engineering_escalation_required",
+        "support_review",
+      ]);
+      if (eligibleInternal.has(ticket.internalStatus)) {
+        const previousInternal = ticket.internalStatus;
+        await tx
+          .update(supportTicketsTable)
+          .set({ internalStatus: "linear_created", updatedAt: new Date() })
+          .where(eq(supportTicketsTable.id, ticket.id));
+        await tx.insert(supportTicketStatusHistoryTable).values({
+          supportTicketId: ticket.id,
+          oldPublicStatus: ticket.publicStatus,
+          newPublicStatus: ticket.publicStatus,
+          oldInternalStatus: previousInternal,
+          newInternalStatus: "linear_created",
+          changedByName: body.createdByName?.trim() || null,
+          changeReason: `[create_linear_issue] Linear issue ${result.linearIssueKey} created`,
+        });
+      }
+
+      await tx.insert(supportTicketMessagesTable).values({
+        supportTicketId: ticket.id,
+        direction: "internal",
+        channel: "internal_note",
+        messageType: "internal_update",
+        messageBody: `Linear issue ${result.linearIssueKey} created for this support ticket. ${result.linearIssueUrl ?? ""}`.trim(),
+        deliveryStatus: "not_applicable",
+        senderName: body.createdByName?.trim() || "Support",
+        relatedPublicStatus: ticket.publicStatus,
+        relatedInternalStatus: eligibleInternal.has(ticket.internalStatus)
+          ? "linear_created"
+          : ticket.internalStatus,
+      });
+
+      return {
+        kind: "ok",
+        savedLink,
+        linearIssueKey: result.linearIssueKey ?? "",
+        linearIssueUrl: result.linearIssueUrl ?? null,
+      };
+    });
+
+    if (outcome.kind === "duplicate") {
+      res.status(409).json({
+        error: `Ticket is already linked to Linear issue ${outcome.existingKey}.`,
+      });
+      return;
+    }
+    if (outcome.kind === "linear_failed") {
+      res.status(200).json({
+        success: false,
+        disabled: outcome.disabled,
+        errorMessage: outcome.errorMessage,
+        generatedTitle,
+        generatedDescription,
+        linearLink: null,
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      disabled: false,
+      errorMessage: null,
+      generatedTitle,
+      generatedDescription,
+      linearLink: outcome.savedLink
+        ? serializeLinearLink(outcome.savedLink)
+        : null,
+    });
+  },
+);
 
 router.delete(
   "/support/tickets/:id/linear-link",

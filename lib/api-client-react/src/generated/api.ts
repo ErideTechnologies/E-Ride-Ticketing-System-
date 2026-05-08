@@ -25,6 +25,7 @@ import type {
   PreviewSupportMessageTemplateResult,
   PublicSupportProduct,
   SendSupportTicketEmailResult,
+  SupportLinearIntegrationStatus,
   SupportMessageTemplate,
   SupportMessageTemplatePreviewRequest,
   SupportMessageTemplateUpdate,
@@ -32,6 +33,8 @@ import type {
   SupportSettingsUpdate,
   SupportTicketAttachment,
   SupportTicketAttachmentUpload,
+  SupportTicketCreateLinearIssueRequest,
+  SupportTicketCreateLinearIssueResult,
   SupportTicketDetail,
   SupportTicketEmailSendRequest,
   SupportTicketLinearLink,
@@ -928,6 +931,177 @@ export const useDeleteSupportTicketLinearLink = <
 > => {
   return useMutation(getDeleteSupportTicketLinearLinkMutationOptions(options));
 };
+
+/**
+ * @summary Create a Linear engineering issue from a support ticket via the Linear API
+ */
+export const getCreateSupportTicketLinearIssueUrl = (id: string) => {
+  return `/api/support/tickets/${id}/create-linear-issue`;
+};
+
+export const createSupportTicketLinearIssue = async (
+  id: string,
+  supportTicketCreateLinearIssueRequest?: SupportTicketCreateLinearIssueRequest,
+  options?: RequestInit,
+): Promise<SupportTicketCreateLinearIssueResult> => {
+  return customFetch<SupportTicketCreateLinearIssueResult>(
+    getCreateSupportTicketLinearIssueUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportTicketCreateLinearIssueRequest),
+    },
+  );
+};
+
+export const getCreateSupportTicketLinearIssueMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSupportTicketLinearIssue>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketCreateLinearIssueRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSupportTicketLinearIssue>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketCreateLinearIssueRequest> },
+  TContext
+> => {
+  const mutationKey = ["createSupportTicketLinearIssue"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSupportTicketLinearIssue>>,
+    { id: string; data: BodyType<SupportTicketCreateLinearIssueRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createSupportTicketLinearIssue(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSupportTicketLinearIssueMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSupportTicketLinearIssue>>
+>;
+export type CreateSupportTicketLinearIssueMutationBody =
+  BodyType<SupportTicketCreateLinearIssueRequest>;
+export type CreateSupportTicketLinearIssueMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a Linear engineering issue from a support ticket via the Linear API
+ */
+export const useCreateSupportTicketLinearIssue = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSupportTicketLinearIssue>>,
+    TError,
+    { id: string; data: BodyType<SupportTicketCreateLinearIssueRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSupportTicketLinearIssue>>,
+  TError,
+  { id: string; data: BodyType<SupportTicketCreateLinearIssueRequest> },
+  TContext
+> => {
+  return useMutation(getCreateSupportTicketLinearIssueMutationOptions(options));
+};
+
+/**
+ * @summary Whether the Linear API is configured (admin UI gating)
+ */
+export const getGetLinearIntegrationStatusUrl = () => {
+  return `/api/support/integrations/linear/status`;
+};
+
+export const getLinearIntegrationStatus = async (
+  options?: RequestInit,
+): Promise<SupportLinearIntegrationStatus> => {
+  return customFetch<SupportLinearIntegrationStatus>(
+    getGetLinearIntegrationStatusUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetLinearIntegrationStatusQueryKey = () => {
+  return [`/api/support/integrations/linear/status`] as const;
+};
+
+export const getGetLinearIntegrationStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLinearIntegrationStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLinearIntegrationStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLinearIntegrationStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLinearIntegrationStatus>>
+  > = ({ signal }) => getLinearIntegrationStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLinearIntegrationStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLinearIntegrationStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLinearIntegrationStatus>>
+>;
+export type GetLinearIntegrationStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Whether the Linear API is configured (admin UI gating)
+ */
+
+export function useGetLinearIntegrationStatus<
+  TData = Awaited<ReturnType<typeof getLinearIntegrationStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLinearIntegrationStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLinearIntegrationStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List Sentry links recorded against a ticket (newest first)
