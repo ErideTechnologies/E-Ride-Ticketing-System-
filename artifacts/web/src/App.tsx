@@ -17,6 +17,13 @@ import AdminTemplatesPage from "@/pages/admin-templates";
 import AdminSettingsPage from "@/pages/admin-settings";
 import ErrorBoundaryTestPage from "@/pages/error-boundary-test";
 
+// Frontend smoke route. Only mounted outside production builds. To enable
+// in production for one-off Sentry verification, build with
+// VITE_ENABLE_BOUNDARY_TEST=true.
+const BOUNDARY_TEST_ENABLED =
+  import.meta.env.MODE !== "production" ||
+  import.meta.env["VITE_ENABLE_BOUNDARY_TEST"] === "true";
+
 const queryClient = new QueryClient();
 
 function Router() {
@@ -53,7 +60,9 @@ function Router() {
           <AdminTicketDetailPage />
         </RequireSupportAuth>
       </Route>
-      <Route path="/__boundary-test" component={ErrorBoundaryTestPage} />
+      {BOUNDARY_TEST_ENABLED && (
+        <Route path="/__boundary-test" component={ErrorBoundaryTestPage} />
+      )}
       <Route component={NotFound} />
     </Switch>
   );

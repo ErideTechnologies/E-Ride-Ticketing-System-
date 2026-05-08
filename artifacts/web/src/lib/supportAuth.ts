@@ -63,7 +63,6 @@ const ROLE_PERMISSIONS: Record<SupportRole, ReadonlyArray<SupportPermission>> =
       "send_email",
       "manage_attachments",
       "manage_workflow",
-      "manage_workflow_admin_outcomes",
       "create_linear_issue",
       "manage_linear_link",
       "manage_sentry_link",

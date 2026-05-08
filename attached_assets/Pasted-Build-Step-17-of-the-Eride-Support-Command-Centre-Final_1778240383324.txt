@@ -1,0 +1,289 @@
+Build Step 17 of the Eride Support Command Centre: Final QA, Hardening, Cleanup, and Launch Checklist.
+
+Context:
+Steps 1–16 are complete.
+
+The system now includes:
+- multi-tenant-ready foundation
+- Eride organisation and products
+- public ticket creation
+- public ticket tracking
+- internal support dashboard
+- ticket detail page
+- attachments/screenshots
+- communication log
+- manual and email communication
+- workflow actions
+- wallboard
+- Linear manual handoff and API integration
+- Sentry instrumentation and links
+- templates/settings
+- SLA tracking
+- authentication and role permissions
+- audit logging
+
+Goal:
+Perform final hardening, cleanup, verification, and launch readiness checks for the Eride Support Command Centre.
+
+Important:
+- Do not add large new features.
+- Do not add WhatsApp automation.
+- Do not add GitHub PR automation.
+- Do not add external company SaaS onboarding.
+- Focus on stability, security, privacy, consistency, and launch readiness.
+
+Tasks:
+
+1. Disable or harden test endpoints
+
+Review all test/smoke endpoints:
+- /api/_sentry-test
+- /__boundary-test or equivalent frontend test route
+- any temporary dev/test routes created during the build
+
+Ensure:
+- test endpoints are disabled in production
+- test endpoints require explicit env flags if left available
+- comments clearly explain they must not be enabled in production unless intentionally testing
+
+2. Public privacy audit
+
+Verify public APIs and public pages never expose:
+- internalStatus
+- internal notes
+- SLA information
+- Linear links
+- Sentry links
+- GitHub/Replit details
+- providerMessageId
+- errorMessage
+- internal assigned user IDs
+- developer handoff text
+- raw stack traces
+- internal audit logs
+
+Create/update tests if possible to assert these strings/fields are not present in public responses.
+
+3. Internal auth audit
+
+Verify all internal support routes require auth:
+- /admin/support/tickets
+- /admin/support/tickets/:id
+- /admin/support/wallboard
+- /admin/support/templates
+- /admin/support/settings
+- /admin/support/sla if present
+
+Verify all sensitive APIs require internal support auth:
+- ticket list/detail
+- ticket patch
+- notes
+- messages
+- admin attachments
+- status history
+- workflow action
+- linear links
+- create linear issue
+- sentry links
+- email send
+- settings
+- templates
+- SLA summary
+- wallboard
+
+Verify public APIs remain accessible where intended:
+- product list
+- public ticket creation
+- public ticket verification
+- public ticket view with token
+- public ticket reply with token
+- public ticket attachment upload with token
+
+4. Role permission audit
+
+Verify:
+- support_admin can access everything
+- support_agent can manage tickets but not templates/settings
+- product_owner can escalate/create Linear and manage priority/severity
+- developer can access engineering-related tickets/actions but not settings/templates
+- qa_verifier can verify/reopen relevant tickets
+- viewer can view but not mutate
+- unauthenticated user receives 401/redirect
+- unauthorised user receives 403/restricted UI
+
+5. Attachment security audit
+
+Verify:
+- allowed file types only
+- file size limits enforced
+- magic-byte sniffing active
+- spoofed files rejected
+- direct raw server paths are never exposed
+- cross-ticket attachment access is blocked
+- public attachment upload requires valid ticket token
+- admin attachment access requires internal auth
+- delete attachment requires correct permission
+
+6. Email safety audit
+
+Verify:
+- emails do not include internal notes
+- emails do not include Linear/Sentry/Replit/GitHub details
+- emails do not include stack traces
+- emails do not include attachment links
+- emails include ticket reference and safe public status
+- if RESEND_API_KEY is missing, system logs disabled/drafted state and does not crash
+- providerMessageId/errorMessage remain internal only
+
+7. Linear/Sentry safety audit
+
+Verify:
+- Linear issue creation is admin/support controlled
+- no automatic Linear issue is created for every ticket
+- duplicate Linear creation is prevented
+- Linear details are hidden from public pages
+- Sentry links are hidden from public pages
+- raw Sentry stack traces are not copied into public pages or emails
+- PII redaction is applied before Sentry events are sent
+
+8. SLA audit
+
+Verify:
+- SLA is calculated internally
+- public pages do not expose SLA data
+- needs_user_info pauses SLA
+- closed/resolved/duplicate/spam are completed
+- engineering SLA starts after engineering escalation
+- dashboard and wallboard counts match expected logic
+
+9. Wallboard audit
+
+Verify:
+- /admin/support/wallboard requires internal access
+- refreshes every 60 seconds
+- displays correct KPI counts
+- ticket rows link to ticket detail
+- layout renders cleanly on 1920x1080
+- no public/private sensitive data appears unnecessarily
+
+10. End-to-end workflow test
+
+Create or run an end-to-end test covering:
+
+Public user:
+- create ticket
+- upload attachment
+- receive/reference ticket
+- track ticket with correct email
+- wrong email cannot access
+- reply to ticket
+- upload extra attachment
+
+Support/admin:
+- login
+- see ticket dashboard
+- open ticket detail
+- add note
+- record communication
+- send email or disabled-mode email
+- run workflow actions
+- request more info
+- escalate to engineering
+- generate Linear issue text
+- create Linear issue in disabled/mock mode
+- add Sentry link
+- update SLA/watchlist
+- close/reopen ticket
+
+Privacy:
+- public page does not leak internal fields
+
+11. Documentation cleanup
+
+replit.md is getting long.
+
+Create or update a concise documentation structure:
+
+Suggested:
+- replit.md = short current overview and how to run
+- docs/support-command-centre.md = full feature overview
+- docs/support-runbook.md = operating process
+- docs/support-env-vars.md = required secrets/env vars
+- docs/support-security-checklist.md = privacy/auth/security notes
+- docs/support-testing-checklist.md = manual QA checklist
+
+Move older long product bullets from replit.md into docs where appropriate.
+
+12. Environment variables checklist
+
+Create docs/support-env-vars.md listing:
+
+Required for internal auth:
+- SUPPORT_AUTH_PASSWORD
+- SUPPORT_ADMIN_EMAILS
+- SUPPORT_AGENT_EMAILS
+- SUPPORT_PRODUCT_OWNER_EMAILS
+- SUPPORT_DEVELOPER_EMAILS
+- SUPPORT_QA_EMAILS
+- SUPPORT_VIEWER_EMAILS
+- SUPPORT_AUTH_SECRET optional
+
+Email:
+- RESEND_API_KEY
+- SUPPORT_EMAIL_FROM
+- SUPPORT_EMAIL_REPLY_TO
+
+Public ticket:
+- SUPPORT_PUBLIC_TICKET_SECRET
+
+Sentry:
+- SENTRY_DSN_API
+- VITE_SENTRY_DSN_WEB
+- ENABLE_SENTRY_TEST_ENDPOINT
+
+Linear:
+- LINEAR_API_KEY
+- LINEAR_TEAM_ID_EMA
+- LINEAR_TEAM_ID_8BT
+- LINEAR_TEAM_ID_ERD
+- LINEAR_DEFAULT_TEAM_ID
+
+Attachments:
+- SUPPORT_ATTACHMENTS_DIR
+
+13. Final launch checklist page/document
+
+Create docs/support-launch-checklist.md with sections:
+- Admin secrets configured
+- Email tested
+- Sentry tested
+- Linear tested
+- Public ticket tested
+- Wallboard tested
+- Roles tested
+- Attachment security tested
+- Public privacy tested
+- SLA tested
+- Test endpoints disabled
+- Backup/storage plan confirmed
+- Team trained
+
+14. Final verification
+
+Run:
+- typecheck
+- backend smoke tests
+- browser/e2e tests
+- code review if available
+
+Acceptance criteria:
+- no typecheck errors
+- public privacy tests pass
+- internal auth tests pass
+- role permission tests pass
+- attachment security tests pass
+- email disabled/configured mode tests pass
+- wallboard renders cleanly
+- final docs are created/updated
+- replit.md is shortened or cleaned enough to stay useful
+- system is ready for controlled internal use
