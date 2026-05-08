@@ -1,0 +1,158 @@
+Strengthen the Eride Dogma visual theme. The previous colour update did not visibly affect the public support pages enough.
+
+Important:
+- Do not change backend logic.
+- Do not change API routes.
+- Do not change database tables.
+- Do not change ticket workflow.
+- Do not expose Dogma internal details improperly.
+- Keep public pages user-friendly, but make the styling visibly premium and aligned with the Dogma palette.
+- Typecheck must pass.
+
+Issue:
+The public pages still look mostly like the old light theme. Only the buttons changed slightly. We need the Dogma colour identity to be more visible.
+
+Use this palette consistently:
+
+Dogma Black: #050505
+Carbon Black: #0B0F14
+Graphite: #1F2933
+Gunmetal Grey: #3B4652
+Steel Blue Grey: #5F7182
+Electric Ice Blue: #38BDF8
+Silver White: #E5E7EB
+Soft Grey Text: #94A3B8
+Light Surface: #F8FAFC
+Card White: #FFFFFF
+
+Update these public pages:
+- /help
+- /help/report-problem
+- /help/track-ticket
+- /help/ticket/:ticketReference
+
+Public branding rule:
+Still show “Eride Support” publicly.
+Do not make “Dogma” the main public brand.
+But visually the pages must now clearly feel like the premium Dogma/Eride system.
+
+Public page visual requirements:
+
+1. Add a premium dark top hero/header area on public pages
+
+For /help:
+- Create a dark hero section at the top using #0B0F14 or #050505.
+- Text should be #E5E7EB.
+- Accent line or small glow should use #38BDF8.
+- Heading: “How can we help?”
+- Small label: “Eride Support”
+- Subtitle remains user-friendly.
+- The dark hero should make the page visibly different from the old plain white design.
+
+For /help/report-problem:
+- Add a compact dark header section above the form.
+- Background #0B0F14.
+- Heading text #E5E7EB.
+- Subtitle #94A3B8.
+- Add a thin #38BDF8 accent line or small accent chip.
+- Form itself can remain light for readability.
+
+For /help/track-ticket:
+- Add dark hero/header like /help/report-problem.
+- Keep the tracking form light, but visually grounded under the dark header.
+
+For /help/ticket/:ticketReference:
+- Add dark header showing:
+  - Eride Support
+  - Ticket reference
+  - Public status badge
+- Keep details readable.
+
+2. Card styling
+
+Update public cards:
+- Card background: #FFFFFF
+- Border: #D8DEE8 or #E5E7EB
+- Add subtle shadow
+- Add small left/top accent border in #38BDF8 or #3B4652
+- Rounded corners should remain premium, not playful
+
+3. Buttons
+
+Primary public buttons:
+- background #0B0F14 or #1F2933
+- text #FFFFFF
+- hover #050505
+- focus ring #38BDF8
+- border #3B4652
+
+Secondary public buttons:
+- background #FFFFFF
+- border #CBD5E1
+- text #1F2933
+- hover background #F8FAFC
+
+Links:
+- use #2563EB or #38BDF8 depending contrast
+- underlines should be subtle
+
+4. Form focus states
+
+Inputs/selects/textareas:
+- border default #CBD5E1
+- focus border #38BDF8
+- focus ring #38BDF8 with low opacity
+- label text #0B0F14
+- helper text #64748B
+
+5. Icons
+
+On /help cards:
+- icon circles should use #E5E7EB or #F1F5F9
+- icon stroke #1F2933
+- on hover, icon circle can use #DBEAFE or a low-opacity #38BDF8 tint
+
+6. Internal admin pages
+
+Also verify internal admin pages:
+- /admin/support/tickets
+- /admin/support/tickets/:id
+- /admin/support/templates
+- /admin/support/settings
+- /admin/support/wallboard
+
+Internal pages should show:
+- “Eride Dogma Support Centre”
+- tagline “Structured support. Controlled resolution.”
+- visible #38BDF8 accent line or mark
+- primary internal buttons in graphite/black
+
+Wallboard must remain full dark command-centre theme:
+- background #050505 or #0B0F14
+- cards #111827 or #1F2933
+- text #E5E7EB
+- accents #38BDF8
+
+7. Avoid the old plain look
+
+Search for old generic classes or styles that keep pages too plain:
+- overly white full-page backgrounds without dark header
+- default blue links/buttons
+- old neutral-only hero sections
+- missing Dogma accent colours
+
+Replace with the Dogma styling above.
+
+8. Acceptance criteria
+
+- /help visibly has a dark premium hero section.
+- /help/report-problem visibly has a dark premium header above the form.
+- /help/track-ticket visibly has a dark premium header above the form.
+- Public pages still say “Eride Support”, not “Dogma” as the main public name.
+- Buttons are graphite/black with ice-blue focus accents.
+- Cards have subtle Dogma accents.
+- Forms remain readable and mobile-friendly.
+- /admin/support/wallboard still uses the full dark command-centre style.
+- /admin/support/tickets and /admin/support/tickets/:id show the internal Dogma identity.
+- Typecheck passes.
+- Visual smoke test screenshots confirm the new colour direction is visible.

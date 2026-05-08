@@ -27,6 +27,7 @@ import {
   Paperclip,
   Send,
 } from "lucide-react";
+import { PublicHero } from "@/components/PublicHero";
 import {
   CATEGORY_LABELS,
   MESSAGE_CHANNEL_LABELS,
@@ -179,22 +180,30 @@ function VerifyPanel({
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-10">
-      <div className="mx-auto max-w-xl space-y-6">
-        <header className="space-y-2 text-center">
-          <p className="text-sm font-medium text-primary">Eride Support</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Verify your ticket access
-          </h1>
-          <p
-            className="font-mono text-sm text-muted-foreground"
-            data-testid="text-verify-ticket-reference"
-          >
-            {ticketReference}
-          </p>
-        </header>
+    <main className="min-h-screen bg-[#F8FAFC]">
+      <PublicHero
+        align="center"
+        title="Verify your ticket access"
+        subtitle="Enter the email or WhatsApp number you used when submitting this report."
+        showBackLink
+        backHref="/help/track-ticket"
+        backLabel="Use a different reference"
+        data-testid="hero-verify-ticket"
+      >
+        <p
+          className="inline-flex items-center rounded-full border border-[#3B4652] bg-[#1F2933]/60 px-3 py-1 font-mono text-xs text-[#E5E7EB]"
+          data-testid="text-verify-ticket-reference"
+        >
+          {ticketReference}
+        </p>
+      </PublicHero>
 
-        <Card>
+      <div className="mx-auto -mt-8 max-w-xl space-y-6 px-4 pb-16 sm:-mt-10">
+        <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
+          <span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+          />
           <CardHeader>
             <CardTitle>Confirm it's you</CardTitle>
             <CardDescription>
@@ -242,13 +251,19 @@ function VerifyPanel({
                 </Alert>
               )}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  asChild
+                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#38BDF8]"
+                >
                   <Link href="/help/track-ticket">Use a different reference</Link>
                 </Button>
                 <Button
                   type="submit"
                   disabled={submitting}
                   data-testid="button-verify-submit"
+                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#38BDF8]"
                 >
                   {submitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -379,33 +394,37 @@ function TicketView({
   const isReopenable = REOPEN_FROM.has(ticket.publicStatus);
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-10">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-primary">Eride Support</p>
-            <h1
-              className="font-mono text-2xl font-semibold tracking-tight"
-              data-testid="text-public-ticket-reference"
-            >
-              {ticket.ticketReference}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" data-testid="badge-product">
-                {ticket.productName}
-              </Badge>
-              <Badge data-testid="badge-public-status">
-                {humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
-              </Badge>
-            </div>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/help">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Help
-            </Link>
-          </Button>
-        </header>
+    <main className="min-h-screen bg-[#F8FAFC]">
+      <PublicHero
+        title={
+          <span
+            className="font-mono"
+            data-testid="text-public-ticket-reference"
+          >
+            {ticket.ticketReference}
+          </span>
+        }
+        subtitle={`Latest public status for your support request with ${ticket.productName}.`}
+        showBackLink
+        data-testid="hero-public-ticket"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="inline-flex items-center rounded-full border border-[#3B4652] bg-[#1F2933]/60 px-3 py-1 text-xs font-medium text-[#E5E7EB]"
+            data-testid="badge-product"
+          >
+            {ticket.productName}
+          </span>
+          <span
+            className="inline-flex items-center rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#38BDF8]"
+            data-testid="badge-public-status"
+          >
+            {humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
+          </span>
+        </div>
+      </PublicHero>
+
+      <div className="mx-auto -mt-8 max-w-3xl space-y-6 px-4 pb-16 sm:-mt-10">
 
         <Alert data-testid="alert-privacy-warning">
           <AlertTriangle className="h-4 w-4" />

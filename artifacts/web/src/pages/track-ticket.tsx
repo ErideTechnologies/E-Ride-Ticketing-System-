@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AlertTriangle, Loader2, Search } from "lucide-react";
+import { PublicHero } from "@/components/PublicHero";
 import { storePublicTicketToken } from "@/lib/publicTicketAccess";
 
 export default function TrackTicketPage() {
@@ -83,20 +84,21 @@ export default function TrackTicketPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-10">
-      <div className="mx-auto max-w-xl space-y-6">
-        <header className="space-y-2 text-center">
-          <p className="text-sm font-medium text-primary">Eride Support</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Track Your Support Ticket
-          </h1>
-          <p className="text-muted-foreground">
-            Enter your ticket reference and contact email or WhatsApp number to
-            view the latest public status.
-          </p>
-        </header>
+    <main className="min-h-screen bg-[#F8FAFC]">
+      <PublicHero
+        align="center"
+        title="Track your support ticket"
+        subtitle="Enter your ticket reference and the contact email or WhatsApp number you used when you submitted it."
+        showBackLink
+        data-testid="hero-track-ticket"
+      />
 
-        <Card>
+      <div className="mx-auto -mt-8 max-w-xl space-y-6 px-4 pb-16 sm:-mt-10">
+        <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
+          <span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+          />
           <CardHeader>
             <CardTitle>Find your ticket</CardTitle>
             <CardDescription>
@@ -160,13 +162,19 @@ export default function TrackTicketPage() {
               )}
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  asChild
+                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#38BDF8]"
+                >
                   <Link href="/help">Back to Help</Link>
                 </Button>
                 <Button
                   type="submit"
                   disabled={submitting}
                   data-testid="button-track-ticket-submit"
+                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#38BDF8]"
                 >
                   {submitting ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -180,11 +188,11 @@ export default function TrackTicketPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-xs text-[#64748B]">
           Don't have a reference?{" "}
           <Link
             href="/help/report-problem"
-            className="underline underline-offset-2"
+            className="font-medium text-[#1F2933] underline decoration-[#38BDF8] decoration-2 underline-offset-4 hover:text-[#0B0F14]"
           >
             Report a new problem
           </Link>

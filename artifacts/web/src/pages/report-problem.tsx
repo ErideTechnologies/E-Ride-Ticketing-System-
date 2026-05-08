@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CheckCircle2, AlertTriangle, Loader2, Paperclip } from "lucide-react";
+import { PublicHero } from "@/components/PublicHero";
 import {
   CATEGORY_OPTIONS,
   REPORTER_TYPE_OPTIONS,
@@ -197,9 +198,23 @@ export default function ReportProblemPage() {
 
   if (confirmation) {
     return (
-      <main className="min-h-screen bg-muted/30 px-4 py-10">
-        <div className="mx-auto max-w-2xl">
-          <Card data-testid="confirmation-card">
+      <main className="min-h-screen bg-[#F8FAFC]">
+        <PublicHero
+          align="center"
+          title="Thank you. Your issue has been received."
+          subtitle="Our team will review it and contact you if we need more information."
+          showBackLink
+          data-testid="hero-report-confirmation"
+        />
+        <div className="mx-auto -mt-8 max-w-2xl px-4 pb-16 sm:-mt-10">
+          <Card
+            className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm"
+            data-testid="confirmation-card"
+          >
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+            />
             <CardHeader className="space-y-3 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <CheckCircle2 className="h-6 w-6 text-primary" />
@@ -261,20 +276,20 @@ export default function ReportProblemPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-10">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm font-medium text-primary">Eride Support</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Report a Problem
-          </h1>
-          <p className="text-muted-foreground">
-            Tell us what went wrong. Our team will review your report and
-            contact you if we need more information.
-          </p>
-        </header>
+    <main className="min-h-screen bg-[#F8FAFC]">
+      <PublicHero
+        title="Report a Problem"
+        subtitle="Tell us what went wrong. Our team will review your report and contact you if we need more information."
+        showBackLink
+        data-testid="hero-report-problem"
+      />
 
-        <Card>
+      <div className="mx-auto -mt-8 max-w-2xl px-4 pb-16 sm:-mt-10">
+        <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
+          <span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+          />
           <CardContent className="pt-6">
             <form
               onSubmit={handleSubmit}
