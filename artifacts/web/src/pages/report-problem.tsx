@@ -213,7 +213,7 @@ export default function ReportProblemPage() {
           >
             <span
               aria-hidden
-              className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+              className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
             />
             <CardHeader className="space-y-3 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -288,7 +288,7 @@ export default function ReportProblemPage() {
         <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+            className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
           />
           <CardContent className="pt-6">
             <form

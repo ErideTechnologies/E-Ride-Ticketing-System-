@@ -27,7 +27,7 @@ export default function HelpPage() {
         >
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+            className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
           />
           <CardHeader className="flex flex-row items-start gap-3 space-y-0 pl-6">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F1F5F9] ring-1 ring-[#E5E7EB]">
@@ -45,7 +45,7 @@ export default function HelpPage() {
             <Button
               asChild
               data-testid="button-report-problem"
-              className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#38BDF8]"
+              className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#8FA1B5]"
             >
               <Link href="/help/report-problem">Report a problem</Link>
             </Button>
@@ -79,7 +79,7 @@ export default function HelpPage() {
               asChild
               variant="outline"
               data-testid="button-track-ticket"
-              className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#38BDF8]"
+              className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#8FA1B5]"
             >
               <Link href="/help/track-ticket">Track my ticket</Link>
             </Button>

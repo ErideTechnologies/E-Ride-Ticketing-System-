@@ -10,7 +10,7 @@ Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; 
 - **Wallboard / TV command centre:** "Dogma Command Centre" — premium dark theme (Dogma Black + Carbon + Graphite, ice-blue accents)
 - **Public-facing surfaces** (`/help`, `/help/report-problem`, `/help/track-ticket`, `/help/ticket/:ref`): keep the friendly **"Eride Support"** name. Do not surface "Dogma" prominently to public users.
 - **Customer-facing email/WhatsApp templates:** continue to sign as "Eride Support".
-- **Visual identity:** matte black, graphite, gunmetal, steel blue-grey, with electric ice-blue accents. Defined in `artifacts/web/src/index.css` as the `:root` (light, public + internal admin) and `.dark` (wallboard) palettes.
+- **Visual identity:** Pinarello-inspired matte black, graphite, gunmetal, steel blue-grey, with desaturated **steel slate** (`#8FA1B5`) accents and **silver mist** (`#B8C5D0`) highlights — metallic, premium, never bright/electric. Defined in `artifacts/web/src/index.css` as the `:root` (light, public + internal admin) and `.dark` (wallboard) palettes.
 
 ## Run & Operate
 

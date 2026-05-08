@@ -28,7 +28,8 @@ type PublicHeroProps = {
  * Branding rule: public pages still surface as "Eride Support" — the eyebrow
  * MUST default to "Eride Support" and callers should not surface "Dogma"
  * publicly. Visual styling uses the Dogma palette (Carbon #0B0F14 background,
- * Silver #E5E7EB text, Electric Ice Blue #38BDF8 accent line).
+ * Silver #E5E7EB text, Steel Slate #8FA1B5 accent line with a Silver Mist
+ * #B8C5D0 highlight — Pinarello-inspired matte/metallic finish).
  */
 export function PublicHero({
   title,
@@ -45,17 +46,21 @@ export function PublicHero({
   const alignClass = align === "center" ? "text-center items-center" : "";
   return (
     <section
-      className="relative isolate overflow-hidden bg-[#0B0F14] text-[#E5E7EB]"
+      className="relative isolate overflow-hidden bg-gradient-to-br from-[#050505] via-[#0B0F14] to-[#1F2933] text-[#E5E7EB]"
       data-testid={testId ?? "public-hero"}
     >
-      {/* Soft ice-blue radial glow in the corner — subtle premium accent */}
+      {/* Soft steel-slate radial glow in the corner — subtle premium accent */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 -right-16 h-72 w-72 rounded-full bg-[#38BDF8] opacity-[0.12] blur-3xl"
+        className="pointer-events-none absolute -top-24 -right-20 h-80 w-80 rounded-full bg-[#8FA1B5] opacity-[0.10] blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#38BDF8]/60 to-transparent"
+        className="pointer-events-none absolute -bottom-16 -left-24 h-72 w-72 rounded-full bg-[#5F7182] opacity-[0.08] blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#B8C5D0]/40 to-transparent"
       />
       <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
         {showBackLink && (
@@ -77,8 +82,8 @@ export function PublicHero({
             <div
               className={`inline-flex items-center gap-2 ${align === "center" ? "self-center" : "self-start"}`}
             >
-              <span className="h-[2px] w-7 rounded-full bg-[#38BDF8]" />
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#38BDF8]">
+              <span className="h-[2px] w-7 rounded-full bg-gradient-to-r from-[#8FA1B5] to-[#B8C5D0]" />
+              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B8C5D0]">
                 {eyebrow}
               </span>
             </div>

@@ -74,7 +74,8 @@
  * Graphite          #1F2933   ← primary
  * Gunmetal Grey     #3B4652
  * Steel Blue Grey   #5F7182
- * Electric Ice Blue #38BDF8   ← accent / ring
+ * Steel Slate       #8FA1B5   ← accent / ring (Pinarello frame slate)
+ * Silver Mist       #B8C5D0   ← highlight (Pinarello edge highlight)
  * Silver White      #E5E7EB
  * Soft Grey Text    #94A3B8
  * Critical Red      #EF4444   ← destructive
@@ -116,8 +117,8 @@
   --muted: 210 40% 96%;
   --muted-foreground: 215 19% 47%;    /* #64748B */
 
-  /* Accent — Electric Ice Blue */
-  --accent: 199 92% 60%;              /* #38BDF8 */
+  /* Accent — Steel Slate (Pinarello frame slate) */
+  --accent: 211 17% 64%;              /* #8FA1B5 */
   --accent-foreground: 213 33% 6%;
 
   /* Destructive — Critical Red */
@@ -127,10 +128,10 @@
   /* Borders / inputs / focus */
   --border: 220 13% 91%;              /* #E5E7EB */
   --input: 213 27% 84%;               /* #CBD5E1 */
-  --ring: 199 92% 60%;                /* #38BDF8 */
+  --ring: 211 17% 64%;                /* #8FA1B5 */
 
   /* Charts — Dogma accent + status colours */
-  --chart-1: 199 92% 60%;             /* ice blue */
+  --chart-1: 211 17% 64%;             /* steel slate */
   --chart-2: 160 84% 39%;             /* success green */
   --chart-3: 38 92% 50%;              /* amber */
   --chart-4: 0 84% 60%;               /* red */
@@ -140,11 +141,11 @@
   --sidebar: 213 33% 6%;
   --sidebar-foreground: 220 13% 91%;
   --sidebar-border: 213 16% 28%;
-  --sidebar-primary: 199 92% 60%;
+  --sidebar-primary: 211 17% 64%;
   --sidebar-primary-foreground: 213 33% 6%;
   --sidebar-accent: 213 25% 16%;
   --sidebar-accent-foreground: 220 13% 91%;
-  --sidebar-ring: 199 92% 60%;
+  --sidebar-ring: 211 17% 64%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
@@ -208,7 +209,7 @@
   --popover-foreground: 220 13% 91%;
   --popover-border: 213 16% 28%;
 
-  --primary: 199 92% 60%;             /* ice blue accent */
+  --primary: 211 17% 64%;             /* steel slate accent */
   --primary-foreground: 213 33% 6%;
 
   --secondary: 213 25% 16%;           /* graphite */
@@ -217,7 +218,7 @@
   --muted: 213 25% 16%;
   --muted-foreground: 215 16% 65%;    /* #94A3B8 */
 
-  --accent: 199 92% 60%;
+  --accent: 211 17% 64%;              /* #8FA1B5 */
   --accent-foreground: 213 33% 6%;
 
   --destructive: 0 84% 60%;
@@ -225,9 +226,9 @@
 
   --border: 213 16% 28%;              /* gunmetal */
   --input: 213 16% 28%;
-  --ring: 199 92% 60%;
+  --ring: 211 17% 64%;
 
-  --chart-1: 199 92% 60%;
+  --chart-1: 211 17% 64%;
   --chart-2: 160 84% 39%;
   --chart-3: 38 92% 50%;
   --chart-4: 0 84% 60%;
@@ -236,11 +237,11 @@
   --sidebar: 0 0% 2%;
   --sidebar-foreground: 220 13% 91%;
   --sidebar-border: 213 16% 28%;
-  --sidebar-primary: 199 92% 60%;
+  --sidebar-primary: 211 17% 64%;
   --sidebar-primary-foreground: 213 33% 6%;
   --sidebar-accent: 213 25% 16%;
   --sidebar-accent-foreground: 220 13% 91%;
-  --sidebar-ring: 199 92% 60%;
+  --sidebar-ring: 211 17% 64%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.30);
   --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.40);

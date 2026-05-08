@@ -117,12 +117,12 @@ export default function AdminWallboardPage() {
         >
           <div>
             <p
-              className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-400 sm:text-sm"
+              className="text-xs font-semibold uppercase tracking-[0.3em] text-[#B8C5D0] sm:text-sm"
               data-testid="text-wallboard-eyebrow"
             >
               Eride Dogma · Live Operations
             </p>
-            <div className="mt-1 h-[2px] w-24 rounded-full bg-gradient-to-r from-sky-400/90 to-sky-400/0" />
+            <div className="mt-1 h-[2px] w-24 rounded-full bg-gradient-to-r from-[#B8C5D0]/90 via-[#8FA1B5]/70 to-transparent" />
             <h1
               className="mt-2 text-3xl font-bold tracking-tight text-slate-50 sm:text-5xl"
               data-testid="text-wallboard-title"

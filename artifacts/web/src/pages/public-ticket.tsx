@@ -202,7 +202,7 @@ function VerifyPanel({
         <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+            className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
           />
           <CardHeader>
             <CardTitle>Confirm it's you</CardTitle>
@@ -255,7 +255,7 @@ function VerifyPanel({
                   type="button"
                   variant="outline"
                   asChild
-                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#38BDF8]"
+                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#8FA1B5]"
                 >
                   <Link href="/help/track-ticket">Use a different reference</Link>
                 </Button>
@@ -263,7 +263,7 @@ function VerifyPanel({
                   type="submit"
                   disabled={submitting}
                   data-testid="button-verify-submit"
-                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#38BDF8]"
+                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#8FA1B5]"
                 >
                   {submitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -416,7 +416,7 @@ function TicketView({
             {ticket.productName}
           </span>
           <span
-            className="inline-flex items-center rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#38BDF8]"
+            className="inline-flex items-center rounded-full border border-[#8FA1B5]/40 bg-[#8FA1B5]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#B8C5D0]"
             data-testid="badge-public-status"
           >
             {humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}

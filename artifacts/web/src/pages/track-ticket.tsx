@@ -97,7 +97,7 @@ export default function TrackTicketPage() {
         <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-[3px] bg-[#38BDF8]"
+            className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
           />
           <CardHeader>
             <CardTitle>Find your ticket</CardTitle>
@@ -166,7 +166,7 @@ export default function TrackTicketPage() {
                   type="button"
                   variant="outline"
                   asChild
-                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#38BDF8]"
+                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#8FA1B5]"
                 >
                   <Link href="/help">Back to Help</Link>
                 </Button>
@@ -174,7 +174,7 @@ export default function TrackTicketPage() {
                   type="submit"
                   disabled={submitting}
                   data-testid="button-track-ticket-submit"
-                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#38BDF8]"
+                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#8FA1B5]"
                 >
                   {submitting ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -192,7 +192,7 @@ export default function TrackTicketPage() {
           Don't have a reference?{" "}
           <Link
             href="/help/report-problem"
-            className="font-medium text-[#1F2933] underline decoration-[#38BDF8] decoration-2 underline-offset-4 hover:text-[#0B0F14]"
+            className="font-medium text-[#1F2933] underline decoration-[#8FA1B5] decoration-2 underline-offset-4 hover:text-[#0B0F14]"
           >
             Report a new problem
           </Link>
