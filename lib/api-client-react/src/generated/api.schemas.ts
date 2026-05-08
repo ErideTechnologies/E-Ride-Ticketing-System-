@@ -144,6 +144,43 @@ export const InternalSupportTicketStatus = {
   spam: "spam",
 } as const;
 
+export type SupportTicketSlaStatus =
+  (typeof SupportTicketSlaStatus)[keyof typeof SupportTicketSlaStatus];
+
+export const SupportTicketSlaStatus = {
+  on_track: "on_track",
+  approaching: "approaching",
+  breached: "breached",
+  paused: "paused",
+  completed: "completed",
+  not_started: "not_started",
+} as const;
+
+export type SupportTicketSlaPhase =
+  | (typeof SupportTicketSlaPhase)[keyof typeof SupportTicketSlaPhase]
+  | null;
+
+export const SupportTicketSlaPhase = {
+  support_review: "support_review",
+  engineering_fix: "engineering_fix",
+} as const;
+
+export interface SupportTicketSla {
+  slaStatus: SupportTicketSlaStatus;
+  slaPhase: SupportTicketSlaPhase | null;
+  slaLabel: string;
+  /** @nullable */
+  slaDueAt: string | null;
+  /** @nullable */
+  slaBreachedAt: string | null;
+  /** @nullable */
+  minutesUntilDue: number | null;
+  /** @nullable */
+  overdueMinutes: number | null;
+  /** @nullable */
+  targetMinutes: number | null;
+}
+
 export interface SupportWallboardSummary {
   totalOpenTickets: number;
   urgentTickets: number;
@@ -154,7 +191,9 @@ export interface SupportWallboardSummary {
   inEngineering: number;
   inQaVerification: number;
   fixedWaitingUserNotification: number;
-  slaBreachedPlaceholder: number;
+  slaBreached: number;
+  slaApproachingBreach: number;
+  slaPaused: number;
   closedToday: number;
   resolvedToday: number;
 }
@@ -183,6 +222,7 @@ export interface SupportWallboardTicket {
   reporterType: SupportReporterType;
   createdAt: string;
   updatedAt: string;
+  sla: SupportTicketSla;
 }
 
 export interface SupportWallboard {
@@ -191,6 +231,42 @@ export interface SupportWallboard {
   urgentHighTickets: SupportWallboardTicket[];
   awaitingTriageTickets: SupportWallboardTicket[];
   waitingUserNotificationTickets: SupportWallboardTicket[];
+  breachedTickets: SupportWallboardTicket[];
+  approachingBreachTickets: SupportWallboardTicket[];
+  lastUpdated: string;
+}
+
+export interface SupportSlaSummaryProduct {
+  productId: string;
+  productName: string;
+  productCode: string;
+  breached: number;
+  approaching: number;
+  onTrack: number;
+  paused: number;
+}
+
+export interface SupportSlaSummaryPriority {
+  priority: SupportTicketPriority;
+  breached: number;
+  approaching: number;
+  onTrack: number;
+  paused: number;
+}
+
+export type SupportSlaSummaryTotals = {
+  breached: number;
+  approaching: number;
+  onTrack: number;
+  paused: number;
+  completed: number;
+};
+
+export interface SupportSlaSummary {
+  totals: SupportSlaSummaryTotals;
+  byProduct: SupportSlaSummaryProduct[];
+  byPriority: SupportSlaSummaryPriority[];
+  oldestBreachedTickets: SupportWallboardTicket[];
   lastUpdated: string;
 }
 
@@ -215,6 +291,7 @@ export interface SupportTicketListItem {
   environment?: string | null;
   createdAt: string;
   updatedAt: string;
+  sla: SupportTicketSla;
 }
 
 export interface SupportTicketDetail {
@@ -268,6 +345,7 @@ export interface SupportTicketDetail {
   resolvedAt?: string | null;
   /** @nullable */
   closedAt?: string | null;
+  sla: SupportTicketSla;
 }
 
 export interface SupportTicketUpdate {
@@ -787,4 +865,7 @@ export type ListSupportTicketsParams = {
   search?: string;
   createdFrom?: string;
   createdTo?: string;
+  slaStatus?: SupportTicketSlaStatus;
+  overdueOnly?: boolean;
+  dueSoonOnly?: boolean;
 };

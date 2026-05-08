@@ -95,7 +95,11 @@ import {
   REPORTER_TYPE_LABELS,
   SEVERITY_LABELS,
   SEVERITY_OPTIONS,
+  SLA_PHASE_LABELS,
+  SLA_STATUS_LABELS,
+  formatSlaDuration,
   humanLabel,
+  slaStatusBadgeClass,
 } from "@/lib/supportLabels";
 
 function priorityBadgeClass(p: string): string {
@@ -354,6 +358,8 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
         )}
 
         <WorkflowActionsCard ticket={ticket} />
+
+        <SlaCard ticket={ticket} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <OverviewCard ticket={ticket} />
@@ -617,6 +623,82 @@ function WorkflowActionsCard({ ticket }: { ticket: SupportTicketDetail }) {
                 {reminder}
               </div>
             )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SlaCard({ ticket }: { ticket: SupportTicketDetail }) {
+  const sla = ticket.sla;
+  if (!sla) return null;
+  const statusLabel = humanLabel(SLA_STATUS_LABELS, sla.slaStatus);
+  const phaseLabel = humanLabel(SLA_PHASE_LABELS, sla.slaPhase ?? "none");
+  const target = sla.targetMinutes != null ? formatSlaDuration(sla.targetMinutes) : "—";
+  let timing = "—";
+  if (sla.slaStatus === "breached" && sla.overdueMinutes != null) {
+    timing = `Overdue by ${formatSlaDuration(sla.overdueMinutes)}`;
+  } else if (
+    (sla.slaStatus === "approaching" || sla.slaStatus === "on_track") &&
+    sla.minutesUntilDue != null
+  ) {
+    timing = `Due in ${formatSlaDuration(sla.minutesUntilDue)}`;
+  } else if (sla.slaStatus === "completed") {
+    timing = "SLA met";
+  } else if (sla.slaStatus === "paused") {
+    timing = "Paused — awaiting reporter";
+  }
+  return (
+    <Card data-testid="card-sla">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+          SLA tracking
+          <Badge
+            className={slaStatusBadgeClass(sla.slaStatus)}
+            data-testid="badge-sla-status"
+          >
+            {statusLabel}
+          </Badge>
+          <Badge variant="outline" data-testid="badge-sla-phase">
+            {phaseLabel}
+          </Badge>
+        </CardTitle>
+        <CardDescription>{sla.slaLabel}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2 text-sm sm:grid-cols-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Target
+          </p>
+          <p className="font-medium" data-testid="text-sla-target">
+            {target}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Due at
+          </p>
+          <p className="font-medium" data-testid="text-sla-due-at">
+            {formatDateTime(sla.slaDueAt)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Timing
+          </p>
+          <p className="font-medium" data-testid="text-sla-timing">
+            {timing}
+          </p>
+        </div>
+        {sla.slaBreachedAt && (
+          <div className="sm:col-span-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Breached at
+            </p>
+            <p className="font-medium" data-testid="text-sla-breached-at">
+              {formatDateTime(sla.slaBreachedAt)}
+            </p>
           </div>
         )}
       </CardContent>

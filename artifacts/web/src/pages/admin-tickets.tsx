@@ -35,7 +35,10 @@ import {
   PUBLIC_STATUS_LABELS,
   PUBLIC_STATUS_OPTIONS,
   REPORTER_TYPE_LABELS,
+  SLA_STATUS_LABELS,
+  formatSlaDuration,
   humanLabel,
+  slaStatusBadgeClass,
 } from "@/lib/supportLabels";
 
 const ALL = "__all__";
@@ -46,6 +49,7 @@ type Filters = {
   publicStatus: string;
   internalStatus: string;
   category: string;
+  slaStatus: string;
   search: string;
 };
 
@@ -55,8 +59,18 @@ const EMPTY_FILTERS: Filters = {
   publicStatus: ALL,
   internalStatus: ALL,
   category: ALL,
+  slaStatus: ALL,
   search: "",
 };
+
+const SLA_STATUS_FILTER_OPTIONS = [
+  { value: "on_track", label: "On track" },
+  { value: "approaching", label: "Due soon" },
+  { value: "breached", label: "Overdue" },
+  { value: "paused", label: "Paused" },
+  { value: "completed", label: "Met" },
+  { value: "not_started", label: "Not started" },
+] as const;
 
 function priorityBadgeClass(p: string): string {
   switch (p) {
@@ -105,6 +119,8 @@ export default function AdminTicketsPage() {
         filters.internalStatus as ListSupportTicketsParams["internalStatus"];
     if (filters.category !== ALL)
       p.category = filters.category as ListSupportTicketsParams["category"];
+    if (filters.slaStatus !== ALL)
+      p.slaStatus = filters.slaStatus as ListSupportTicketsParams["slaStatus"];
     if (filters.search.trim()) p.search = filters.search.trim();
     return p;
   }, [filters]);
@@ -125,6 +141,8 @@ export default function AdminTicketsPage() {
       triage: data.filter((t) => t.internalStatus === "triage_required").length,
       urgent: data.filter((t) => t.priority === "urgent").length,
       high: data.filter((t) => t.priority === "high").length,
+      overdue: data.filter((t) => t.sla?.slaStatus === "breached").length,
+      dueSoon: data.filter((t) => t.sla?.slaStatus === "approaching").length,
       ema: productCount("EMA"),
       bt8: productCount("8BT"),
       erd: productCount("ERD"),
@@ -178,13 +196,15 @@ export default function AdminTicketsPage() {
         </header>
 
         <section
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-9"
           data-testid="summary-cards"
         >
           <SummaryCard label="Total tickets" value={summary.total} />
           <SummaryCard label="Awaiting triage" value={summary.triage} accent="amber" />
           <SummaryCard label="Urgent" value={summary.urgent} accent="destructive" />
           <SummaryCard label="High priority" value={summary.high} accent="orange" />
+          <SummaryCard label="SLA overdue" value={summary.overdue} accent="destructive" />
+          <SummaryCard label="SLA due soon" value={summary.dueSoon} accent="amber" />
           <SummaryCard label="E-Migration Assist" value={summary.ema} />
           <SummaryCard label="8Beauty" value={summary.bt8} />
           <SummaryCard label="Eride General" value={summary.erd} />
@@ -198,7 +218,7 @@ export default function AdminTicketsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-7">
               <FilterSelect
                 testId="filter-product"
                 placeholder="All products"
@@ -250,6 +270,16 @@ export default function AdminTicketsPage() {
                 options={[
                   { value: ALL, label: "All categories" },
                   ...CATEGORY_OPTIONS.map((o) => ({ ...o })),
+                ]}
+              />
+              <FilterSelect
+                testId="filter-sla-status"
+                placeholder="All SLA states"
+                value={filters.slaStatus}
+                onChange={(v) => update("slaStatus", v)}
+                options={[
+                  { value: ALL, label: "All SLA states" },
+                  ...SLA_STATUS_FILTER_OPTIONS.map((o) => ({ ...o })),
                 ]}
               />
               <Input
@@ -310,6 +340,7 @@ export default function AdminTicketsPage() {
                       <th className="px-3 py-2">Priority</th>
                       <th className="px-3 py-2">Public</th>
                       <th className="px-3 py-2">Internal</th>
+                      <th className="px-3 py-2">SLA</th>
                       <th className="px-3 py-2">Created</th>
                     </tr>
                   </thead>
@@ -348,6 +379,9 @@ export default function AdminTicketsPage() {
                         <td className="px-3 py-2">
                           {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
                         </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <SlaCell sla={t.sla} />
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
                           {formatDateTime(t.createdAt)}
                         </td>
@@ -385,6 +419,7 @@ export default function AdminTicketsPage() {
                         <Badge variant="outline">
                           Internal: {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
                         </Badge>
+                        <SlaCell sla={t.sla} compact />
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
@@ -431,6 +466,36 @@ function SummaryCard({
         <p className={`mt-1 text-2xl font-semibold ${accentColor}`}>{value}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function SlaCell({
+  sla,
+  compact,
+}: {
+  sla: SupportTicketListItem["sla"] | null | undefined;
+  compact?: boolean;
+}) {
+  if (!sla) return <span className="text-muted-foreground">—</span>;
+  const label = humanLabel(SLA_STATUS_LABELS, sla.slaStatus);
+  let detail: string | null = null;
+  if (sla.slaStatus === "breached" && sla.overdueMinutes != null) {
+    detail = `${formatSlaDuration(sla.overdueMinutes)} over`;
+  } else if (
+    (sla.slaStatus === "approaching" || sla.slaStatus === "on_track") &&
+    sla.minutesUntilDue != null
+  ) {
+    detail = `${formatSlaDuration(sla.minutesUntilDue)} left`;
+  }
+  return (
+    <div className={compact ? "inline-flex items-center gap-1" : "space-y-1"}>
+      <Badge className={slaStatusBadgeClass(sla.slaStatus)} data-testid="badge-sla">
+        {label}
+      </Badge>
+      {detail && (
+        <span className="text-xs text-muted-foreground">{detail}</span>
+      )}
+    </div>
   );
 }
 

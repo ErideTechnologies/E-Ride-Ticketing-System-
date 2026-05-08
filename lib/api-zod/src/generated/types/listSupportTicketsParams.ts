@@ -11,6 +11,7 @@ import type { SupportReporterType } from "./supportReporterType";
 import type { SupportTicketCategory } from "./supportTicketCategory";
 import type { SupportTicketPriority } from "./supportTicketPriority";
 import type { SupportTicketSeverity } from "./supportTicketSeverity";
+import type { SupportTicketSlaStatus } from "./supportTicketSlaStatus";
 
 export type ListSupportTicketsParams = {
   productId?: string;
@@ -25,4 +26,7 @@ export type ListSupportTicketsParams = {
   search?: string;
   createdFrom?: Date;
   createdTo?: Date;
+  slaStatus?: SupportTicketSlaStatus;
+  overdueOnly?: boolean;
+  dueSoonOnly?: boolean;
 };

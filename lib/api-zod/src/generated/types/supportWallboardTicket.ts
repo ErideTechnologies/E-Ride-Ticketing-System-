@@ -10,6 +10,7 @@ import type { PublicSupportTicketStatus } from "./publicSupportTicketStatus";
 import type { SupportReporterType } from "./supportReporterType";
 import type { SupportTicketPriority } from "./supportTicketPriority";
 import type { SupportTicketSeverity } from "./supportTicketSeverity";
+import type { SupportTicketSla } from "./supportTicketSla";
 
 export interface SupportWallboardTicket {
   id: string;
@@ -24,4 +25,5 @@ export interface SupportWallboardTicket {
   reporterType: SupportReporterType;
   createdAt: Date;
   updatedAt: Date;
+  sla: SupportTicketSla;
 }

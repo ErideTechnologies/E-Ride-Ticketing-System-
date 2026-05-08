@@ -108,3 +108,47 @@ export const MESSAGE_DELIVERY_STATUS_LABELS = makeLookup(
 export function humanLabel(map: Record<string, string>, value: string): string {
   return map[value] ?? value;
 }
+
+export const SLA_STATUS_LABELS: Record<string, string> = {
+  on_track: "On track",
+  approaching: "Due soon",
+  breached: "Overdue",
+  paused: "Paused",
+  completed: "Met",
+  not_started: "Not started",
+};
+
+export const SLA_PHASE_LABELS: Record<string, string> = {
+  support_review: "Support review",
+  engineering_fix: "Engineering fix",
+  none: "—",
+};
+
+export function slaStatusBadgeClass(status: string): string {
+  switch (status) {
+    case "breached":
+      return "bg-red-600 text-white border-transparent";
+    case "approaching":
+      return "bg-amber-500 text-white border-transparent";
+    case "on_track":
+      return "bg-emerald-600 text-white border-transparent";
+    case "paused":
+      return "bg-slate-400 text-white border-transparent";
+    case "completed":
+      return "bg-slate-200 text-slate-700 border-transparent";
+    default:
+      return "bg-muted text-muted-foreground border-transparent";
+  }
+}
+
+export function formatSlaDuration(minutes: number | null | undefined): string {
+  if (minutes == null) return "—";
+  const m = Math.abs(Math.round(minutes));
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h < 24) return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+  const d = Math.floor(h / 24);
+  const remH = h % 24;
+  return remH === 0 ? `${d}d` : `${d}d ${remH}h`;
+}

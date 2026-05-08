@@ -11,6 +11,7 @@ import type { SupportReporterType } from "./supportReporterType";
 import type { SupportTicketCategory } from "./supportTicketCategory";
 import type { SupportTicketPriority } from "./supportTicketPriority";
 import type { SupportTicketSeverity } from "./supportTicketSeverity";
+import type { SupportTicketSla } from "./supportTicketSla";
 
 export interface SupportTicketListItem {
   id: string;
@@ -33,4 +34,5 @@ export interface SupportTicketListItem {
   environment?: string | null;
   createdAt: Date;
   updatedAt: Date;
+  sla: SupportTicketSla;
 }

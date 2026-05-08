@@ -31,6 +31,7 @@ import type {
   SupportMessageTemplateUpdate,
   SupportSettings,
   SupportSettingsUpdate,
+  SupportSlaSummary,
   SupportTicketAttachment,
   SupportTicketAttachmentUpload,
   SupportTicketCreateLinearIssueRequest,
@@ -2757,6 +2758,82 @@ export function useGetSupportWallboard<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetSupportWallboardQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Aggregated SLA counts by product and priority, plus the oldest breached tickets. Internal use only — never exposed to public reporters.
+ * @summary SLA breach/approaching/on-track totals for the Eride organisation (internal admin)
+ */
+export const getGetSupportSlaSummaryUrl = () => {
+  return `/api/support/sla-summary`;
+};
+
+export const getSupportSlaSummary = async (
+  options?: RequestInit,
+): Promise<SupportSlaSummary> => {
+  return customFetch<SupportSlaSummary>(getGetSupportSlaSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupportSlaSummaryQueryKey = () => {
+  return [`/api/support/sla-summary`] as const;
+};
+
+export const getGetSupportSlaSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportSlaSummary>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportSlaSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSupportSlaSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportSlaSummary>>
+  > = ({ signal }) => getSupportSlaSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportSlaSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportSlaSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportSlaSummary>>
+>;
+export type GetSupportSlaSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary SLA breach/approaching/on-track totals for the Eride organisation (internal admin)
+ */
+
+export function useGetSupportSlaSummary<
+  TData = Awaited<ReturnType<typeof getSupportSlaSummary>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportSlaSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportSlaSummaryQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

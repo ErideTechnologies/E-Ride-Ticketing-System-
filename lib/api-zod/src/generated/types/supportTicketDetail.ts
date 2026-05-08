@@ -11,6 +11,7 @@ import type { SupportReporterType } from "./supportReporterType";
 import type { SupportTicketCategory } from "./supportTicketCategory";
 import type { SupportTicketPriority } from "./supportTicketPriority";
 import type { SupportTicketSeverity } from "./supportTicketSeverity";
+import type { SupportTicketSla } from "./supportTicketSla";
 
 export interface SupportTicketDetail {
   id: string;
@@ -63,4 +64,5 @@ export interface SupportTicketDetail {
   resolvedAt?: Date | null;
   /** @nullable */
   closedAt?: Date | null;
+  sla: SupportTicketSla;
 }

@@ -1,0 +1,317 @@
+Build Step 15 of the Eride Support Command Centre: SLA Tracking and Overdue Alerts.
+
+Context:
+Step 1 is complete:
+- support foundation tables
+- organisations/products/tickets
+- ticket reference generation
+
+Step 2 is complete:
+- public report problem page
+
+Step 3 is complete:
+- internal ticket dashboard
+
+Step 4 is complete:
+- ticket detail page
+
+Step 5 is complete:
+- attachment uploads
+
+Step 6 is complete:
+- live wallboard
+
+Step 7 is complete:
+- communication log
+
+Step 8 is complete:
+- workflow action buttons
+
+Step 9 is complete:
+- engineering escalation and manual Linear handoff
+
+Step 10 is complete:
+- Sentry setup and Sentry links
+
+Step 11 is complete:
+- email notification setup
+
+Step 12 is complete:
+- public ticket tracking
+
+Step 13 is complete:
+- admin templates and support settings
+
+Step 14 is complete:
+- Linear API integration
+- GET /api/support/integrations/linear/status
+- POST /api/support/tickets/:id/create-linear-issue
+- disabled-mode fallback works when LINEAR_API_KEY is missing
+
+Goal:
+Add SLA tracking, overdue status, and founder escalation views to the Eride Support Command Centre.
+
+Important:
+- Do not add WhatsApp automation yet.
+- Do not add GitHub PR automation yet.
+- Do not add external-company SaaS onboarding yet.
+- Do not change public ticket privacy rules.
+- SLA data must be internal only.
+- Public users must not see SLA breach details.
+- This step should support Eride’s current products: E-Migration Assist, 8Beauty, and Eride General Support.
+
+SLA Rules:
+
+Support review SLA:
+- urgent: first review within 30 minutes
+- high: first review within 2 business hours
+- medium: first review same business day
+- low: first review within 2 business days
+
+Engineering fix SLA:
+- urgent: fix within 4 business hours once escalated to engineering
+- high: fix within 1 business day once escalated to engineering
+- medium: fix within current cycle / 7 days
+- low: fix within next cycle / 14 days
+
+For MVP, approximate business hours using normal elapsed time if business-hours calculation is too complex.
+Prefer clean, simple logic over over-complication.
+
+Database:
+
+Option A:
+Add fields to support_tickets:
+- firstReviewDueAt nullable
+- engineeringDueAt nullable
+- slaStatus nullable
+- slaBreachedAt nullable
+- lastSlaCalculatedAt nullable
+
+Allowed slaStatus values:
+- no_sla
+- within_sla
+- approaching_breach
+- breached
+- paused
+- completed
+
+Option B:
+If you prefer not to alter support_tickets, create:
+support_ticket_sla
+- id
+- supportTicketId unique
+- firstReviewDueAt nullable
+- engineeringDueAt nullable
+- slaStatus
+- slaBreachedAt nullable
+- lastCalculatedAt
+- createdAt
+- updatedAt
+
+Use the safest approach consistent with the existing schema style.
+
+SLA calculation logic:
+
+Create helper:
+calculateTicketSla(ticket)
+
+Inputs:
+- priority
+- internalStatus
+- publicStatus
+- createdAt
+- updatedAt
+- resolvedAt
+- closedAt
+- status history if needed
+
+Rules:
+
+1. Closed/completed tickets:
+If publicStatus or internalStatus is:
+- resolved
+- closed
+- duplicate
+- not_a_bug
+- spam
+
+Then slaStatus = completed.
+
+2. Paused tickets:
+If internalStatus = needs_user_info or publicStatus = more_info_needed
+Then slaStatus = paused.
+
+3. First review SLA:
+Applies when ticket is:
+- new
+- triage_required
+- support_review
+
+Due date calculated from createdAt based on priority.
+
+4. Engineering SLA:
+Applies when internalStatus is:
+- engineering_escalation_required
+- linear_created
+- in_engineering
+- in_review
+- in_qa_verification
+- fixed_waiting_user_notification
+
+Due date calculated from the first time the ticket entered engineering_escalation_required or linear_created.
+If status history is not enough, use updatedAt as fallback.
+
+5. Approaching breach:
+If current time is within 25% of remaining SLA window or within:
+- urgent: 15 minutes before due
+- high: 1 hour before due
+- medium: 1 day before due
+- low: 2 days before due
+
+Then slaStatus = approaching_breach.
+
+6. Breached:
+If current time > due date and ticket is not completed or paused:
+slaStatus = breached
+slaBreachedAt = now if not already set.
+
+Backend:
+
+1. Add helper to compute SLA state dynamically.
+
+2. Update GET /api/support/tickets:
+Include SLA fields for each ticket:
+- slaStatus
+- activeSlaDueAt
+- slaBreachedAt
+- slaLabel
+- minutesUntilDue or overdueMinutes
+
+3. Add filters to GET /api/support/tickets:
+- slaStatus optional
+- overdueOnly optional boolean
+- dueSoonOnly optional boolean
+
+4. Update GET /api/support/wallboard:
+Replace placeholder SLA count with real counts:
+- slaBreached
+- approachingBreach
+- pausedSla
+- completedSlaToday if useful
+
+Add watchlist:
+- breachedTickets: newest or most overdue 10
+- approachingBreachTickets: up to 10
+
+5. Create endpoint:
+GET /api/support/sla-summary
+
+Return:
+- totalOpen
+- withinSla
+- approachingBreach
+- breached
+- paused
+- completedToday
+- breachedByProduct
+- breachedByPriority
+- approachingByPriority
+- oldestBreachedTickets up to 10
+
+6. Optional endpoint:
+POST /api/support/tickets/:id/recalculate-sla
+
+Only if needed for admin/debug.
+
+Frontend:
+
+A. Update /admin/support/tickets
+
+Add dashboard cards:
+- SLA Breached
+- Approaching Breach
+- Paused SLA
+
+Add filters:
+- SLA Status: All, Within SLA, Approaching Breach, Breached, Paused, Completed
+- Overdue only toggle
+
+Add columns/cards:
+- SLA status badge
+- Due time
+- Overdue by / Due in
+
+Visual rules:
+- breached = strong red
+- approaching_breach = amber/orange
+- within_sla = green/neutral
+- paused = gray/blue
+- completed = neutral
+
+B. Update /admin/support/tickets/:id
+
+Add SLA card near the top.
+
+Show:
+- SLA status
+- Active SLA type: Support Review or Engineering Fix
+- Due date/time
+- Due in / overdue by
+- First review due
+- Engineering due
+- Breached at if applicable
+- Paused reason if needs_user_info
+- Completed if resolved/closed
+
+Add helper text:
+- “SLA is paused while waiting for user information.”
+- “Engineering SLA starts once the ticket is escalated to engineering.”
+- “Public users do not see SLA information.”
+
+C. Update /admin/support/wallboard
+
+Add live KPI cards:
+- SLA Breached
+- Approaching Breach
+
+Add section:
+SLA Watchlist
+
+Show:
+- breached tickets
+- approaching breach tickets
+- reference
+- product
+- priority
+- internal status
+- overdue by / due in
+
+D. Create /admin/support/sla
+
+Optional but recommended.
+
+Page title:
+SLA Monitor
+
+Sections:
+- summary cards
+- breached by product
+- breached by priority
+- oldest breached tickets
+- approaching breach tickets
+- link to ticket details
+
+If building this page is too much for this step, add it as a simple page with the summary endpoint output.
+
+Acceptance criteria:
+- SLA status is calculated for tickets
+- Dashboard shows SLA status and filters
+- Ticket detail page shows SLA card
+- Wallboard uses real SLA breached count instead of placeholder
+- Wallboard shows SLA watchlist
+- Closed/resolved/duplicate/spam tickets are completed
+- Needs user info tickets are paused
+- Engineering SLA starts after engineering escalation
+- Public ticket pages do not expose SLA information
+- Typecheck passes
+- Basic browser test covers urgent ticket breach, needs_user_info paused SLA, resolved completed SLA, dashboard SLA filter, and wallboard SLA count

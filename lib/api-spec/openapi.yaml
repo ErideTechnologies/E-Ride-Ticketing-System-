@@ -763,6 +763,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/SupportWallboard"
 
+  /support/sla-summary:
+    get:
+      operationId: getSupportSlaSummary
+      tags: [support]
+      summary: SLA breach/approaching/on-track totals for the Eride organisation (internal admin)
+      description: Aggregated SLA counts by product and priority, plus the oldest breached tickets. Internal use only — never exposed to public reporters.
+      responses:
+        "200":
+          description: SLA summary payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportSlaSummary"
+
   /support/tickets:
     get:
       operationId: listSupportTickets
@@ -818,6 +832,18 @@ paths:
           name: createdTo
           required: false
           schema: { type: string, format: date-time }
+        - in: query
+          name: slaStatus
+          required: false
+          schema: { $ref: "#/components/schemas/SupportTicketSlaStatus" }
+        - in: query
+          name: overdueOnly
+          required: false
+          schema: { type: boolean }
+        - in: query
+          name: dueSoonOnly
+          required: false
+          schema: { type: boolean }
       responses:
         "200":
           description: List of tickets
@@ -1011,6 +1037,47 @@ components:
         - deferred
         - spam
 
+    SupportTicketSlaStatus:
+      type: string
+      enum:
+        - on_track
+        - approaching
+        - breached
+        - paused
+        - completed
+        - not_started
+
+    SupportTicketSlaPhase:
+      type: string
+      nullable: true
+      enum:
+        - support_review
+        - engineering_fix
+
+    SupportTicketSla:
+      type: object
+      properties:
+        slaStatus: { $ref: "#/components/schemas/SupportTicketSlaStatus" }
+        slaPhase:
+          oneOf:
+            - { $ref: "#/components/schemas/SupportTicketSlaPhase" }
+            - { type: "null" }
+        slaLabel: { type: string }
+        slaDueAt: { type: ["string", "null"], format: date-time }
+        slaBreachedAt: { type: ["string", "null"], format: date-time }
+        minutesUntilDue: { type: ["integer", "null"] }
+        overdueMinutes: { type: ["integer", "null"] }
+        targetMinutes: { type: ["integer", "null"] }
+      required:
+        - slaStatus
+        - slaPhase
+        - slaLabel
+        - slaDueAt
+        - slaBreachedAt
+        - minutesUntilDue
+        - overdueMinutes
+        - targetMinutes
+
     SupportWallboardSummary:
       type: object
       properties:
@@ -1023,7 +1090,9 @@ components:
         inEngineering: { type: integer }
         inQaVerification: { type: integer }
         fixedWaitingUserNotification: { type: integer }
-        slaBreachedPlaceholder: { type: integer }
+        slaBreached: { type: integer }
+        slaApproachingBreach: { type: integer }
+        slaPaused: { type: integer }
         closedToday: { type: integer }
         resolvedToday: { type: integer }
       required:
@@ -1036,7 +1105,9 @@ components:
         - inEngineering
         - inQaVerification
         - fixedWaitingUserNotification
-        - slaBreachedPlaceholder
+        - slaBreached
+        - slaApproachingBreach
+        - slaPaused
         - closedToday
         - resolvedToday
 
@@ -1076,6 +1147,7 @@ components:
         reporterType: { $ref: "#/components/schemas/SupportReporterType" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        sla: { $ref: "#/components/schemas/SupportTicketSla" }
       required:
         - id
         - ticketReference
@@ -1089,6 +1161,7 @@ components:
         - reporterType
         - createdAt
         - updatedAt
+        - sla
 
     SupportWallboard:
       type: object
@@ -1106,6 +1179,12 @@ components:
         waitingUserNotificationTickets:
           type: array
           items: { $ref: "#/components/schemas/SupportWallboardTicket" }
+        breachedTickets:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardTicket" }
+        approachingBreachTickets:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardTicket" }
         lastUpdated: { type: string, format: date-time }
       required:
         - summary
@@ -1113,6 +1192,71 @@ components:
         - urgentHighTickets
         - awaitingTriageTickets
         - waitingUserNotificationTickets
+        - breachedTickets
+        - approachingBreachTickets
+        - lastUpdated
+
+    SupportSlaSummaryProduct:
+      type: object
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        productCode: { type: string }
+        breached: { type: integer }
+        approaching: { type: integer }
+        onTrack: { type: integer }
+        paused: { type: integer }
+      required:
+        - productId
+        - productName
+        - productCode
+        - breached
+        - approaching
+        - onTrack
+        - paused
+
+    SupportSlaSummaryPriority:
+      type: object
+      properties:
+        priority: { $ref: "#/components/schemas/SupportTicketPriority" }
+        breached: { type: integer }
+        approaching: { type: integer }
+        onTrack: { type: integer }
+        paused: { type: integer }
+      required:
+        - priority
+        - breached
+        - approaching
+        - onTrack
+        - paused
+
+    SupportSlaSummary:
+      type: object
+      properties:
+        totals:
+          type: object
+          properties:
+            breached: { type: integer }
+            approaching: { type: integer }
+            onTrack: { type: integer }
+            paused: { type: integer }
+            completed: { type: integer }
+          required: [breached, approaching, onTrack, paused, completed]
+        byProduct:
+          type: array
+          items: { $ref: "#/components/schemas/SupportSlaSummaryProduct" }
+        byPriority:
+          type: array
+          items: { $ref: "#/components/schemas/SupportSlaSummaryPriority" }
+        oldestBreachedTickets:
+          type: array
+          items: { $ref: "#/components/schemas/SupportWallboardTicket" }
+        lastUpdated: { type: string, format: date-time }
+      required:
+        - totals
+        - byProduct
+        - byPriority
+        - oldestBreachedTickets
         - lastUpdated
 
     SupportTicketListItem:
@@ -1136,6 +1280,7 @@ components:
         environment: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        sla: { $ref: "#/components/schemas/SupportTicketSla" }
       required:
         - id
         - ticketReference
@@ -1153,6 +1298,7 @@ components:
         - source
         - createdAt
         - updatedAt
+        - sla
 
     SupportTicketDetail:
       type: object
@@ -1191,6 +1337,7 @@ components:
         updatedAt: { type: string, format: date-time }
         resolvedAt: { type: ["string", "null"], format: date-time }
         closedAt: { type: ["string", "null"], format: date-time }
+        sla: { $ref: "#/components/schemas/SupportTicketSla" }
       required:
         - id
         - ticketReference
@@ -1210,6 +1357,7 @@ components:
         - whatWentWrong
         - createdAt
         - updatedAt
+        - sla
 
     SupportTicketUpdate:
       type: object

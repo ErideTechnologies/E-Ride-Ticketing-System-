@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { and, desc, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   db,
   generateSupportTicketReference,
@@ -73,6 +73,12 @@ import {
   signPublicTicketToken,
   verifyPublicTicketToken,
 } from "../lib/publicTicketToken";
+import {
+  calculateTicketSla,
+  ENGINEERING_FIX_STATUSES,
+  type SlaResult,
+  type SlaStatus,
+} from "../lib/sla";
 import {
   isSafeTemplateHtml,
   renderTemplateString,
@@ -161,6 +167,56 @@ const OPEN_INTERNAL_STATUS_EXCLUDE = new Set([
   "not_a_bug",
 ]);
 
+/**
+ * For each ticket id, returns the earliest moment its internal status
+ * transitioned into an engineering-fix state. Used as the start anchor for
+ * the engineering-fix SLA. Falls back to ticket.createdAt at the call site
+ * when no such transition exists yet.
+ */
+async function loadEngineeringStartedAtMap(
+  ticketIds: string[],
+): Promise<Map<string, Date>> {
+  const map = new Map<string, Date>();
+  if (ticketIds.length === 0) return map;
+  const engineeringStatuses = Array.from(ENGINEERING_FIX_STATUSES);
+  const rows = await db
+    .select({
+      supportTicketId: supportTicketStatusHistoryTable.supportTicketId,
+      newInternalStatus: supportTicketStatusHistoryTable.newInternalStatus,
+      createdAt: supportTicketStatusHistoryTable.createdAt,
+    })
+    .from(supportTicketStatusHistoryTable)
+    .where(
+      and(
+        inArray(supportTicketStatusHistoryTable.supportTicketId, ticketIds),
+        inArray(
+          supportTicketStatusHistoryTable.newInternalStatus,
+          engineeringStatuses,
+        ),
+      ),
+    );
+  for (const r of rows) {
+    const existing = map.get(r.supportTicketId);
+    if (!existing || r.createdAt.getTime() < existing.getTime()) {
+      map.set(r.supportTicketId, r.createdAt);
+    }
+  }
+  return map;
+}
+
+function serializeSla(sla: SlaResult) {
+  return {
+    slaStatus: sla.slaStatus,
+    slaPhase: sla.slaPhase,
+    slaLabel: sla.slaLabel,
+    slaDueAt: sla.slaDueAt,
+    slaBreachedAt: sla.slaBreachedAt,
+    minutesUntilDue: sla.minutesUntilDue,
+    overdueMinutes: sla.overdueMinutes,
+    targetMinutes: sla.targetMinutes,
+  };
+}
+
 router.get("/support/wallboard", async (req, res): Promise<void> => {
   const org = await getErideOrganisation();
   if (!org) {
@@ -220,6 +276,27 @@ router.get("/support/wallboard", async (req, res): Promise<void> => {
   const isToday = (d: Date | null): boolean =>
     d != null && d.getTime() >= startOfTodayUtc.getTime();
 
+  const engineeringStartedAtMap = await loadEngineeringStartedAtMap(
+    rows.map((r) => r.id),
+  );
+  const slaByTicketId = new Map<string, SlaResult>();
+  const now = new Date();
+  for (const t of rows) {
+    slaByTicketId.set(
+      t.id,
+      calculateTicketSla({
+        priority: t.priority,
+        publicStatus: t.publicStatus,
+        internalStatus: t.internalStatus,
+        createdAt: t.createdAt,
+        resolvedAt: t.resolvedAt,
+        closedAt: t.closedAt,
+        engineeringStartedAt: engineeringStartedAtMap.get(t.id) ?? null,
+        now,
+      }),
+    );
+  }
+
   const summary = {
     totalOpenTickets: 0,
     urgentTickets: 0,
@@ -230,7 +307,9 @@ router.get("/support/wallboard", async (req, res): Promise<void> => {
     inEngineering: 0,
     inQaVerification: 0,
     fixedWaitingUserNotification: 0,
-    slaBreachedPlaceholder: 0,
+    slaBreached: 0,
+    slaApproachingBreach: 0,
+    slaPaused: 0,
     closedToday: 0,
     resolvedToday: 0,
   };
@@ -263,10 +342,14 @@ router.get("/support/wallboard", async (req, res): Promise<void> => {
 
   for (const t of rows) {
     const open = isOpen(t.internalStatus);
+    const sla = slaByTicketId.get(t.id);
     if (open) {
       summary.totalOpenTickets++;
       if (t.priority === "urgent") summary.urgentTickets++;
       if (t.priority === "high") summary.highPriorityTickets++;
+      if (sla?.slaStatus === "breached") summary.slaBreached++;
+      if (sla?.slaStatus === "approaching") summary.slaApproachingBreach++;
+      if (sla?.slaStatus === "paused") summary.slaPaused++;
     }
     if (isAwaitingTriage(t.internalStatus)) summary.awaitingTriage++;
     if (t.internalStatus === "needs_user_info") summary.needsUserInfo++;
@@ -291,20 +374,36 @@ router.get("/support/wallboard", async (req, res): Promise<void> => {
     }
   }
 
-  const toWallboardTicket = (t: (typeof rows)[number]) => ({
-    id: t.id,
-    ticketReference: t.ticketReference,
-    productName: t.productName,
-    productCode: t.productCode,
-    issueSummary: t.issueSummary,
-    priority: t.priority,
-    severity: t.severity,
-    publicStatus: t.publicStatus,
-    internalStatus: t.internalStatus,
-    reporterType: t.reporterType,
-    createdAt: t.createdAt.toISOString(),
-    updatedAt: t.updatedAt.toISOString(),
-  });
+  const toWallboardTicket = (t: (typeof rows)[number]) => {
+    const sla = slaByTicketId.get(t.id);
+    return {
+      id: t.id,
+      ticketReference: t.ticketReference,
+      productName: t.productName,
+      productCode: t.productCode,
+      issueSummary: t.issueSummary,
+      priority: t.priority,
+      severity: t.severity,
+      publicStatus: t.publicStatus,
+      internalStatus: t.internalStatus,
+      reporterType: t.reporterType,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      sla: serializeSla(
+        sla ??
+          calculateTicketSla({
+            priority: t.priority,
+            publicStatus: t.publicStatus,
+            internalStatus: t.internalStatus,
+            createdAt: t.createdAt,
+            resolvedAt: t.resolvedAt,
+            closedAt: t.closedAt,
+            engineeringStartedAt: null,
+            now,
+          }),
+      ),
+    };
+  };
 
   const urgentHighTickets = rows
     .filter(
@@ -325,13 +424,191 @@ router.get("/support/wallboard", async (req, res): Promise<void> => {
     .slice(0, 10)
     .map(toWallboardTicket);
 
+  const breachedTickets = rows
+    .filter(
+      (t) =>
+        isOpen(t.internalStatus) &&
+        slaByTicketId.get(t.id)?.slaStatus === "breached",
+    )
+    .sort((a, b) => {
+      const ad = slaByTicketId.get(a.id)?.slaDueAt ?? "";
+      const bd = slaByTicketId.get(b.id)?.slaDueAt ?? "";
+      return ad < bd ? -1 : ad > bd ? 1 : 0;
+    })
+    .slice(0, 10)
+    .map(toWallboardTicket);
+
+  const approachingBreachTickets = rows
+    .filter(
+      (t) =>
+        isOpen(t.internalStatus) &&
+        slaByTicketId.get(t.id)?.slaStatus === "approaching",
+    )
+    .sort((a, b) => {
+      const ad = slaByTicketId.get(a.id)?.minutesUntilDue ?? Number.MAX_SAFE_INTEGER;
+      const bd = slaByTicketId.get(b.id)?.minutesUntilDue ?? Number.MAX_SAFE_INTEGER;
+      return ad - bd;
+    })
+    .slice(0, 10)
+    .map(toWallboardTicket);
+
   res.json({
     summary,
     productBreakdown: Array.from(productAgg.values()),
     urgentHighTickets,
     awaitingTriageTickets,
     waitingUserNotificationTickets,
+    breachedTickets,
+    approachingBreachTickets,
     lastUpdated: new Date().toISOString(),
+  });
+});
+
+router.get("/support/sla-summary", async (req, res): Promise<void> => {
+  const org = await getErideOrganisation();
+  if (!org) {
+    req.log.error({ orgCode: ERIDE_ORG_CODE }, "Eride organisation not found");
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+
+  const rows = await db
+    .select({
+      id: supportTicketsTable.id,
+      ticketReference: supportTicketsTable.ticketReference,
+      productId: supportTicketsTable.productId,
+      productName: supportProductsTable.productName,
+      productCode: supportProductsTable.productCode,
+      issueSummary: supportTicketsTable.issueSummary,
+      priority: supportTicketsTable.priority,
+      severity: supportTicketsTable.severity,
+      publicStatus: supportTicketsTable.publicStatus,
+      internalStatus: supportTicketsTable.internalStatus,
+      reporterType: supportTicketsTable.reporterType,
+      createdAt: supportTicketsTable.createdAt,
+      updatedAt: supportTicketsTable.updatedAt,
+      resolvedAt: supportTicketsTable.resolvedAt,
+      closedAt: supportTicketsTable.closedAt,
+    })
+    .from(supportTicketsTable)
+    .innerJoin(
+      supportProductsTable,
+      eq(supportProductsTable.id, supportTicketsTable.productId),
+    )
+    .where(eq(supportTicketsTable.organisationId, org.id))
+    .orderBy(desc(supportTicketsTable.createdAt));
+
+  const engineeringStartedAtMap = await loadEngineeringStartedAtMap(
+    rows.map((r) => r.id),
+  );
+  const now = new Date();
+
+  const totals = { breached: 0, approaching: 0, onTrack: 0, paused: 0, completed: 0 };
+  type ProdAgg = {
+    productId: string;
+    productName: string;
+    productCode: string;
+    breached: number;
+    approaching: number;
+    onTrack: number;
+    paused: number;
+  };
+  const byProduct = new Map<string, ProdAgg>();
+  const priorityOrder: TicketPriority[] = ["urgent", "high", "medium", "low"];
+  const byPriority = new Map<
+    TicketPriority,
+    { priority: TicketPriority; breached: number; approaching: number; onTrack: number; paused: number }
+  >();
+  for (const p of priorityOrder) {
+    byPriority.set(p, { priority: p, breached: 0, approaching: 0, onTrack: 0, paused: 0 });
+  }
+
+  type Enriched = (typeof rows)[number] & { sla: SlaResult };
+  const enriched: Enriched[] = rows.map((t) => ({
+    ...t,
+    sla: calculateTicketSla({
+      priority: t.priority,
+      publicStatus: t.publicStatus,
+      internalStatus: t.internalStatus,
+      createdAt: t.createdAt,
+      resolvedAt: t.resolvedAt,
+      closedAt: t.closedAt,
+      engineeringStartedAt: engineeringStartedAtMap.get(t.id) ?? null,
+      now,
+    }),
+  }));
+
+  for (const t of enriched) {
+    if (!byProduct.has(t.productId)) {
+      byProduct.set(t.productId, {
+        productId: t.productId,
+        productName: t.productName,
+        productCode: t.productCode,
+        breached: 0,
+        approaching: 0,
+        onTrack: 0,
+        paused: 0,
+      });
+    }
+    const prod = byProduct.get(t.productId)!;
+    const pri = byPriority.get(t.priority)!;
+    switch (t.sla.slaStatus) {
+      case "breached":
+        totals.breached++;
+        prod.breached++;
+        pri.breached++;
+        break;
+      case "approaching":
+        totals.approaching++;
+        prod.approaching++;
+        pri.approaching++;
+        break;
+      case "on_track":
+        totals.onTrack++;
+        prod.onTrack++;
+        pri.onTrack++;
+        break;
+      case "paused":
+        totals.paused++;
+        prod.paused++;
+        pri.paused++;
+        break;
+      case "completed":
+        totals.completed++;
+        break;
+      default:
+        break;
+    }
+  }
+
+  const oldestBreachedTickets = enriched
+    .filter((t) => t.sla.slaStatus === "breached")
+    .sort((a, b) => (a.sla.slaDueAt! < b.sla.slaDueAt! ? -1 : 1))
+    .slice(0, 10)
+    .map((t) => ({
+      id: t.id,
+      ticketReference: t.ticketReference,
+      productName: t.productName,
+      productCode: t.productCode,
+      issueSummary: t.issueSummary,
+      priority: t.priority,
+      severity: t.severity,
+      publicStatus: t.publicStatus,
+      internalStatus: t.internalStatus,
+      reporterType: t.reporterType,
+      createdAt: t.createdAt.toISOString(),
+      updatedAt: t.updatedAt.toISOString(),
+      sla: serializeSla(t.sla),
+    }));
+
+  res.json({
+    totals,
+    byProduct: Array.from(byProduct.values()).sort((a, b) =>
+      a.productName.localeCompare(b.productName),
+    ),
+    byPriority: Array.from(byPriority.values()),
+    oldestBreachedTickets,
+    lastUpdated: now.toISOString(),
   });
 });
 
@@ -419,6 +696,8 @@ router.get("/support/tickets", async (req, res): Promise<void> => {
       environment: supportTicketsTable.environment,
       createdAt: supportTicketsTable.createdAt,
       updatedAt: supportTicketsTable.updatedAt,
+      resolvedAt: supportTicketsTable.resolvedAt,
+      closedAt: supportTicketsTable.closedAt,
     })
     .from(supportTicketsTable)
     .innerJoin(
@@ -428,14 +707,81 @@ router.get("/support/tickets", async (req, res): Promise<void> => {
     .where(and(...conditions))
     .orderBy(desc(supportTicketsTable.createdAt));
 
+  const engineeringStartedAtMap = await loadEngineeringStartedAtMap(
+    rows.map((r) => r.id),
+  );
+  const now = new Date();
+
+  const slaStatusFilter = parseSlaStatusFilter(rest.slaStatus);
+  const overdueOnly = parseBool(rest.overdueOnly);
+  const dueSoonOnly = parseBool(rest.dueSoonOnly);
+
+  const enriched = rows.map((r) => {
+    const sla = calculateTicketSla({
+      priority: r.priority,
+      publicStatus: r.publicStatus,
+      internalStatus: r.internalStatus,
+      createdAt: r.createdAt,
+      resolvedAt: r.resolvedAt,
+      closedAt: r.closedAt,
+      engineeringStartedAt: engineeringStartedAtMap.get(r.id) ?? null,
+      now,
+    });
+    return { row: r, sla };
+  });
+
+  const filtered = enriched.filter(({ sla }) => {
+    if (slaStatusFilter && sla.slaStatus !== slaStatusFilter) return false;
+    if (overdueOnly && sla.slaStatus !== "breached") return false;
+    if (dueSoonOnly && sla.slaStatus !== "approaching") return false;
+    return true;
+  });
+
   res.json(
-    rows.map((r) => ({
-      ...r,
+    filtered.map(({ row: r, sla }) => ({
+      id: r.id,
+      ticketReference: r.ticketReference,
+      productName: r.productName,
+      productCode: r.productCode,
+      category: r.category,
+      publicStatus: r.publicStatus,
+      internalStatus: r.internalStatus,
+      priority: r.priority,
+      severity: r.severity,
+      reporterType: r.reporterType,
+      reporterName: r.reporterName,
+      reporterEmail: r.reporterEmail,
+      reporterWhatsapp: r.reporterWhatsapp,
+      issueSummary: r.issueSummary,
+      source: r.source,
+      environment: r.environment,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
+      sla: serializeSla(sla),
     })),
   );
 });
+
+const SLA_STATUS_FILTER_VALUES = new Set<SlaStatus>([
+  "on_track",
+  "approaching",
+  "breached",
+  "paused",
+  "completed",
+  "not_started",
+]);
+
+function parseSlaStatusFilter(value: unknown): SlaStatus | null {
+  if (typeof value !== "string") return null;
+  return SLA_STATUS_FILTER_VALUES.has(value as SlaStatus)
+    ? (value as SlaStatus)
+    : null;
+}
+
+function parseBool(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  return value === "true" || value === "1";
+}
 
 router.post("/support/tickets", async (req, res): Promise<void> => {
   const parsed = CreateSupportTicketBody.safeParse(req.body);
@@ -569,7 +915,24 @@ async function loadErideTicket(id: string): Promise<DetailRow | null> {
   return row[0] ?? null;
 }
 
-function serializeTicketDetail(row: DetailRow) {
+async function computeTicketSlaForDetail(
+  row: DetailRow,
+  now: Date = new Date(),
+): Promise<SlaResult> {
+  const map = await loadEngineeringStartedAtMap([row.ticket.id]);
+  return calculateTicketSla({
+    priority: row.ticket.priority,
+    publicStatus: row.ticket.publicStatus,
+    internalStatus: row.ticket.internalStatus,
+    createdAt: row.ticket.createdAt,
+    resolvedAt: row.ticket.resolvedAt,
+    closedAt: row.ticket.closedAt,
+    engineeringStartedAt: map.get(row.ticket.id) ?? null,
+    now,
+  });
+}
+
+function serializeTicketDetail(row: DetailRow, sla: SlaResult) {
   const t = row.ticket;
   return {
     id: t.id,
@@ -606,6 +969,7 @@ function serializeTicketDetail(row: DetailRow) {
     updatedAt: t.updatedAt.toISOString(),
     resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
     closedAt: t.closedAt ? t.closedAt.toISOString() : null,
+    sla: serializeSla(sla),
   };
 }
 
@@ -615,7 +979,8 @@ router.get("/support/tickets/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Ticket not found" });
     return;
   }
-  res.json(serializeTicketDetail(row));
+  const sla = await computeTicketSlaForDetail(row);
+  res.json(serializeTicketDetail(row, sla));
 });
 
 router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
@@ -641,7 +1006,8 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
   }
 
   if (Object.keys(updates).length === 0) {
-    res.json(serializeTicketDetail(existing));
+    const sla = await computeTicketSlaForDetail(existing);
+    res.json(serializeTicketDetail(existing, sla));
     return;
   }
 
@@ -697,13 +1063,13 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
     });
   }
 
-  res.json(
-    serializeTicketDetail({
-      ticket: updated,
-      productName: existing.productName,
-      productCode: existing.productCode,
-    }),
-  );
+  const updatedRow: DetailRow = {
+    ticket: updated,
+    productName: existing.productName,
+    productCode: existing.productCode,
+  };
+  const sla = await computeTicketSlaForDetail(updatedRow);
+  res.json(serializeTicketDetail(updatedRow, sla));
 });
 
 type WorkflowAction =
@@ -829,13 +1195,13 @@ router.post(
         reason?.trim() ? `[${action}] ${reason.trim()}` : `[${action}]`,
     });
 
-    res.json(
-      serializeTicketDetail({
-        ticket: updated,
-        productName: existing.productName,
-        productCode: existing.productCode,
-      }),
-    );
+    const updatedRow: DetailRow = {
+      ticket: updated,
+      productName: existing.productName,
+      productCode: existing.productCode,
+    };
+    const sla = await computeTicketSlaForDetail(updatedRow);
+    res.json(serializeTicketDetail(updatedRow, sla));
   },
 );
 

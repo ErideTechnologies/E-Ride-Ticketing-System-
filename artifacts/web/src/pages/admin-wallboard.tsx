@@ -27,7 +27,10 @@ import {
   PRIORITY_LABELS,
   PUBLIC_STATUS_LABELS,
   REPORTER_TYPE_LABELS,
+  SLA_STATUS_LABELS,
+  formatSlaDuration,
   humanLabel,
+  slaStatusBadgeClass,
 } from "@/lib/supportLabels";
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -186,7 +189,7 @@ export default function AdminWallboardPage() {
         {data && (
           <>
             <section data-testid="wallboard-kpis">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:grid-cols-8">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 xl:grid-cols-11">
                 <KpiCard
                   testId="kpi-open"
                   label="Open Tickets"
@@ -235,6 +238,24 @@ export default function AdminWallboardPage() {
                   value={data.summary.fixedWaitingUserNotification}
                   tone="info"
                 />
+                <KpiCard
+                  testId="kpi-sla-breached"
+                  label="SLA Overdue"
+                  value={data.summary.slaBreached}
+                  tone="urgent"
+                />
+                <KpiCard
+                  testId="kpi-sla-approaching"
+                  label="SLA Due Soon"
+                  value={data.summary.slaApproachingBreach}
+                  tone="warn"
+                />
+                <KpiCard
+                  testId="kpi-sla-paused"
+                  label="SLA Paused"
+                  value={data.summary.slaPaused}
+                  tone="default"
+                />
               </div>
             </section>
 
@@ -252,6 +273,25 @@ export default function AdminWallboardPage() {
                 )}
               </div>
             </section>
+
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <TicketListCard
+                title="SLA Overdue"
+                subtitle="Tickets that have breached their SLA target"
+                tickets={data.breachedTickets}
+                emptyMessage="No overdue tickets. Nice work!"
+                testId="list-sla-breached"
+                tone="urgent"
+              />
+              <TicketListCard
+                title="SLA Due Soon"
+                subtitle="Approaching the SLA target — act fast"
+                tickets={data.approachingBreachTickets}
+                emptyMessage="No tickets approaching SLA."
+                testId="list-sla-approaching"
+                tone="warn"
+              />
+            </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               <TicketListCard
@@ -517,6 +557,23 @@ function TicketRow({ ticket }: { ticket: SupportWallboardTicket }) {
           </span>
           <span>·</span>
           <span>{humanLabel(REPORTER_TYPE_LABELS, ticket.reporterType)}</span>
+          {ticket.sla && (
+            <>
+              <span>·</span>
+              <Badge
+                className={slaStatusBadgeClass(ticket.sla.slaStatus)}
+                data-testid={`wallboard-ticket-${ticket.id}-sla`}
+              >
+                SLA: {humanLabel(SLA_STATUS_LABELS, ticket.sla.slaStatus)}
+                {ticket.sla.slaStatus === "breached" &&
+                  ticket.sla.overdueMinutes != null &&
+                  ` · ${formatSlaDuration(ticket.sla.overdueMinutes)} over`}
+                {ticket.sla.slaStatus === "approaching" &&
+                  ticket.sla.minutesUntilDue != null &&
+                  ` · ${formatSlaDuration(ticket.sla.minutesUntilDue)} left`}
+              </Badge>
+            </>
+          )}
         </div>
       </div>
     </Link>

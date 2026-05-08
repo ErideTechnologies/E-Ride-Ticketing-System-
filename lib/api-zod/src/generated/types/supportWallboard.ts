@@ -15,5 +15,7 @@ export interface SupportWallboard {
   urgentHighTickets: SupportWallboardTicket[];
   awaitingTriageTickets: SupportWallboardTicket[];
   waitingUserNotificationTickets: SupportWallboardTicket[];
+  breachedTickets: SupportWallboardTicket[];
+  approachingBreachTickets: SupportWallboardTicket[];
   lastUpdated: Date;
 }

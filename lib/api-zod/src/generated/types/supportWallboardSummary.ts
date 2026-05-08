@@ -16,7 +16,9 @@ export interface SupportWallboardSummary {
   inEngineering: number;
   inQaVerification: number;
   fixedWaitingUserNotification: number;
-  slaBreachedPlaceholder: number;
+  slaBreached: number;
+  slaApproachingBreach: number;
+  slaPaused: number;
   closedToday: number;
   resolvedToday: number;
 }
