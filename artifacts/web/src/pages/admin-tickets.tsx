@@ -166,10 +166,15 @@ export default function AdminTicketsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-primary">Eride Admin</p>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Eride Support Tickets
+            <p className="dogma-eyebrow" data-testid="text-dogma-eyebrow">
+              Eride Dogma Support Centre
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              Support Tickets
             </h1>
+            <p className="text-sm text-muted-foreground">
+              Structured support. Controlled resolution.
+            </p>
             <p className="text-muted-foreground">
               View and triage support tickets submitted across Eride products.
             </p>

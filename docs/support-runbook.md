@@ -1,6 +1,8 @@
 # Support Runbook
 
-Operating process for the Eride Support Command Centre.
+Operating process for the **Eride Dogma Support Centre** (internal name; public users see "Eride Support").
+
+> Structured support. Controlled resolution.
 
 ## Daily flow
 

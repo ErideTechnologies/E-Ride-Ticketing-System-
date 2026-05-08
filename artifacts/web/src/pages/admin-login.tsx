@@ -36,12 +36,13 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="max-w-md w-full">
-        <CardHeader>
-          <CardTitle>Eride Support sign in</CardTitle>
-          <p className="text-xs text-slate-500 mt-1">
-            Internal staff access only.
+        <CardHeader className="space-y-2">
+          <p className="dogma-eyebrow">Eride Dogma Support Centre</p>
+          <CardTitle>Sign in</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Structured support. Controlled resolution. Internal staff access only.
           </p>
         </CardHeader>
         <CardContent>

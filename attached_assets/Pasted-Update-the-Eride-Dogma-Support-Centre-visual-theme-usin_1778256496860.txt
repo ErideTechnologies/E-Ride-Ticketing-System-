@@ -1,0 +1,327 @@
+Update the Eride Dogma Support Centre visual theme using a premium matte black / graphite / gunmetal / ice-blue colour system inspired by a high-end performance command-centre aesthetic.
+
+Context:
+The system has already been renamed internally as:
+Eride Dogma Support Centre
+
+Tagline:
+Structured support. Controlled resolution.
+
+Public-facing pages should remain simple and user-friendly as “Eride Support”.
+Internal admin pages should use the Dogma identity.
+The wallboard should feel like a premium command centre.
+
+Important:
+- Do not change database names.
+- Do not change API route names.
+- Do not change backend logic.
+- Do not change public ticket privacy rules.
+- Do not change support workflows.
+- Only update colours, theme tokens, visual styling, headings, accents, badges, and relevant documentation references.
+- Keep mobile views clean and usable.
+- Typecheck must pass.
+
+Use this Dogma palette:
+
+Dogma Black:
+#050505
+
+Carbon Black:
+#0B0F14
+
+Graphite:
+#1F2933
+
+Gunmetal Grey:
+#3B4652
+
+Steel Blue Grey:
+#5F7182
+
+Electric Ice Blue:
+#38BDF8
+
+Silver White:
+#E5E7EB
+
+Soft Grey Text:
+#94A3B8
+
+Critical Red:
+#EF4444
+
+Amber Warning:
+#F59E0B
+
+Success Green:
+#10B981
+
+Light Surface:
+#F8FAFC
+
+Card White:
+#FFFFFF
+
+Apply the theme as follows:
+
+1. Public-facing pages
+
+Routes:
+- /help
+- /help/report-problem
+- /help/track-ticket
+- /help/ticket/:ticketReference
+
+Keep these pages light, clean, and friendly.
+
+Use:
+- background: #F8FAFC
+- cards: #FFFFFF
+- headings: #0B0F14
+- body text: #334155 or #3B4652
+- primary buttons: #3B4652 or #5F7182
+- button hover: #1F2933
+- links/accent: #38BDF8
+- borders: #E5E7EB
+
+Public-facing name remains:
+Eride Support
+
+Do not show “Dogma” prominently on public user pages unless it already appears in a small footer or internal-only area.
+
+2. Internal admin pages
+
+Routes:
+- /admin/support/tickets
+- /admin/support/tickets/:id
+- /admin/support/templates
+- /admin/support/settings
+- /admin/support/sla if present
+- /admin/support/login
+
+Use the internal brand:
+
+Eride Dogma Support Centre
+Structured support. Controlled resolution.
+
+Use:
+- page background: #F8FAFC
+- main headings: #0B0F14
+- section headings: #1F2933
+- cards: #FFFFFF
+- card borders: #E5E7EB
+- primary buttons: #1F2933
+- primary button hover: #0B0F14
+- secondary buttons: #5F7182
+- accent links/icons: #38BDF8
+- muted text: #64748B or #94A3B8
+
+Add a subtle premium Dogma header treatment on internal pages:
+- small “Eride Dogma Support Centre” label
+- tagline below it
+- thin accent line or small accent mark using #38BDF8
+- avoid making the page too dark except for the wallboard
+
+3. Wallboard / TV command-centre page
+
+Route:
+- /admin/support/wallboard
+
+Use the strongest Dogma command-centre theme.
+
+Title:
+Dogma Command Centre
+
+Subtitle:
+Live support and resolution visibility across Eride products.
+
+Use:
+- full page background: #050505 or #0B0F14
+- cards: #0B0F14 or #111827
+- elevated cards: #1F2933
+- borders: #3B4652
+- main text: #E5E7EB
+- muted text: #94A3B8
+- accent: #38BDF8
+- KPI number text: #E5E7EB
+- important accent lines/glows: #38BDF8 with low opacity
+- urgent pulse/accent: #EF4444
+- warning/approaching breach: #F59E0B
+- success/resolved/within SLA: #10B981
+
+The wallboard should feel:
+- premium
+- controlled
+- executive
+- technical
+- serious
+- high-contrast and readable on a TV
+
+4. Priority colours
+
+Apply consistently across dashboard, ticket detail, wallboard, and badges:
+
+urgent:
+- background: light red tint on light pages
+- dark theme accent: #EF4444
+- text/border: #EF4444
+
+high:
+- #F59E0B or orange/amber treatment
+
+medium:
+- #38BDF8 or steel blue treatment
+
+low:
+- #64748B or #94A3B8
+
+5. SLA colours
+
+Apply consistently:
+
+within_sla:
+#10B981
+
+approaching_breach:
+#F59E0B
+
+breached:
+#EF4444
+
+paused:
+#64748B or #94A3B8
+
+completed:
+#10B981
+
+6. Status badge colours
+
+Use:
+
+received:
+steel/neutral
+
+under_review:
+#38BDF8
+
+more_info_needed:
+#F59E0B
+
+being_fixed:
+#38BDF8
+
+fixed:
+#10B981
+
+resolved:
+#10B981
+
+closed:
+#64748B
+
+triage_required:
+#F59E0B
+
+engineering_escalation_required:
+#38BDF8
+
+linear_created:
+#38BDF8
+
+in_engineering:
+#38BDF8
+
+in_qa_verification:
+#F59E0B
+
+fixed_waiting_user_notification:
+#10B981
+
+user_notified:
+#10B981
+
+duplicate / not_a_bug / spam / deferred:
+neutral slate/grey treatment
+
+7. Buttons and interactions
+
+Primary internal action:
+- background #1F2933
+- text #FFFFFF
+- hover #0B0F14
+- focus ring #38BDF8
+
+Critical/destructive action:
+- background #EF4444
+- text #FFFFFF
+- hover darker red
+
+Warning action:
+- background #F59E0B
+- text #0B0F14 or #FFFFFF depending contrast
+
+Success action:
+- background #10B981
+- text #FFFFFF
+
+Secondary action:
+- background #FFFFFF
+- border #CBD5E1
+- text #1F2933
+- hover #F8FAFC
+
+8. Forms
+
+For public pages:
+- keep forms clean and light
+- white input backgrounds
+- slate borders
+- ice-blue focus ring
+
+For internal pages:
+- same clean form base
+- focus ring #38BDF8
+- labels #1F2933
+- helper text #64748B
+
+For wallboard:
+- avoid forms where possible
+
+9. Documentation updates
+
+Update docs to mention the new visual identity:
+
+Official internal name:
+Eride Dogma Support Centre
+
+Tagline:
+Structured support. Controlled resolution.
+
+Visual identity:
+Matte black, graphite, gunmetal, steel blue-grey, and electric ice-blue accents.
+
+Public-facing support name remains:
+Eride Support
+
+Update:
+- replit.md
+- docs/support-command-centre.md
+- docs/support-runbook.md if relevant
+
+10. Acceptance criteria
+
+- Public support pages remain light and friendly.
+- Internal admin pages show Eride Dogma Support Centre and the tagline.
+- Wallboard shows Dogma Command Centre with the dark premium command-centre theme.
+- Priority, SLA, and status colours are consistent across pages.
+- No backend logic changes.
+- No API routes renamed.
+- No database tables renamed.
+- No public privacy rules changed.
+- Mobile views remain usable.
+- Typecheck passes.
+- Basic visual smoke test confirms:
+  - /help/report-problem still renders correctly
+  - /admin/support/tickets uses the Dogma internal theme
+  - /admin/support/tickets/:id badges/buttons use the new palette
+  - /admin/support/wallboard uses the dark Dogma command-centre theme

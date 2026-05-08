@@ -35,13 +35,16 @@ export default function AdminSettingsPage() {
         </Link>
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-primary">Eride Admin</p>
+            <p className="dogma-eyebrow">Eride Dogma Support Centre</p>
             <h1
-              className="text-3xl font-semibold tracking-tight"
+              className="text-3xl font-semibold tracking-tight text-foreground"
               data-testid="text-settings-title"
             >
               Support Settings
             </h1>
+            <p className="text-sm text-muted-foreground">
+              Structured support. Controlled resolution.
+            </p>
             <p className="text-muted-foreground">
               Configure email defaults, sender identity, and public-ticket
               behaviour for the support workspace.

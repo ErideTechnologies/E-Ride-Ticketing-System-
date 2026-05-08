@@ -1,6 +1,16 @@
-# Eride Support Command Centre
+# Eride Dogma Support Centre
+
+> **Structured support. Controlled resolution.**
 
 Multi-tenant support and bug ticketing platform. MVP serves Eride Technologies; the data model is built so additional organisations can be onboarded later without restructuring.
+
+## Branding
+
+- **Internal admin product name:** Eride Dogma Support Centre (with tagline "Structured support. Controlled resolution.")
+- **Wallboard / TV command centre:** "Dogma Command Centre" — premium dark theme (Dogma Black + Carbon + Graphite, ice-blue accents)
+- **Public-facing surfaces** (`/help`, `/help/report-problem`, `/help/track-ticket`, `/help/ticket/:ref`): keep the friendly **"Eride Support"** name. Do not surface "Dogma" prominently to public users.
+- **Customer-facing email/WhatsApp templates:** continue to sign as "Eride Support".
+- **Visual identity:** matte black, graphite, gunmetal, steel blue-grey, with electric ice-blue accents. Defined in `artifacts/web/src/index.css` as the `:root` (light, public + internal admin) and `.dark` (wallboard) palettes.
 
 ## Run & Operate
 

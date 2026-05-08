@@ -1,6 +1,6 @@
 # Launch Checklist
 
-Final go-live checks for the Eride Support Command Centre. Run top-to-bottom before flipping the production switch.
+Final go-live checks for the **Eride Dogma Support Centre** (public users see "Eride Support" on `/help/*` pages; the wallboard surfaces as "Dogma Command Centre"). Run top-to-bottom before flipping the production switch.
 
 ## 1. Admin secrets configured
 

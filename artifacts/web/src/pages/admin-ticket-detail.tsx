@@ -330,9 +330,16 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           </Button>
         </Link>
 
+        <div className="space-y-1">
+          <p className="dogma-eyebrow">Eride Dogma Support Centre</p>
+          <p className="text-sm text-muted-foreground">
+            Structured support. Controlled resolution.
+          </p>
+        </div>
+
         <header className="flex flex-wrap items-center gap-3">
           <h1
-            className="font-mono text-2xl font-semibold"
+            className="font-mono text-2xl font-semibold text-foreground"
             data-testid="text-ticket-reference"
           >
             {ticket.ticketReference}

@@ -109,21 +109,28 @@ export default function AdminWallboardPage() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-8 sm:py-10">
+    <main className="dark min-h-screen bg-[#050505] px-4 py-6 text-slate-100 sm:px-8 sm:py-10">
       <div className="mx-auto flex max-w-[1800px] flex-col gap-6">
         <header
           className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
           data-testid="wallboard-header"
         >
           <div>
+            <p
+              className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-400 sm:text-sm"
+              data-testid="text-wallboard-eyebrow"
+            >
+              Eride Dogma · Live Operations
+            </p>
+            <div className="mt-1 h-[2px] w-24 rounded-full bg-gradient-to-r from-sky-400/90 to-sky-400/0" />
             <h1
-              className="text-3xl font-bold tracking-tight sm:text-5xl"
+              className="mt-2 text-3xl font-bold tracking-tight text-slate-50 sm:text-5xl"
               data-testid="text-wallboard-title"
             >
-              Eride Support Command Centre
+              Dogma Command Centre
             </h1>
             <p className="mt-2 text-base text-slate-300 sm:text-lg">
-              Live support and bug ticket visibility across Eride products.
+              Live support and resolution visibility across Eride products.
             </p>
           </div>
           <div className="flex flex-col gap-1 text-right text-sm text-slate-300 sm:text-base">
