@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "wA7i9DKURzWm4SM6EpM46"
+uri = "file://docs/ui-ux-architecture-brief.md"
+type = "text"
+title = "Eride Support — UI/UX Architecture Brief"
