@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SupportUserBadge } from "@/components/SupportUserBadge";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -100,17 +101,20 @@ export default function AdminTemplatesPage() {
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
           </Button>
         </Link>
-        <header className="space-y-1">
-          <p className="text-sm font-medium text-primary">Eride Admin</p>
-          <h1
-            className="text-3xl font-semibold tracking-tight"
-            data-testid="text-templates-title"
-          >
-            Support Message Templates
-          </h1>
-          <p className="text-muted-foreground">
-            Manage the messages used for support emails and manual user updates.
-          </p>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-primary">Eride Admin</p>
+            <h1
+              className="text-3xl font-semibold tracking-tight"
+              data-testid="text-templates-title"
+            >
+              Support Message Templates
+            </h1>
+            <p className="text-muted-foreground">
+              Manage the messages used for support emails and manual user updates.
+            </p>
+          </div>
+          <SupportUserBadge />
         </header>
 
         <Card>

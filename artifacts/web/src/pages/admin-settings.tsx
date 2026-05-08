@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { SupportUserBadge } from "@/components/SupportUserBadge";
 import {
   Card,
   CardContent,
@@ -32,18 +33,21 @@ export default function AdminSettingsPage() {
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
           </Button>
         </Link>
-        <header className="space-y-1">
-          <p className="text-sm font-medium text-primary">Eride Admin</p>
-          <h1
-            className="text-3xl font-semibold tracking-tight"
-            data-testid="text-settings-title"
-          >
-            Support Settings
-          </h1>
-          <p className="text-muted-foreground">
-            Configure email defaults, sender identity, and public-ticket
-            behaviour for the support workspace.
-          </p>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-primary">Eride Admin</p>
+            <h1
+              className="text-3xl font-semibold tracking-tight"
+              data-testid="text-settings-title"
+            >
+              Support Settings
+            </h1>
+            <p className="text-muted-foreground">
+              Configure email defaults, sender identity, and public-ticket
+              behaviour for the support workspace.
+            </p>
+          </div>
+          <SupportUserBadge />
         </header>
 
         {query.isLoading && (

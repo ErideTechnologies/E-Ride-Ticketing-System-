@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SupportUserBadge } from "@/components/SupportUserBadge";
 import {
   AlertTriangle,
   ArrowRight,
@@ -160,6 +161,9 @@ export default function AdminWallboardPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
+            </div>
+            <div className="mt-2 flex justify-end">
+              <SupportUserBadge className="text-slate-300" />
             </div>
           </div>
         </header>

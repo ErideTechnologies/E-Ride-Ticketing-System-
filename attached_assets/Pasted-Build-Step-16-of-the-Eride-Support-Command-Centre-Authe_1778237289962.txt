@@ -1,0 +1,273 @@
+Build Step 16 of the Eride Support Command Centre: Authentication and Role-Based Permissions.
+
+Context:
+Steps 1–15 are complete.
+
+The system now includes:
+- public report problem page
+- public ticket tracking
+- internal admin ticket dashboard
+- ticket detail page
+- attachment uploads
+- live wallboard
+- communication log
+- workflow action buttons
+- engineering escalation
+- Sentry links
+- email notification setup
+- admin templates/settings
+- Linear API integration
+- SLA tracking and overdue alerts
+
+Goal:
+Add authentication and role-based permissions to protect internal support operations while keeping public ticket reporting/tracking usable.
+
+Important:
+- Do not break public report problem page.
+- Do not break public ticket tracking token flow.
+- Do not expose admin data publicly.
+- Keep this Eride-scoped for MVP.
+- Do not build external-company onboarding yet.
+- Do not build billing yet.
+- Use existing auth/session patterns if the app already has them.
+- If no auth exists, implement a simple internal admin auth guard using environment-configured admin emails or a basic session-compatible guard.
+
+Roles:
+
+Create/support these internal support roles:
+- support_admin
+- support_agent
+- product_owner
+- developer
+- qa_verifier
+- viewer
+
+Permissions:
+
+1. Public visitor:
+Can:
+- submit ticket
+- verify own ticket with ticket reference + contact detail
+- view public-safe ticket fields only
+- reply to own ticket
+- upload attachments to own ticket if public attachments enabled
+
+Cannot:
+- view admin dashboard
+- view internal status
+- view internal notes
+- view SLA
+- view Linear/Sentry links
+- view developer handoff
+- view other tickets
+
+2. Viewer:
+Can:
+- view dashboard
+- view wallboard
+- view ticket detail
+Cannot:
+- edit ticket
+- send email
+- change workflow
+- add Linear/Sentry links
+- change settings/templates
+
+3. Support agent:
+Can:
+- view all Eride tickets
+- update ticket fields
+- add notes
+- add messages
+- upload/delete attachments
+- send support emails
+- use workflow actions except spam/delete-sensitive admin-only outcomes
+Cannot:
+- change support settings/templates
+- create Linear issue unless allowed
+- manage integrations
+
+4. Product owner:
+Can:
+- everything support_agent can
+- escalate to engineering
+- create Linear issue
+- change priority/severity
+- manage SLA-sensitive workflows
+- resolve/close tickets
+
+5. Developer:
+Can:
+- view tickets escalated to engineering
+- view attachments
+- view engineering escalation card
+- view/generate Replit fix prompt
+- update internal technical notes
+- mark in_engineering / send_to_qa if allowed
+Cannot:
+- send public user communication unless also support_agent
+- edit support templates/settings
+- see unrelated non-technical tickets if filtering is implemented
+
+6. QA verifier:
+Can:
+- view tickets in QA or engineering statuses
+- add verification notes
+- use workflow actions:
+  - send_to_qa
+  - mark_fixed_waiting_notification
+  - reopen_ticket
+Cannot:
+- change templates/settings
+- create integrations unless also product_owner
+
+7. Support admin:
+Can:
+- all internal support actions
+- manage templates
+- manage settings
+- manage roles if role-management exists
+- access all Eride support routes
+
+Backend requirements:
+
+1. Create role/permission helper.
+
+Suggested:
+artifacts/api-server/src/lib/supportAuth.ts
+
+Expose:
+- getCurrentSupportUser(req)
+- requireSupportRole(req, allowedRoles)
+- requireSupportPermission(req, permission)
+
+If existing auth exists, map existing users to support roles.
+
+If no auth exists:
+- create safe MVP guard using env:
+  SUPPORT_ADMIN_EMAILS
+  SUPPORT_AGENT_EMAILS
+  SUPPORT_PRODUCT_OWNER_EMAILS
+  SUPPORT_DEVELOPER_EMAILS
+  SUPPORT_QA_EMAILS
+- identify user from existing session/email if available
+- if no session system exists, implement only a temporary internal guard clearly marked for replacement before production
+
+2. Protect internal API routes.
+
+Require internal support auth for:
+- GET /api/support/tickets
+- GET/PATCH /api/support/tickets/:id
+- notes endpoints
+- status history endpoint
+- messages endpoints except public reply endpoint
+- admin attachment endpoints
+- workflow-action endpoint
+- linear-link endpoints
+- create-linear-issue endpoint
+- sentry-link endpoints
+- send-email endpoint
+- settings endpoints
+- templates endpoints
+- SLA summary endpoint
+- wallboard endpoint if internal only
+
+Do not require internal auth for:
+- POST /api/support/tickets public ticket creation
+- GET /api/support/products public product list
+- public verify-ticket endpoint
+- public ticket view endpoint with token
+- public ticket messages endpoint with token
+- public ticket reply endpoint with token
+- public ticket attachment upload with token
+
+3. Protect frontend routes.
+
+Internal routes requiring auth:
+- /admin/support/tickets
+- /admin/support/tickets/:id
+- /admin/support/wallboard
+- /admin/support/templates
+- /admin/support/settings
+- /admin/support/sla if present
+
+If unauthenticated:
+Show:
+“Access restricted. Please sign in with an authorised Eride support account.”
+
+If authenticated but unauthorised:
+Show:
+“You do not have permission to access this support area.”
+
+4. UI permission behavior.
+
+Hide or disable actions based on role:
+- Email Actions visible to support_agent/product_owner/support_admin
+- Workflow Actions visible based on role
+- Linear API creation visible to product_owner/support_admin/developer if allowed
+- Templates/settings only visible to support_admin
+- SLA monitor visible to support_agent/product_owner/support_admin/viewer
+- Delete attachment only support_agent/product_owner/support_admin
+- Sentry links visible internal only; editing only product_owner/support_admin/developer
+
+5. Audit trail.
+
+If support_ticket_audit_log exists, use it.
+If not, create it:
+- id
+- supportTicketId nullable
+- action
+- actorName nullable
+- actorEmail nullable
+- actorRole nullable
+- metadata json nullable
+- createdAt
+
+Log major internal actions:
+- ticket update
+- workflow action
+- note added
+- message sent/recorded
+- attachment uploaded/deleted
+- Linear link created/deleted
+- Sentry link created/deleted
+- email sent
+- settings/template changes
+
+6. Public privacy invariant.
+
+Confirm public serializers still exclude:
+- internalStatus
+- internal notes
+- SLA
+- Linear
+- Sentry
+- provider errors
+- developer handoff
+- assigned internal users
+
+Frontend requirements:
+
+1. Add a small current-user/role display in internal support header if available:
+“Signed in as: [name/email] · [role]”
+
+2. Add graceful restricted pages.
+
+3. Hide admin settings/templates links unless role is support_admin.
+
+4. Hide dangerous actions for unauthorised roles.
+
+Acceptance criteria:
+- Public ticket submission still works without internal login
+- Public ticket tracking still works with token
+- Public pages still do not expose internal data
+- Internal dashboard requires authorised support access
+- Unauthorised user cannot access internal APIs
+- support_admin can access all internal support functions
+- support_agent can manage tickets but not settings/templates
+- viewer can view but not edit
+- product_owner can create Linear issue
+- role restrictions apply to UI buttons
+- major internal actions are audit logged
+- Typecheck passes
+- Browser/API tests cover public access, blocked internal access, authorised internal access, role-based button visibility, and public privacy exclusions

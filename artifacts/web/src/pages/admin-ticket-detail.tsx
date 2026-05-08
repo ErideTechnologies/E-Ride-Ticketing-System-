@@ -76,6 +76,8 @@ import {
   validateAttachmentFile,
 } from "@/lib/attachmentRules";
 import { CATEGORY_OPTIONS } from "@/lib/supportOptions";
+import { SupportUserBadge } from "@/components/SupportUserBadge";
+import { useSupportAuth } from "@/components/SupportAuthProvider";
 import {
   CATEGORY_LABELS,
   INTERNAL_STATUS_LABELS,
@@ -297,6 +299,8 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
   const qc = useQueryClient();
   const updateMutation = useUpdateSupportTicket();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { hasPermission } = useSupportAuth();
+  const canEditTicket = hasPermission("edit_ticket");
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: getGetSupportTicketQueryKey(ticket.id) });
@@ -348,7 +352,20 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <Badge variant="outline" data-testid="badge-internal-status">
             Internal: {humanLabel(INTERNAL_STATUS_LABELS, ticket.internalStatus)}
           </Badge>
+          <div className="ml-auto">
+            <SupportUserBadge />
+          </div>
         </header>
+
+        {!canEditTicket && (
+          <Alert data-testid="alert-readonly-mode">
+            <AlertDescription>
+              You are viewing this ticket in read-only mode. Editing, workflow
+              actions, and outbound communication are restricted to authorised
+              support staff.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {saveError && (
           <Alert variant="destructive">

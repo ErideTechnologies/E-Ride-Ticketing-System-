@@ -63,6 +63,8 @@ import {
   isSupportEmailEnabled,
   sendSupportEmail,
 } from "../lib/supportEmail";
+import { getCurrentSupportUser, roleHasPermission } from "../lib/supportAuth";
+import { recordSupportAuditLog } from "../lib/supportAudit";
 import {
   renderCustomEmailHtml,
   renderSupportEmailTemplate,
@@ -1069,6 +1071,17 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
     productCode: existing.productCode,
   };
   const sla = await computeTicketSlaForDetail(updatedRow);
+  void recordSupportAuditLog({
+    action: "ticket.update",
+    supportTicketId: updated.id,
+    actor: getCurrentSupportUser(req),
+    metadata: {
+      ticketReference: updated.ticketReference,
+      changedFields: Object.keys(updates),
+      publicChanged,
+      internalChanged,
+    },
+  });
   res.json(serializeTicketDetail(updatedRow, sla));
 });
 
@@ -1141,6 +1154,23 @@ router.post(
       return;
     }
 
+    // Admin-outcome actions (spam/duplicate/not_a_bug/close) require an
+    // elevated permission so non-admin roles with `manage_workflow` cannot
+    // shortcut tickets into terminal admin states.
+    const ADMIN_OUTCOME_ACTIONS = new Set<WorkflowAction>([
+      "mark_spam",
+      "mark_duplicate",
+      "mark_not_a_bug",
+      "close_ticket",
+    ]);
+    if (ADMIN_OUTCOME_ACTIONS.has(action as WorkflowAction)) {
+      const user = getCurrentSupportUser(req);
+      if (!user || !roleHasPermission(user.role, "manage_workflow_admin_outcomes")) {
+        res.status(403).json({ error: "Forbidden: admin-only workflow action" });
+        return;
+      }
+    }
+
     const existing = await loadErideTicket(req.params.id);
     if (!existing) {
       res.status(404).json({ error: "Ticket not found" });
@@ -1201,6 +1231,17 @@ router.post(
       productCode: existing.productCode,
     };
     const sla = await computeTicketSlaForDetail(updatedRow);
+    void recordSupportAuditLog({
+      action: "ticket.workflow_action",
+      supportTicketId: updated.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: updated.ticketReference,
+        workflowAction: action,
+        newPublicStatus: updated.publicStatus,
+        newInternalStatus: updated.internalStatus,
+      },
+    });
     res.json(serializeTicketDetail(updatedRow, sla));
   },
 );
@@ -1285,6 +1326,15 @@ router.post(
       res.status(500).json({ error: "Could not save Linear link" });
       return;
     }
+    void recordSupportAuditLog({
+      action: "ticket.linear_link_saved",
+      supportTicketId: existing.ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: existing.ticket.ticketReference,
+        linearIssueKey: saved.linearIssueKey,
+      },
+    });
     res.json(serializeLinearLink(saved));
   },
 );
@@ -1365,6 +1415,17 @@ router.post(
       res.status(500).json({ error: "Could not save Sentry link" });
       return;
     }
+    void recordSupportAuditLog({
+      action: "ticket.sentry_link_added",
+      supportTicketId: existing.ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: existing.ticket.ticketReference,
+        sentryLinkId: saved.id,
+        sentryIssueId: saved.sentryIssueId,
+        sentryEventId: saved.sentryEventId,
+      },
+    });
     res.json(serializeSentryLink(saved));
   },
 );
@@ -1399,6 +1460,15 @@ router.delete(
     await db
       .delete(supportTicketSentryLinksTable)
       .where(eq(supportTicketSentryLinksTable.id, sentryLinkId));
+    void recordSupportAuditLog({
+      action: "ticket.sentry_link_removed",
+      supportTicketId: existing.ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: existing.ticket.ticketReference,
+        sentryLinkId,
+      },
+    });
     res.status(204).end();
   },
 );
@@ -1717,6 +1787,17 @@ router.post(
       return;
     }
 
+    void recordSupportAuditLog({
+      action: "ticket.linear_issue_created",
+      supportTicketId: ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: ticket.ticketReference,
+        linearIssueKey: outcome.linearIssueKey,
+        linearIssueUrl: outcome.linearIssueUrl,
+        teamId,
+      },
+    });
     res.json({
       success: true,
       disabled: false,
@@ -1743,6 +1824,12 @@ router.delete(
       .where(
         eq(supportTicketLinearLinksTable.supportTicketId, existing.ticket.id),
       );
+    void recordSupportAuditLog({
+      action: "ticket.linear_link_removed",
+      supportTicketId: existing.ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: { ticketReference: existing.ticket.ticketReference },
+    });
     res.status(204).end();
   },
 );
@@ -1790,6 +1877,12 @@ router.post("/support/tickets/:id/notes", async (req, res): Promise<void> => {
     return;
   }
 
+  void recordSupportAuditLog({
+    action: "ticket.note_added",
+    supportTicketId: existing.ticket.id,
+    actor: getCurrentSupportUser(req),
+    metadata: { ticketReference: existing.ticket.ticketReference },
+  });
   res.status(201).json({ ...note, createdAt: note.createdAt.toISOString() });
 });
 
@@ -1882,6 +1975,17 @@ router.post(
       res.status(500).json({ error: "Could not save message" });
       return;
     }
+    void recordSupportAuditLog({
+      action: "ticket.message_recorded",
+      supportTicketId: existing.ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: existing.ticket.ticketReference,
+        direction: row.direction,
+        channel: row.channel,
+        messageType: row.messageType,
+      },
+    });
     res.status(201).json(serializeMessage(row));
   },
 );
@@ -2205,6 +2309,20 @@ router.post(
     }
 
     const row = finalRow ?? pending;
+    void recordSupportAuditLog({
+      action: "ticket.email_sent",
+      supportTicketId: t.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: t.ticketReference,
+        recipient,
+        messageType,
+        sendMode,
+        deliveryStatus,
+        providerMessageId: sendResult.providerMessageId ?? null,
+        disabled: sendResult.disabled,
+      },
+    });
     res.json({
       success: sendResult.success,
       disabled: sendResult.disabled,
@@ -2356,6 +2474,18 @@ router.post(
         return;
       }
 
+      void recordSupportAuditLog({
+        action: "ticket.attachment_uploaded",
+        supportTicketId: existing.ticket.id,
+        actor: getCurrentSupportUser(req),
+        metadata: {
+          ticketReference: existing.ticket.ticketReference,
+          attachmentId: row.id,
+          fileName: row.originalFileName,
+          mimeType: row.mimeType,
+          fileSize: row.fileSize,
+        },
+      });
       res.status(201).json(serializeAttachment(row));
     } catch (err) {
       if (wroteFile) await removeStored(stored.storagePath);
@@ -2432,6 +2562,16 @@ router.delete(
       .delete(supportTicketAttachmentsTable)
       .where(eq(supportTicketAttachmentsTable.id, attachmentId));
     await removeStored(att.storagePath);
+    void recordSupportAuditLog({
+      action: "ticket.attachment_deleted",
+      supportTicketId: existing.ticket.id,
+      actor: getCurrentSupportUser(req),
+      metadata: {
+        ticketReference: existing.ticket.ticketReference,
+        attachmentId,
+        fileName: att.originalFileName,
+      },
+    });
     res.status(204).end();
   },
 );
@@ -2924,6 +3064,11 @@ router.patch("/support/settings", async (req, res): Promise<void> => {
     .set(patch)
     .where(eq(supportSettingsTable.id, existing.settings.id))
     .returning();
+  void recordSupportAuditLog({
+    action: "settings.updated",
+    actor: getCurrentSupportUser(req),
+    metadata: { changedFields: Object.keys(patch) },
+  });
   res.json(serializeSettings(updated ?? existing.settings));
 });
 
@@ -3056,6 +3201,16 @@ router.patch("/support/templates/:id", async (req, res): Promise<void> => {
     .set(patch)
     .where(eq(supportMessageTemplatesTable.id, existing.id))
     .returning();
+  void recordSupportAuditLog({
+    action: "template.updated",
+    actor: getCurrentSupportUser(req),
+    metadata: {
+      templateId: existing.id,
+      templateKey: existing.templateKey,
+      channel: existing.channel,
+      changedFields: Object.keys(patch),
+    },
+  });
   res.json(serializeTemplate(updated ?? existing));
 });
 

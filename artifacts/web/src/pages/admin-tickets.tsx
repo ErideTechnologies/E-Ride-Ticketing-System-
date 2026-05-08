@@ -26,6 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { CATEGORY_OPTIONS } from "@/lib/supportOptions";
+import { SupportUserBadge } from "@/components/SupportUserBadge";
+import { useSupportAuth } from "@/components/SupportAuthProvider";
 import {
   CATEGORY_LABELS,
   INTERNAL_STATUS_LABELS,
@@ -105,6 +107,8 @@ export default function AdminTicketsPage() {
   const [, navigate] = useLocation();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const products = useListPublicSupportProducts();
+  const { user } = useSupportAuth();
+  const isAdmin = user?.role === "support_admin";
 
   const params: ListSupportTicketsParams = useMemo(() => {
     const p: ListSupportTicketsParams = {};
@@ -170,21 +174,25 @@ export default function AdminTicketsPage() {
               View and triage support tickets submitted across Eride products.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              asChild
-              variant="outline"
-              data-testid="link-templates"
-            >
-              <a href="/admin/support/templates">Templates</a>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              data-testid="link-settings"
-            >
-              <a href="/admin/support/settings">Settings</a>
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <>
+                <Button
+                  asChild
+                  variant="outline"
+                  data-testid="link-templates"
+                >
+                  <a href="/admin/support/templates">Templates</a>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  data-testid="link-settings"
+                >
+                  <a href="/admin/support/settings">Settings</a>
+                </Button>
+              </>
+            )}
             <Button
               asChild
               variant="outline"
@@ -192,6 +200,7 @@ export default function AdminTicketsPage() {
             >
               <a href="/admin/support/wallboard">Open Live Wallboard</a>
             </Button>
+            <SupportUserBadge className="ml-2" />
           </div>
         </header>
 
