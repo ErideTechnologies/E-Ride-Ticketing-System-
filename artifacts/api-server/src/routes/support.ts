@@ -3169,8 +3169,8 @@ router.post(
 
 const ERIDE_DEFAULT_SETTINGS = {
   supportDisplayName: "Eride Support",
-  supportEmailFrom: "Eride Support <support@eridetech.africa>",
-  supportEmailReplyTo: "support@eridetech.africa",
+  supportEmailFrom: "Eride Support <helpdesk@eridetech.africa>",
+  supportEmailReplyTo: "helpdesk@eridetech.africa",
   defaultSenderName: "Eride Support",
   defaultSenderRole: "support",
   publicTicketTokenTtlMinutes: 30,
@@ -3426,7 +3426,7 @@ const SAMPLE_TEMPLATE_CONTEXT: Required<TemplateContext> = {
   publicStatus: "under_review",
   issueSummary: "Sample issue summary for previewing this template.",
   supportDisplayName: "Eride Support",
-  supportEmailReplyTo: "support@eridetech.africa",
+  supportEmailReplyTo: "helpdesk@eridetech.africa",
 };
 
 async function buildTemplateContextForTicket(

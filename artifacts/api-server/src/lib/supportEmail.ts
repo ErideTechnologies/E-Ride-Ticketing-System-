@@ -1,8 +1,8 @@
 import { Resend } from "resend";
 import { logger } from "./logger";
 
-const DEFAULT_FROM = "Eride Support <support@eridetech.africa>";
-const DEFAULT_REPLY_TO = "support@eridetech.africa";
+const DEFAULT_FROM = "Eride Support <helpdesk@eridetech.africa>";
+const DEFAULT_REPLY_TO = "helpdesk@eridetech.africa";
 
 export type SendSupportEmailParams = {
   to: string;
