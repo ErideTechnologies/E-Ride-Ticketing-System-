@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation } from "wouter";
+import "react-phone-number-input/style.css";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import {
   useListPublicSupportProducts,
   useCreateSupportTicket,
@@ -18,7 +20,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  CheckCircle2,
   AlertTriangle,
   Loader2,
   Paperclip,
@@ -36,61 +37,84 @@ import {
   formatFileSize,
   validateAttachmentFile,
 } from "@/lib/attachmentRules";
+import { COUNTRY_OPTIONS_ORDER } from "@/lib/sadcCountries";
+import { captureDeviceInfo } from "@/lib/deviceInfo";
+
+const SUMMARY_MAX = 140;
 
 type FormState = {
   productId: string;
-  reporterName: string;
-  reporterEmail: string;
-  reporterWhatsapp: string;
-  reporterType: string;
   category: string;
-  pageOrStep: string;
-  applicationReference: string;
-  accountReference: string;
   issueSummary: string;
   whatWereYouTryingToDo: string;
   whatWentWrong: string;
-  deviceType: string;
-  browser: string;
-  canContact: boolean;
+  pageOrStep: string;
+  stepsToReproduce: string;
+  applicationReference: string;
+  reporterName: string;
+  reporterType: string;
+  reporterEmail: string;
+  reporterWhatsapp: string;
+  consent: boolean;
 };
 
 const EMPTY_FORM: FormState = {
   productId: "",
-  reporterName: "",
-  reporterEmail: "",
-  reporterWhatsapp: "",
-  reporterType: "",
   category: "",
-  pageOrStep: "",
-  applicationReference: "",
-  accountReference: "",
   issueSummary: "",
   whatWereYouTryingToDo: "",
   whatWentWrong: "",
-  deviceType: "",
-  browser: "",
-  canContact: true,
+  pageOrStep: "",
+  stepsToReproduce: "",
+  applicationReference: "",
+  reporterName: "",
+  reporterType: "",
+  reporterEmail: "",
+  reporterWhatsapp: "",
+  consent: false,
 };
 
-type Confirmation = {
-  ticketReference: string;
-  productName: string;
-  attachmentUploadFailed?: boolean;
+type FieldKey = keyof FormState | "attachment";
+
+const FIELD_LABELS: Record<FieldKey, string> = {
+  productId: "Which product",
+  category: "What kind of issue",
+  issueSummary: "Short summary",
+  whatWereYouTryingToDo: "What were you trying to do",
+  whatWentWrong: "What happened",
+  pageOrStep: "Page or step",
+  stepsToReproduce: "Steps to reproduce",
+  applicationReference: "Application or account reference",
+  reporterName: "Your name",
+  reporterType: "You are a…",
+  reporterEmail: "Email address",
+  reporterWhatsapp: "WhatsApp number",
+  consent: "Consent",
+  attachment: "Attachment",
 };
+
+const SERVER_GENERIC_ERROR =
+  "Something went wrong. Please try again, or contact us via WhatsApp.";
 
 export default function ReportProblemPage() {
+  const [, navigate] = useLocation();
   const products = useListPublicSupportProducts();
   const createTicket = useCreateSupportTicket();
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>(
-    {},
-  );
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const fieldRefs = useRef<Partial<Record<FieldKey, HTMLElement | null>>>({});
+
+  const summaryLen = form.issueSummary.length;
+  const summaryColour =
+    summaryLen >= SUMMARY_MAX
+      ? "text-[#FCA5A5]"
+      : summaryLen >= 130
+        ? "text-[#FBBF24]"
+        : "text-[#7B8694]";
 
   function handleSelectAttachment(file: File | null) {
     setAttachmentError(null);
@@ -113,30 +137,79 @@ export default function ReportProblemPage() {
     setSubmitError(null);
   }
 
-  function validate(): boolean {
-    const next: Partial<Record<keyof FormState, string>> = {};
+  function validate(): { ok: boolean; firstErrorKey: FieldKey | null } {
+    const next: Partial<Record<FieldKey, string>> = {};
     if (!form.productId) next.productId = "Please choose a product.";
-    if (!form.reporterName.trim()) next.reporterName = "Your name is required.";
-    if (!form.reporterType) next.reporterType = "Please select an option.";
     if (!form.category) next.category = "Please choose a category.";
     if (!form.issueSummary.trim())
       next.issueSummary = "Give us a short summary of the issue.";
+    else if (form.issueSummary.length > SUMMARY_MAX)
+      next.issueSummary = `Keep the summary under ${SUMMARY_MAX} characters.`;
+    if (form.whatWereYouTryingToDo.trim().length < 5)
+      next.whatWereYouTryingToDo =
+        "Tell us what you were trying to do (at least 5 characters).";
     if (!form.whatWentWrong.trim())
       next.whatWentWrong = "Please tell us what went wrong.";
-    if (!form.reporterEmail.trim() && !form.reporterWhatsapp.trim()) {
+    if (!form.reporterName.trim())
+      next.reporterName = "Your name is required.";
+    if (!form.reporterType) next.reporterType = "Please select an option.";
+
+    const email = form.reporterEmail.trim();
+    const whatsapp = form.reporterWhatsapp.trim();
+    if (!email && !whatsapp) {
       next.reporterEmail =
-        "Provide an email address or a WhatsApp number so we can reply.";
+        "Provide either an email address or a WhatsApp number.";
     }
+    if (whatsapp && !isValidPhoneNumber(whatsapp)) {
+      next.reporterWhatsapp = "Enter a valid mobile number.";
+    }
+    if (!form.consent) {
+      next.consent =
+        "Please confirm consent before we contact you about this report.";
+    }
+
     setErrors(next);
-    return Object.keys(next).length === 0;
+    const order: FieldKey[] = [
+      "productId",
+      "category",
+      "issueSummary",
+      "whatWereYouTryingToDo",
+      "whatWentWrong",
+      "reporterName",
+      "reporterType",
+      "reporterEmail",
+      "reporterWhatsapp",
+      "consent",
+    ];
+    const firstErrorKey = order.find((k) => next[k]) ?? null;
+    return { ok: Object.keys(next).length === 0, firstErrorKey };
+  }
+
+  function focusField(key: FieldKey) {
+    const el = fieldRefs.current[key];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const focusable = el.querySelector<HTMLElement>(
+      "input, textarea, select, button, [tabindex]",
+    );
+    focusable?.focus();
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitError(null);
-    if (!validate()) return;
+    const { ok, firstErrorKey } = validate();
+    if (!ok) {
+      if (firstErrorKey) focusField(firstErrorKey);
+      return;
+    }
 
     try {
+      const trimmedSteps = form.stepsToReproduce.trim();
+      const combinedWhatHappened = trimmedSteps
+        ? `${form.whatWentWrong.trim()}\n\nSteps to reproduce:\n${trimmedSteps}`
+        : form.whatWentWrong.trim();
+
       const result = await createTicket.mutateAsync({
         data: {
           productId: form.productId,
@@ -147,16 +220,17 @@ export default function ReportProblemPage() {
           category: form.category as never,
           pageOrStep: form.pageOrStep.trim() || null,
           applicationReference: form.applicationReference.trim() || null,
-          accountReference: form.accountReference.trim() || null,
           issueSummary: form.issueSummary.trim(),
-          whatWereYouTryingToDo: form.whatWereYouTryingToDo.trim() || null,
-          whatWentWrong: form.whatWentWrong.trim(),
-          deviceType: form.deviceType.trim() || null,
-          browser: form.browser.trim() || null,
-          canContact: form.canContact,
+          whatWereYouTryingToDo: form.whatWereYouTryingToDo.trim(),
+          whatWentWrong: combinedWhatHappened,
+          deviceType: null,
+          browser: null,
+          canContact: true,
+          consent: true,
+          deviceInfo: captureDeviceInfo() as unknown as Record<string, unknown>,
         },
       });
-      let attachmentUploadFailed = false;
+
       if (attachment) {
         try {
           const fd = new FormData();
@@ -165,108 +239,41 @@ export default function ReportProblemPage() {
           if (form.reporterEmail.trim())
             fd.append("uploadedByEmail", form.reporterEmail.trim());
           fd.append("uploadedByRole", "reporter");
-          const resp = await fetch(
-            `/api/support/tickets/${result.id}/attachments`,
-            { method: "POST", body: fd },
-          );
-          if (!resp.ok) attachmentUploadFailed = true;
+          await fetch(`/api/support/tickets/${result.id}/attachments`, {
+            method: "POST",
+            body: fd,
+          });
         } catch {
-          attachmentUploadFailed = true;
+          // Attachment failure must not block the user from reaching the
+          // confirmation. The ticket was already saved.
         }
       }
-      setConfirmation({
-        ticketReference: result.ticketReference,
-        productName: result.productName,
-        attachmentUploadFailed,
-      });
+
+      navigate(
+        `/help/report-problem/confirmation?ref=${encodeURIComponent(
+          result.ticketReference,
+        )}`,
+      );
     } catch (err) {
       console.error(err);
-      setSubmitError(
-        "We could not submit your report. Please check the form and try again.",
-      );
+      setSubmitError(SERVER_GENERIC_ERROR);
     }
   }
 
-  function startNewReport() {
-    setForm(EMPTY_FORM);
-    setErrors({});
-    setSubmitError(null);
-    setConfirmation(null);
-    setAttachment(null);
-    setAttachmentError(null);
-  }
+  const errorList = useMemo(
+    () =>
+      (Object.keys(errors) as FieldKey[])
+        .filter((k) => errors[k])
+        .map((k) => ({ key: k, label: FIELD_LABELS[k], message: errors[k]! })),
+    [errors],
+  );
 
-  if (confirmation) {
-    return (
-      <PublicShell data-testid="page-report-confirmation">
-        <PublicHero
-          title="Thank you."
-          titleAccent="Received."
-          subtitle="Our team will review your report and contact you if we need more information."
-          showBackLink
-          data-testid="hero-report-confirmation"
-        />
-
-        <div className="mx-auto w-full max-w-xl px-5 pb-16 sm:px-8">
-          <div
-            className="pd-card relative overflow-hidden rounded-3xl p-6 sm:p-8 text-center"
-            data-testid="confirmation-card"
-          >
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#38BDF8]/40 to-transparent"
-            />
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-[#38BDF8]/30 bg-[#38BDF8]/[0.08]">
-              <CheckCircle2 className="h-7 w-7 text-[#38BDF8]" />
-            </div>
-            <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.24em] text-[#7B8694]">
-              Reference
-            </p>
-            <p
-              className="mt-2 font-mono text-xl font-semibold text-[#E5E7EB]"
-              data-testid="text-ticket-reference"
-            >
-              {confirmation.ticketReference}
-            </p>
-            <p className="mt-3 text-sm text-[#7B8694]">
-              Product: {confirmation.productName}
-            </p>
-
-            {confirmation.attachmentUploadFailed && (
-              <Alert
-                variant="destructive"
-                className="mt-6 text-left"
-                data-testid="alert-attachment-failed"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Your ticket was created, but the attachment could not be
-                  uploaded. Reference: {confirmation.ticketReference}. You can
-                  send the screenshot to support later.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Button
-                onClick={startNewReport}
-                data-testid="button-report-another"
-              >
-                Report another problem
-              </Button>
-              <Button
-                variant="outline"
-                asChild
-                data-testid="button-back-to-help"
-              >
-                <Link href="/help">Back to Help</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </PublicShell>
-    );
-  }
+  // Re-render trigger so screen readers re-announce the alert summary on each
+  // failed submit attempt.
+  const [submitAttempt, setSubmitAttempt] = useState(0);
+  useEffect(() => {
+    if (errorList.length > 0) setSubmitAttempt((n) => n + 1);
+  }, [errors, errorList.length]);
 
   return (
     <PublicShell data-testid="page-report-problem">
@@ -291,10 +298,13 @@ export default function ReportProblemPage() {
             noValidate
             data-testid="form-report-problem"
           >
+            {/* 1. Product */}
             <Field
-              label="Which product"
+              label={FIELD_LABELS.productId}
               required
               error={errors.productId}
+              fieldKey="productId"
+              fieldRefs={fieldRefs}
             >
               <Select
                 value={form.productId}
@@ -323,61 +333,14 @@ export default function ReportProblemPage() {
               )}
             </Field>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Your name" required error={errors.reporterName}>
-                <Input
-                  value={form.reporterName}
-                  onChange={(e) => update("reporterName", e.target.value)}
-                  autoComplete="name"
-                  data-testid="input-reporter-name"
-                />
-              </Field>
-              <Field label="You are a…" required error={errors.reporterType}>
-                <Select
-                  value={form.reporterType}
-                  onValueChange={(v) => update("reporterType", v)}
-                >
-                  <SelectTrigger data-testid="select-reporter-type">
-                    <SelectValue placeholder="Select reporter type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REPORTER_TYPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field
-                label="Email address"
-                hint="Either email or WhatsApp required"
-                error={errors.reporterEmail}
-              >
-                <Input
-                  type="email"
-                  value={form.reporterEmail}
-                  onChange={(e) => update("reporterEmail", e.target.value)}
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  data-testid="input-reporter-email"
-                />
-              </Field>
-              <Field label="WhatsApp number" hint="E.164, e.g. +14155552671">
-                <Input
-                  value={form.reporterWhatsapp}
-                  onChange={(e) => update("reporterWhatsapp", e.target.value)}
-                  autoComplete="tel"
-                  placeholder="+14155552671"
-                  data-testid="input-reporter-whatsapp"
-                />
-              </Field>
-            </div>
-
-            <Field label="What kind of issue" required error={errors.category}>
+            {/* 2. Category */}
+            <Field
+              label={FIELD_LABELS.category}
+              required
+              error={errors.category}
+              fieldKey="category"
+              fieldRefs={fieldRefs}
+            >
               <Select
                 value={form.category}
                 onValueChange={(v) => update("category", v)}
@@ -395,19 +358,39 @@ export default function ReportProblemPage() {
               </Select>
             </Field>
 
+            {/* 3. Short summary */}
             <Field
-              label="Short summary"
+              label={FIELD_LABELS.issueSummary}
               required
               error={errors.issueSummary}
+              fieldKey="issueSummary"
+              fieldRefs={fieldRefs}
+              footer={
+                <p
+                  className={`text-[11px] tabular-nums ${summaryColour}`}
+                  data-testid="text-summary-counter"
+                  aria-live="polite"
+                >
+                  {summaryLen}/{SUMMARY_MAX}
+                </p>
+              }
             >
               <Input
                 value={form.issueSummary}
                 onChange={(e) => update("issueSummary", e.target.value)}
+                maxLength={SUMMARY_MAX}
                 data-testid="input-issue-summary"
               />
             </Field>
 
-            <Field label="What were you trying to do" hint="Optional">
+            {/* 4. What were you trying to do — required, min 5 */}
+            <Field
+              label={FIELD_LABELS.whatWereYouTryingToDo}
+              required
+              error={errors.whatWereYouTryingToDo}
+              fieldKey="whatWereYouTryingToDo"
+              fieldRefs={fieldRefs}
+            >
               <Textarea
                 value={form.whatWereYouTryingToDo}
                 onChange={(e) =>
@@ -418,10 +401,13 @@ export default function ReportProblemPage() {
               />
             </Field>
 
+            {/* 5. What happened */}
             <Field
-              label="What happened"
+              label={FIELD_LABELS.whatWentWrong}
               required
               error={errors.whatWentWrong}
+              fieldKey="whatWentWrong"
+              fieldRefs={fieldRefs}
             >
               <Textarea
                 value={form.whatWentWrong}
@@ -431,67 +417,43 @@ export default function ReportProblemPage() {
               />
             </Field>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Page or step" hint="Optional">
-                <Input
-                  value={form.pageOrStep}
-                  onChange={(e) => update("pageOrStep", e.target.value)}
-                  data-testid="input-page-or-step"
-                />
-              </Field>
-              <Field label="Application reference" hint="Optional">
-                <Input
-                  value={form.applicationReference}
-                  onChange={(e) =>
-                    update("applicationReference", e.target.value)
-                  }
-                  data-testid="input-application-reference"
-                />
-              </Field>
-              <Field label="Account reference" hint="Optional">
-                <Input
-                  value={form.accountReference}
-                  onChange={(e) => update("accountReference", e.target.value)}
-                  data-testid="input-account-reference"
-                />
-              </Field>
-              <Field label="Device" hint="Optional · iPhone, Windows laptop…">
-                <Input
-                  value={form.deviceType}
-                  onChange={(e) => update("deviceType", e.target.value)}
-                  data-testid="input-device"
-                />
-              </Field>
-              <Field label="Browser" hint="Optional">
-                <Input
-                  value={form.browser}
-                  onChange={(e) => update("browser", e.target.value)}
-                  data-testid="input-browser"
-                />
-              </Field>
-            </div>
-
-            <div className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-              <Checkbox
-                id="canContact"
-                checked={form.canContact}
-                onCheckedChange={(v) => update("canContact", v === true)}
-                data-testid="checkbox-can-contact"
+            {/* 6. Page or step */}
+            <Field
+              label={FIELD_LABELS.pageOrStep}
+              hint="Optional"
+              fieldKey="pageOrStep"
+              fieldRefs={fieldRefs}
+            >
+              <Input
+                value={form.pageOrStep}
+                onChange={(e) => update("pageOrStep", e.target.value)}
+                data-testid="input-page-or-step"
               />
-              <Label
-                htmlFor="canContact"
-                className="!text-xs !normal-case !tracking-normal !font-normal !text-[#B8C5D0]"
-                style={{ fontFamily: "inherit" }}
-              >
-                It's okay for the Eride support team to contact me about this
-                report.
-              </Label>
-            </div>
+            </Field>
 
+            {/* 7. Steps to reproduce */}
+            <Field
+              label={FIELD_LABELS.stepsToReproduce}
+              hint="Optional · numbered list helps us reproduce the issue faster"
+              fieldKey="stepsToReproduce"
+              fieldRefs={fieldRefs}
+            >
+              <Textarea
+                value={form.stepsToReproduce}
+                onChange={(e) => update("stepsToReproduce", e.target.value)}
+                rows={3}
+                placeholder="1. …\n2. …\n3. …"
+                data-testid="input-steps"
+              />
+            </Field>
+
+            {/* 8. Attachment */}
             <Field
               label="Upload screenshot or recording"
               hint={`Optional. ${ATTACHMENT_HELP_TEXT} Please do not upload sensitive documents unless support asks for them.`}
               error={attachmentError ?? undefined}
+              fieldKey="attachment"
+              fieldRefs={fieldRefs}
             >
               <Input
                 type="file"
@@ -512,12 +474,199 @@ export default function ReportProblemPage() {
               )}
             </Field>
 
+            {/* 9. Application or account reference */}
+            <Field
+              label={FIELD_LABELS.applicationReference}
+              hint="Optional · paste your application ID or account number if you have one"
+              fieldKey="applicationReference"
+              fieldRefs={fieldRefs}
+            >
+              <Input
+                value={form.applicationReference}
+                onChange={(e) =>
+                  update("applicationReference", e.target.value)
+                }
+                data-testid="input-application-reference"
+              />
+            </Field>
+
+            {/* Divider before reporter section */}
+            <div
+              role="separator"
+              aria-hidden
+              className="border-t border-white/[0.06]"
+            />
+
+            {/* 10. Name + reporter type */}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field
+                label={FIELD_LABELS.reporterName}
+                required
+                error={errors.reporterName}
+                fieldKey="reporterName"
+                fieldRefs={fieldRefs}
+              >
+                <Input
+                  value={form.reporterName}
+                  onChange={(e) => update("reporterName", e.target.value)}
+                  autoComplete="name"
+                  data-testid="input-reporter-name"
+                />
+              </Field>
+              <Field
+                label={FIELD_LABELS.reporterType}
+                required
+                error={errors.reporterType}
+                fieldKey="reporterType"
+                fieldRefs={fieldRefs}
+              >
+                <Select
+                  value={form.reporterType}
+                  onValueChange={(v) => update("reporterType", v)}
+                >
+                  <SelectTrigger data-testid="select-reporter-type">
+                    <SelectValue placeholder="Select reporter type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REPORTER_TYPE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+
+            {/* 11. Email + WhatsApp */}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field
+                label={FIELD_LABELS.reporterEmail}
+                hint="Either email or WhatsApp required"
+                error={errors.reporterEmail}
+                fieldKey="reporterEmail"
+                fieldRefs={fieldRefs}
+              >
+                <Input
+                  type="email"
+                  inputMode="email"
+                  value={form.reporterEmail}
+                  onChange={(e) => update("reporterEmail", e.target.value)}
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  data-testid="input-reporter-email"
+                />
+              </Field>
+              <Field
+                label={FIELD_LABELS.reporterWhatsapp}
+                hint="Default South Africa · pick another country if needed"
+                error={errors.reporterWhatsapp}
+                fieldKey="reporterWhatsapp"
+                fieldRefs={fieldRefs}
+              >
+                <div className="pd-phone-input">
+                  <PhoneInput
+                    international
+                    defaultCountry="ZA"
+                    countryOptionsOrder={COUNTRY_OPTIONS_ORDER}
+                    value={form.reporterWhatsapp}
+                    onChange={(v) =>
+                      update("reporterWhatsapp", (v ?? "") as string)
+                    }
+                    autoComplete="tel"
+                    data-testid="input-reporter-whatsapp"
+                  />
+                </div>
+              </Field>
+            </div>
+
+            {/* 12. POPIA consent */}
+            <div
+              ref={(el) => {
+                fieldRefs.current.consent = el;
+              }}
+              className={`flex items-start gap-3 rounded-2xl border p-4 ${
+                errors.consent
+                  ? "border-[#FCA5A5]/40 bg-[#FCA5A5]/[0.04]"
+                  : "border-white/[0.06] bg-white/[0.02]"
+              }`}
+            >
+              <Checkbox
+                id="consent"
+                checked={form.consent}
+                onCheckedChange={(v) => update("consent", v === true)}
+                data-testid="checkbox-consent"
+                aria-invalid={errors.consent ? true : undefined}
+                aria-describedby={
+                  errors.consent ? "consent-error" : undefined
+                }
+              />
+              <div className="space-y-1">
+                <Label
+                  htmlFor="consent"
+                  className="!text-xs !normal-case !tracking-normal !font-normal !text-[#B8C5D0] leading-relaxed"
+                  style={{ fontFamily: "inherit" }}
+                >
+                  I agree to be contacted by the Eride support team about this
+                  report. My contact details and the information I provide will
+                  be processed in line with POPIA for the purpose of resolving
+                  this issue.
+                </Label>
+                {errors.consent && (
+                  <p
+                    id="consent-error"
+                    className="text-[11px] text-[#FCA5A5]"
+                  >
+                    {errors.consent}
+                  </p>
+                )}
+              </div>
+            </div>
+
             <p className="text-[11px] text-[#7B8694]">
               Please do not include passwords or payment card details.
             </p>
 
+            {/* Validation summary (a11y) */}
+            {errorList.length > 0 && (
+              <Alert
+                variant="destructive"
+                role="alert"
+                aria-live="assertive"
+                data-testid="alert-validation-summary"
+                key={submitAttempt}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-medium">
+                    Please fix {errorList.length}{" "}
+                    {errorList.length === 1 ? "issue" : "issues"} before
+                    submitting:
+                  </p>
+                  <ul className="mt-2 list-disc pl-5 text-xs">
+                    {errorList.map((e) => (
+                      <li key={e.key}>
+                        <button
+                          type="button"
+                          className="underline underline-offset-2 hover:text-white"
+                          onClick={() => focusField(e.key)}
+                        >
+                          {e.label}
+                        </button>
+                        : {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {submitError && (
-              <Alert variant="destructive" data-testid="alert-submit-error">
+              <Alert
+                variant="destructive"
+                role="alert"
+                data-testid="alert-submit-error"
+              >
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>{submitError}</AlertDescription>
               </Alert>
@@ -534,15 +683,19 @@ export default function ReportProblemPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={createTicket.isPending}
+                disabled={createTicket.isPending || !form.consent}
                 data-testid="button-submit"
               >
                 {createTicket.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Submit report
-                {!createTicket.isPending && (
-                  <ArrowUpRight className="ml-1 h-4 w-4" />
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    Submit report
+                    <ArrowUpRight className="ml-1 h-4 w-4" />
+                  </>
                 )}
               </Button>
             </div>
@@ -559,28 +712,46 @@ function Field({
   hint,
   error,
   children,
+  footer,
+  fieldKey,
+  fieldRefs,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
   error?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
+  fieldKey: FieldKey;
+  fieldRefs: React.MutableRefObject<
+    Partial<Record<FieldKey, HTMLElement | null>>
+  >;
 }) {
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2"
+      ref={(el) => {
+        fieldRefs.current[fieldKey] = el;
+      }}
+    >
       <Label>
         {label}
         {required && <span className="ml-1 text-destructive">*</span>}
       </Label>
       {children}
-      {hint && !error && (
-        <p className="text-[11px] text-[#7B8694]">{hint}</p>
-      )}
-      {error && (
-        <p className="text-[11px] text-[#FCA5A5]" role="alert">
-          {error}
-        </p>
-      )}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          {hint && !error && (
+            <p className="text-[11px] text-[#7B8694]">{hint}</p>
+          )}
+          {error && (
+            <p className="text-[11px] text-[#FCA5A5]" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        {footer}
+      </div>
     </div>
   );
 }

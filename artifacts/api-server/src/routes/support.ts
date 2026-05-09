@@ -152,6 +152,7 @@ router.get("/support/products", async (req, res): Promise<void> => {
       productCode: supportProductsTable.productCode,
       productName: supportProductsTable.productName,
       productDescription: supportProductsTable.productDescription,
+      displayOrder: supportProductsTable.displayOrder,
     })
     .from(supportProductsTable)
     .where(
@@ -161,7 +162,7 @@ router.get("/support/products", async (req, res): Promise<void> => {
         eq(supportProductsTable.isPublicVisible, true),
       ),
     )
-    .orderBy(supportProductsTable.productName);
+    .orderBy(supportProductsTable.displayOrder, supportProductsTable.productName);
 
   res.json(ListPublicSupportProductsResponse.parse(products));
 });
@@ -812,6 +813,54 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
     return;
   }
 
+  if (body.consent !== true) {
+    res.status(400).json({
+      error: "Consent is required to submit a report.",
+    });
+    return;
+  }
+
+  // Capture client IP for POPIA consent audit. Honours X-Forwarded-For when
+  // configured (Express trust proxy), otherwise falls back to socket address.
+  const consentIp =
+    (typeof req.ip === "string" && req.ip.length > 0 ? req.ip : null) ??
+    req.socket?.remoteAddress ??
+    null;
+
+  // Sanitise deviceInfo: only persist a known allowlist of fields, length-cap
+  // each value, and never accept arbitrary client-supplied keys (which would
+  // also bloat the JSONB column). Full URLs / referrers are rejected here as
+  // a defence-in-depth — the client already strips them to pathnames.
+  const sanitiseDeviceInfo = (
+    raw: unknown,
+  ): Record<string, string> | null => {
+    if (!raw || typeof raw !== "object") return null;
+    const src = raw as Record<string, unknown>;
+    const allowed: Array<{ key: string; max: number }> = [
+      { key: "ua", max: 256 },
+      { key: "os", max: 32 },
+      { key: "viewport", max: 16 },
+      { key: "language", max: 16 },
+      { key: "referrerPath", max: 256 },
+      { key: "hrefPath", max: 256 },
+    ];
+    const out: Record<string, string> = {};
+    for (const { key, max } of allowed) {
+      const v = src[key];
+      if (typeof v === "string" && v.length > 0) {
+        // Strip anything that looks like a query string / fragment / origin if
+        // a misbehaving client sends a full URL.
+        const cleaned =
+          key === "referrerPath" || key === "hrefPath"
+            ? v.split("?")[0].split("#")[0].replace(/^https?:\/\/[^/]+/i, "")
+            : v;
+        out[key] = cleaned.slice(0, max);
+      }
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  };
+  const deviceInfo = sanitiseDeviceInfo(body.deviceInfo);
+
   const org = await getErideOrganisation();
   if (!org) {
     req.log.error({ orgCode: ERIDE_ORG_CODE }, "Eride organisation not found");
@@ -855,11 +904,14 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
       reporterWhatsapp: reporterWhatsapp || null,
       pageOrStep: body.pageOrStep ?? null,
       applicationReference: body.applicationReference ?? null,
-      accountReference: body.accountReference ?? null,
+      accountReference: null,
       issueSummary: body.issueSummary,
       whatWereYouTryingToDo: body.whatWereYouTryingToDo ?? null,
       whatWentWrong: body.whatWentWrong,
       environment: "production",
+      consentGivenAt: new Date(),
+      consentIp,
+      deviceInfo,
     })
     .returning();
 

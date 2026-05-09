@@ -5,6 +5,7 @@ import {
   boolean,
   timestamp,
   uniqueIndex,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -26,6 +27,7 @@ export const supportProductsTable = pgTable(
     defaultProductOwnerId: uuid("default_product_owner_id"),
     linearTeamKey: text("linear_team_key"),
     sentryProjectId: text("sentry_project_id"),
+    displayOrder: integer("display_order").notNull().default(100),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

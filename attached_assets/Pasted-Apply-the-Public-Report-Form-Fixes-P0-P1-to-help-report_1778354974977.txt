@@ -1,0 +1,69 @@
+Apply the Public Report Form Fixes P0 + P1 to /help/report-problem exactly as specified in the user-provided brief.
+
+Important:
+- Do not redesign the page.
+- Keep existing Carbon dark style, ice-blue accents, mono labels, rounded-2xl cards.
+- Do not change unrelated routes.
+- Do not change ticket workflow.
+- Preserve existing public privacy rules.
+- Mobile-first, works at 375px.
+- WCAG AA accessible.
+- Typecheck must pass.
+
+Implement all sections:
+1. Replace WhatsApp input with react-phone-number-input + libphonenumber-js.
+2. Default country ZA.
+3. Pin SADC countries first, then alphabetical.
+4. Store WhatsApp as E.164.
+5. Validate with isValidPhoneNumber.
+6. Make “What were you trying to do” required, min 5 chars.
+7. Add POPIA consent checkbox above submit.
+8. Disable submit until consent checked.
+9. Persist consent_given_at and consent_ip.
+10. Merge Application reference + Account reference into one field:
+   APPLICATION OR ACCOUNT REFERENCE.
+11. Remove account_reference from form payload and inserts.
+12. Map merged reference to case_reference / applicationReference equivalent used by current schema.
+13. Product dropdown only active products.
+14. Add display_order, ERD pinned bottom, label “Eride General Support”.
+15. Add 140 character counter to Short Summary.
+16. Email field gets type=email, inputMode=email, autocomplete=email.
+17. Reorder fields exactly as specified:
+   product, category, short summary, trying to do, what happened, page/step,
+   steps, attachment, application/account reference, hidden device info,
+   divider, name, reporter type, email, WhatsApp, consent, submit.
+18. Add submit validation summary with role=alert and aria-live=assertive.
+19. Scroll to first error.
+20. Submit button shows Loader2 + “Submitting…”.
+21. Success goes to /help/report-problem/confirmation?ref={reference}.
+22. Server error message:
+   “Something went wrong. Please try again, or contact us via WhatsApp.”
+23. Capture device_info JSONB client-side:
+   os, ua, viewport, language, referrer, href.
+24. Send device_info in POST body.
+25. Add migrations safely if needed:
+   - consent_given_at TIMESTAMPTZ
+   - consent_ip TEXT
+   - device_info JSONB if missing
+   - products.display_order INT DEFAULT 100 if missing
+
+Use existing table names in this project. If current tables are named support_tickets/support_products instead of tickets/products, apply the changes to the existing support tables, not new tables.
+
+Acceptance criteria:
+- WhatsApp shows 🇿🇦 +27 by default.
+- Country dropdown works and validates per country.
+- Invalid WhatsApp shows “Enter a valid mobile number”.
+- Missing both email and WhatsApp shows “Provide either an email address or a WhatsApp number”.
+- “What were you trying to do” is required.
+- Submit disabled until consent checked.
+- Consent timestamp and IP saved.
+- Only one Application/account reference field remains.
+- Products are active-only, ordered by display_order then name, ERD bottom.
+- Summary counter works: amber at 130, red at 140.
+- Field order matches spec.
+- Inputs keep Carbon theme and ice-blue focus.
+- Works at 375px.
+- Keyboard accessible.
+- No console errors.
+- Typecheck passes.
+- Deploy preview and report results.

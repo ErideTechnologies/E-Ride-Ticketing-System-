@@ -5,6 +5,7 @@ import {
   timestamp,
   uniqueIndex,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -66,6 +67,9 @@ export const supportTicketsTable = pgTable(
       .defaultNow(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
+    consentGivenAt: timestamp("consent_given_at", { withTimezone: true }),
+    consentIp: text("consent_ip"),
+    deviceInfo: jsonb("device_info"),
   },
   (t) => [
     uniqueIndex("support_tickets_reference_unique").on(t.ticketReference),

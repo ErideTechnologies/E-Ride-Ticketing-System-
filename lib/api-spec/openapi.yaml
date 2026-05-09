@@ -985,10 +985,13 @@ components:
           type: string
         productDescription:
           type: ["string", "null"]
+        displayOrder:
+          type: integer
       required:
         - id
         - productCode
         - productName
+        - displayOrder
 
     SupportTicketCategory:
       type: string
@@ -1055,13 +1058,13 @@ components:
           type: ["string", "null"]
         applicationReference:
           type: ["string", "null"]
-        accountReference:
-          type: ["string", "null"]
         issueSummary:
           type: string
           minLength: 1
+          maxLength: 140
         whatWereYouTryingToDo:
-          type: ["string", "null"]
+          type: string
+          minLength: 5
         whatWentWrong:
           type: string
           minLength: 1
@@ -1072,13 +1075,22 @@ components:
         canContact:
           type: boolean
           default: true
+        consent:
+          type: boolean
+          description: POPIA consent given by reporter. Must be true to submit.
+        deviceInfo:
+          type: object
+          additionalProperties: true
+          description: Client-captured device info (os, ua, viewport, language, referrer, href).
       required:
         - productId
         - reporterName
         - reporterType
         - category
         - issueSummary
+        - whatWereYouTryingToDo
         - whatWentWrong
+        - consent
 
     SupportTicketPriority:
       type: string

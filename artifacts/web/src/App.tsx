@@ -7,6 +7,7 @@ import { RequireSupportAuth } from "@/components/RequireSupportAuth";
 import NotFound from "@/pages/not-found";
 import HelpPage from "@/pages/help";
 import ReportProblemPage from "@/pages/report-problem";
+import ReportProblemConfirmationPage from "@/pages/report-problem-confirmation";
 import TrackTicketPage from "@/pages/track-ticket";
 import PublicTicketPage from "@/pages/public-ticket";
 import AdminLoginPage from "@/pages/admin-login";
@@ -33,6 +34,10 @@ function Router() {
       <Route path="/" component={() => <Redirect to="/help" />} />
       <Route path="/help" component={HelpPage} />
       <Route path="/help/report-problem" component={ReportProblemPage} />
+      <Route
+        path="/help/report-problem/confirmation"
+        component={ReportProblemConfirmationPage}
+      />
       <Route path="/help/track-ticket" component={TrackTicketPage} />
       <Route path="/help/ticket/:ticketReference" component={PublicTicketPage} />
       <Route path="/admin/support/login" component={AdminLoginPage} />

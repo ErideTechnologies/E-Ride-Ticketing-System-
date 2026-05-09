@@ -509,3 +509,60 @@
   margin-right: 0.75rem;
   vertical-align: middle;
 }
+
+/* react-phone-number-input — Carbon dark theme overrides */
+.public-dark .pd-phone-input .PhoneInput {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.public-dark .pd-phone-input .PhoneInputCountry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  background: rgba(8,12,18,0.7);
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 9999px;
+  min-height: 2.25rem;
+  color: #E5E7EB;
+}
+.public-dark .pd-phone-input .PhoneInputCountrySelect {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  outline: none;
+  padding-right: 0.25rem;
+}
+.public-dark .pd-phone-input .PhoneInputCountrySelect option {
+  background: #0B1218;
+  color: #E5E7EB;
+}
+.public-dark .pd-phone-input .PhoneInputCountryIcon {
+  width: 1.25rem;
+  height: 0.9rem;
+  box-shadow: none;
+  background: transparent;
+}
+.public-dark .pd-phone-input .PhoneInputCountrySelectArrow {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-color: #B8C5D0;
+  opacity: 0.7;
+  margin-left: 0.25rem;
+}
+.public-dark .pd-phone-input .PhoneInputInput {
+  flex: 1;
+  background: rgba(8,12,18,0.7) !important;
+  border: 1px solid rgba(148,163,184,0.18) !important;
+  color: #E5E7EB !important;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  outline: none;
+  min-height: 2.25rem;
+}
+.public-dark .pd-phone-input .PhoneInputInput:focus,
+.public-dark .pd-phone-input .PhoneInputCountry:focus-within {
+  border-color: rgba(56,189,248,0.55) !important;
+  box-shadow: 0 0 0 3px rgba(56,189,248,0.12) !important;
+}

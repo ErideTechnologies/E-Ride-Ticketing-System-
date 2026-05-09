@@ -19,6 +19,7 @@ export interface PublicSupportProduct {
   productName: string;
   /** @nullable */
   productDescription?: string | null;
+  displayOrder: number;
 }
 
 export type SupportTicketCategory =
@@ -71,6 +72,11 @@ export const PublicSupportTicketStatus = {
   closed: "closed",
 } as const;
 
+/**
+ * Client-captured device info (os, ua, viewport, language, referrer, href).
+ */
+export type SupportTicketSubmissionDeviceInfo = { [key: string]: unknown };
+
 export interface SupportTicketSubmission {
   productId: string;
   /** @minLength 1 */
@@ -85,12 +91,13 @@ export interface SupportTicketSubmission {
   pageOrStep?: string | null;
   /** @nullable */
   applicationReference?: string | null;
-  /** @nullable */
-  accountReference?: string | null;
-  /** @minLength 1 */
+  /**
+   * @minLength 1
+   * @maxLength 140
+   */
   issueSummary: string;
-  /** @nullable */
-  whatWereYouTryingToDo?: string | null;
+  /** @minLength 5 */
+  whatWereYouTryingToDo: string;
   /** @minLength 1 */
   whatWentWrong: string;
   /** @nullable */
@@ -98,6 +105,10 @@ export interface SupportTicketSubmission {
   /** @nullable */
   browser?: string | null;
   canContact?: boolean;
+  /** POPIA consent given by reporter. Must be true to submit. */
+  consent: boolean;
+  /** Client-captured device info (os, ua, viewport, language, referrer, href). */
+  deviceInfo?: SupportTicketSubmissionDeviceInfo;
 }
 
 export type SupportTicketPriority =

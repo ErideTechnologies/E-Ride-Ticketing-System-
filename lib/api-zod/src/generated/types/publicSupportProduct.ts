@@ -12,4 +12,5 @@ export interface PublicSupportProduct {
   productName: string;
   /** @nullable */
   productDescription?: string | null;
+  displayOrder: number;
 }

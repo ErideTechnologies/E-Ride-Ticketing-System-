@@ -65,6 +65,7 @@ export * from "./supportTicketSlaPhase";
 export * from "./supportTicketSlaStatus";
 export * from "./supportTicketStatusHistoryItem";
 export * from "./supportTicketSubmission";
+export * from "./supportTicketSubmissionDeviceInfo";
 export * from "./supportTicketUpdate";
 export * from "./supportTicketWorkflowAction";
 export * from "./supportTicketWorkflowActionRequest";

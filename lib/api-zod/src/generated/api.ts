@@ -24,6 +24,7 @@ export const ListPublicSupportProductsResponseItem = zod.object({
   productCode: zod.string(),
   productName: zod.string(),
   productDescription: zod.string().nullish(),
+  displayOrder: zod.number(),
 });
 export const ListPublicSupportProductsResponse = zod.array(
   ListPublicSupportProductsResponseItem,
@@ -2034,6 +2035,10 @@ export const ListSupportTicketsResponse = zod.array(
  * @summary Submit a support ticket from the public report-a-problem form
  */
 
+export const createSupportTicketBodyIssueSummaryMax = 140;
+
+export const createSupportTicketBodyWhatWereYouTryingToDoMin = 5;
+
 export const createSupportTicketBodyCanContactDefault = true;
 
 export const CreateSupportTicketBody = zod.object({
@@ -2072,11 +2077,21 @@ export const CreateSupportTicketBody = zod.object({
   ]),
   pageOrStep: zod.string().nullish(),
   applicationReference: zod.string().nullish(),
-  accountReference: zod.string().nullish(),
-  issueSummary: zod.string().min(1),
-  whatWereYouTryingToDo: zod.string().nullish(),
+  issueSummary: zod.string().min(1).max(createSupportTicketBodyIssueSummaryMax),
+  whatWereYouTryingToDo: zod
+    .string()
+    .min(createSupportTicketBodyWhatWereYouTryingToDoMin),
   whatWentWrong: zod.string().min(1),
   deviceType: zod.string().nullish(),
   browser: zod.string().nullish(),
   canContact: zod.boolean().default(createSupportTicketBodyCanContactDefault),
+  consent: zod
+    .boolean()
+    .describe("POPIA consent given by reporter. Must be true to submit."),
+  deviceInfo: zod
+    .record(zod.string(), zod.unknown())
+    .optional()
+    .describe(
+      "Client-captured device info (os, ua, viewport, language, referrer, href).",
+    ),
 });
