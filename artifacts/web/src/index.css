@@ -373,6 +373,11 @@
   background: #000;
   color: #E5E7EB;
   min-height: 100vh;
+  /* Clip horizontally without creating a scroll container — `overflow: hidden`
+   * would force overflow-y to `auto` and steal wheel/touch events from the
+   * document, which broke scrolling on iOS Safari + trackpads after publish. */
+  overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
 }
 
 .public-dark a { color: inherit; }

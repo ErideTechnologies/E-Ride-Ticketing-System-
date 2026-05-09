@@ -1,0 +1,139 @@
+Fix the post-publish scrolling/cursor/navigation issue caused by the public Lovable UI redesign.
+
+Problem:
+After publishing, the public support pages are not functioning properly when moving up/down with the cursor/scroll. The design appears to have introduced an overflow/scroll-lock/layout issue.
+
+Scope:
+Fix scrolling and page interaction only.
+
+Affected public routes:
+- /help
+- /help/report-problem
+- /help/track-ticket
+- /help/ticket/:ticketReference
+
+Important:
+Do not change backend logic.
+Do not change API routes.
+Do not change database tables.
+Do not change ticket creation logic.
+Do not change ticket tracking logic.
+Do not change reply/upload logic.
+Do not change auth, SLA, Linear, Sentry, email, attachments, or audit logic.
+Do not remove the new Dogma/Lovable visual design.
+Only fix layout, scrolling, cursor, pointer-event, and responsiveness problems.
+
+Investigate and fix:
+
+1. Remove any page-level scroll lock
+Check PublicShell, public route wrappers, index.css, and global CSS for:
+- overflow-hidden
+- h-screen
+- fixed inset-0
+- min-h-screen combined with nested overflow
+- body/html overflow hidden
+- position fixed wrappers
+- transform/translate wrappers interfering with scroll
+- backdrop/gradient layers capturing pointer events
+
+The public page root should allow normal document scrolling:
+- html, body, #root should not be scroll-locked
+- public pages should use min-h-screen, not h-screen, unless intentional
+- decorative glow/gradient layers must use pointer-events-none
+- content should sit in normal document flow
+
+2. PublicShell fix
+Update PublicShell so that:
+- the outer wrapper is min-h-screen
+- the hero and content are in normal flow
+- background glows are absolute but pointer-events-none
+- no wrapper blocks wheel/touch/trackpad scrolling
+- mobile Safari/Chrome scrolling works
+- desktop mouse wheel and trackpad scrolling works
+
+Suggested structure:
+- <main className="min-h-screen overflow-x-hidden">
+- decorative backgrounds: absolute inset-0 pointer-events-none
+- content wrapper: relative z-10
+- avoid h-screen except for intentional full-screen pages
+
+3. Mobile browser fix
+Ensure on mobile:
+- page can scroll vertically
+- no horizontal overflow
+- sticky/fixed elements do not cover form fields
+- inputs/selects/textareas remain tappable
+- file upload remains tappable
+- submit buttons remain reachable
+
+4. Desktop browser fix
+Ensure on desktop:
+- mouse wheel scroll works
+- trackpad scroll works
+- keyboard PageUp/PageDown/Arrow keys work where expected
+- cursor can move normally
+- no invisible overlay is covering the page
+
+5. Check forms
+On /help/report-problem:
+- every field must be reachable by scrolling
+- select dropdowns must open
+- file picker must open
+- checkbox must be clickable
+- submit button must be clickable
+- cancel/back button must be clickable
+
+6. Check ticket tracking
+On /help/track-ticket:
+- fields must be focusable
+- View ticket button must be clickable
+- Back to Help must work
+
+7. Check ticket view
+On /help/ticket/:ticketReference:
+- verify form must be usable
+- reply textarea must be usable
+- attachment upload must be usable
+- page must scroll through timeline/messages
+
+8. Preserve visual design
+Keep:
+- dark cinematic hero
+- premium Dogma styling
+- public Eride Support naming
+- footer Dogma attribution only
+- Lovable-inspired cards/buttons/typography
+
+But fix any CSS that makes the page unusable.
+
+9. Add regression tests / smoke checks
+Run visual and interaction checks for:
+- /help at mobile 375px and desktop 1280px
+- /help/report-problem at mobile 375px and desktop 1280px
+- /help/track-ticket at mobile 375px and desktop 1280px
+- /help/ticket/:ticketReference at mobile 375px and desktop 1280px
+
+Specifically verify:
+- window/document scroll height is greater than viewport where needed
+- wheel/touch scrolling works
+- no blocking overlay exists above content
+- primary buttons are clickable
+- form fields are focusable
+
+10. Final verification
+Run:
+- typecheck
+- public page smoke tests
+- browser scroll/click test
+
+Acceptance criteria:
+- Public pages scroll normally up and down.
+- Mouse wheel/trackpad scrolling works on desktop.
+- Touch scrolling works on mobile.
+- No invisible overlay blocks clicks.
+- All public forms remain usable.
+- Ticket creation still works.
+- Ticket tracking still works.
+- Public reply/upload still works.
+- Visual Dogma/Lovable design remains intact.
+- Typecheck passes.

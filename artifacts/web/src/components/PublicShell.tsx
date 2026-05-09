@@ -21,7 +21,7 @@ export function PublicShell({
 }: PublicShellProps) {
   return (
     <div
-      className="public-dark relative isolate flex min-h-screen flex-col overflow-x-hidden"
+      className="public-dark relative flex min-h-screen flex-col overflow-x-clip"
       data-testid={testId ?? "public-shell"}
     >
       {/* Ambient hero glow — never covers content, always behind */}
