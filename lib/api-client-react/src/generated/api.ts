@@ -25,6 +25,9 @@ import type {
   PreviewSupportMessageTemplateResult,
   PublicSupportProduct,
   SendSupportTicketEmailResult,
+  SupportIntegrationEmailTestRequest,
+  SupportIntegrationEmailTestResult,
+  SupportIntegrationsStatus,
   SupportLinearIntegrationStatus,
   SupportMessageTemplate,
   SupportMessageTemplatePreviewRequest,
@@ -1103,6 +1106,189 @@ export function useGetLinearIntegrationStatus<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Returns configured/not-configured status for every integration the
+support workspace depends on (auth, public-ticket security, email,
+Sentry, Linear, WhatsApp, attachment storage). Never returns secret
+values — only presence flags, provider names, and safe defaults.
+
+ * @summary Full integration status snapshot (support_admin only)
+ */
+export const getGetSupportIntegrationsStatusUrl = () => {
+  return `/api/support/integrations/status`;
+};
+
+export const getSupportIntegrationsStatus = async (
+  options?: RequestInit,
+): Promise<SupportIntegrationsStatus> => {
+  return customFetch<SupportIntegrationsStatus>(
+    getGetSupportIntegrationsStatusUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSupportIntegrationsStatusQueryKey = () => {
+  return [`/api/support/integrations/status`] as const;
+};
+
+export const getGetSupportIntegrationsStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupportIntegrationsStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportIntegrationsStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupportIntegrationsStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupportIntegrationsStatus>>
+  > = ({ signal }) =>
+    getSupportIntegrationsStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportIntegrationsStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupportIntegrationsStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupportIntegrationsStatus>>
+>;
+export type GetSupportIntegrationsStatusQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Full integration status snapshot (support_admin only)
+ */
+
+export function useGetSupportIntegrationsStatus<
+  TData = Awaited<ReturnType<typeof getSupportIntegrationsStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupportIntegrationsStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupportIntegrationsStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Sends a fixed-subject test email to the requested recipient (defaults
+to the calling admin's email). Returns disabled state when
+RESEND_API_KEY is missing rather than crashing. Provider error
+messages are returned to the admin UI only — never surfaced publicly.
+
+ * @summary Send a one-off test email (support_admin only)
+ */
+export const getSendSupportIntegrationEmailTestUrl = () => {
+  return `/api/support/integrations/email/test`;
+};
+
+export const sendSupportIntegrationEmailTest = async (
+  supportIntegrationEmailTestRequest?: SupportIntegrationEmailTestRequest,
+  options?: RequestInit,
+): Promise<SupportIntegrationEmailTestResult> => {
+  return customFetch<SupportIntegrationEmailTestResult>(
+    getSendSupportIntegrationEmailTestUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supportIntegrationEmailTestRequest),
+    },
+  );
+};
+
+export const getSendSupportIntegrationEmailTestMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendSupportIntegrationEmailTest>>,
+    TError,
+    { data: BodyType<SupportIntegrationEmailTestRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendSupportIntegrationEmailTest>>,
+  TError,
+  { data: BodyType<SupportIntegrationEmailTestRequest> },
+  TContext
+> => {
+  const mutationKey = ["sendSupportIntegrationEmailTest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendSupportIntegrationEmailTest>>,
+    { data: BodyType<SupportIntegrationEmailTestRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendSupportIntegrationEmailTest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendSupportIntegrationEmailTestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendSupportIntegrationEmailTest>>
+>;
+export type SendSupportIntegrationEmailTestMutationBody =
+  BodyType<SupportIntegrationEmailTestRequest>;
+export type SendSupportIntegrationEmailTestMutationError =
+  ErrorType<ErrorResponse>;
+
+/**
+ * @summary Send a one-off test email (support_admin only)
+ */
+export const useSendSupportIntegrationEmailTest = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendSupportIntegrationEmailTest>>,
+    TError,
+    { data: BodyType<SupportIntegrationEmailTestRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendSupportIntegrationEmailTest>>,
+  TError,
+  { data: BodyType<SupportIntegrationEmailTestRequest> },
+  TContext
+> => {
+  return useMutation(
+    getSendSupportIntegrationEmailTestMutationOptions(options),
+  );
+};
 
 /**
  * @summary List Sentry links recorded against a ticket (newest first)

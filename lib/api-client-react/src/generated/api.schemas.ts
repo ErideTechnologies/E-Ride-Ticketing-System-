@@ -507,6 +507,64 @@ export interface SupportLinearIntegrationStatus {
   hasTeamForProductCode?: SupportLinearIntegrationStatusHasTeamForProductCode;
 }
 
+export interface SupportIntegrationEnvVar {
+  name: string;
+  configured: boolean;
+}
+
+export type SupportIntegrationStatusCardKey =
+  (typeof SupportIntegrationStatusCardKey)[keyof typeof SupportIntegrationStatusCardKey];
+
+export const SupportIntegrationStatusCardKey = {
+  auth: "auth",
+  publicTicket: "publicTicket",
+  email: "email",
+  sentry: "sentry",
+  linear: "linear",
+  whatsapp: "whatsapp",
+  attachments: "attachments",
+} as const;
+
+export type SupportIntegrationStatusCardDetails = { [key: string]: unknown };
+
+export interface SupportIntegrationStatusCard {
+  key: SupportIntegrationStatusCardKey;
+  label: string;
+  configured: boolean;
+  fallback: boolean;
+  requiredEnvVars: SupportIntegrationEnvVar[];
+  optionalEnvVars: SupportIntegrationEnvVar[];
+  details: SupportIntegrationStatusCardDetails;
+}
+
+export interface SupportIntegrationsStatus {
+  generatedAt: string;
+  cards: SupportIntegrationStatusCard[];
+}
+
+export interface SupportIntegrationEmailTestRequest {
+  /**
+   * Email address to send the test to. Defaults to the calling admin's email.
+   * @maxLength 320
+   * @nullable
+   */
+  recipient?: string | null;
+}
+
+export interface SupportIntegrationEmailTestResult {
+  success: boolean;
+  disabled: boolean;
+  recipient: string;
+  sentAt: string;
+  /** @nullable */
+  providerMessageId?: string | null;
+  /**
+   * Internal-only error string. Never shown on public pages.
+   * @nullable
+   */
+  errorMessage?: string | null;
+}
+
 export interface SupportTicketSentryLink {
   id: string;
   supportTicketId: string;

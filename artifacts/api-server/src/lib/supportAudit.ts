@@ -19,7 +19,8 @@ export type SupportAuditAction =
   | "settings.updated"
   | "template.updated"
   | "auth.login"
-  | "auth.logout";
+  | "auth.logout"
+  | "integration.email_test";
 
 export async function recordSupportAuditLog(opts: {
   action: SupportAuditAction;

@@ -300,6 +300,78 @@ paths:
               schema:
                 $ref: "#/components/schemas/SupportLinearIntegrationStatus"
 
+  /support/integrations/status:
+    get:
+      operationId: getSupportIntegrationsStatus
+      tags: [support]
+      summary: Full integration status snapshot (support_admin only)
+      description: |
+        Returns configured/not-configured status for every integration the
+        support workspace depends on (auth, public-ticket security, email,
+        Sentry, Linear, WhatsApp, attachment storage). Never returns secret
+        values — only presence flags, provider names, and safe defaults.
+      responses:
+        "200":
+          description: Integrations status snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportIntegrationsStatus"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /support/integrations/email/test:
+    post:
+      operationId: sendSupportIntegrationEmailTest
+      tags: [support]
+      summary: Send a one-off test email (support_admin only)
+      description: |
+        Sends a fixed-subject test email to the requested recipient (defaults
+        to the calling admin's email). Returns disabled state when
+        RESEND_API_KEY is missing rather than crashing. Provider error
+        messages are returned to the admin UI only — never surfaced publicly.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportIntegrationEmailTestRequest"
+      responses:
+        "200":
+          description: Test email result (success, failure, or disabled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportIntegrationEmailTestResult"
+        "400":
+          description: Invalid recipient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /support/tickets/{id}/sentry-links:
     parameters:
       - in: path
@@ -1506,6 +1578,71 @@ components:
           type: object
           additionalProperties: { type: boolean }
       required: [configured]
+
+    SupportIntegrationEnvVar:
+      type: object
+      properties:
+        name: { type: string }
+        configured: { type: boolean }
+      required: [name, configured]
+
+    SupportIntegrationStatusCard:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+            [auth, publicTicket, email, sentry, linear, whatsapp, attachments]
+        label: { type: string }
+        configured: { type: boolean }
+        fallback: { type: boolean }
+        requiredEnvVars:
+          type: array
+          items: { $ref: "#/components/schemas/SupportIntegrationEnvVar" }
+        optionalEnvVars:
+          type: array
+          items: { $ref: "#/components/schemas/SupportIntegrationEnvVar" }
+        details:
+          type: object
+          additionalProperties: true
+      required:
+        - key
+        - label
+        - configured
+        - fallback
+        - requiredEnvVars
+        - optionalEnvVars
+        - details
+
+    SupportIntegrationsStatus:
+      type: object
+      properties:
+        generatedAt: { type: string, format: date-time }
+        cards:
+          type: array
+          items: { $ref: "#/components/schemas/SupportIntegrationStatusCard" }
+      required: [generatedAt, cards]
+
+    SupportIntegrationEmailTestRequest:
+      type: object
+      properties:
+        recipient:
+          type: ["string", "null"]
+          description: Email address to send the test to. Defaults to the calling admin's email.
+          maxLength: 320
+
+    SupportIntegrationEmailTestResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        disabled: { type: boolean }
+        recipient: { type: string }
+        sentAt: { type: string, format: date-time }
+        providerMessageId: { type: ["string", "null"] }
+        errorMessage:
+          type: ["string", "null"]
+          description: Internal-only error string. Never shown on public pages.
+      required: [success, disabled, recipient, sentAt]
 
     SupportTicketSentryLink:
       type: object

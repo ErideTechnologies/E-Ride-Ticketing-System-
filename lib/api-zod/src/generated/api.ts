@@ -497,6 +497,79 @@ export const GetLinearIntegrationStatusResponse = zod.object({
 });
 
 /**
+ * Returns configured/not-configured status for every integration the
+support workspace depends on (auth, public-ticket security, email,
+Sentry, Linear, WhatsApp, attachment storage). Never returns secret
+values — only presence flags, provider names, and safe defaults.
+
+ * @summary Full integration status snapshot (support_admin only)
+ */
+export const GetSupportIntegrationsStatusResponse = zod.object({
+  generatedAt: zod.coerce.date(),
+  cards: zod.array(
+    zod.object({
+      key: zod.enum([
+        "auth",
+        "publicTicket",
+        "email",
+        "sentry",
+        "linear",
+        "whatsapp",
+        "attachments",
+      ]),
+      label: zod.string(),
+      configured: zod.boolean(),
+      fallback: zod.boolean(),
+      requiredEnvVars: zod.array(
+        zod.object({
+          name: zod.string(),
+          configured: zod.boolean(),
+        }),
+      ),
+      optionalEnvVars: zod.array(
+        zod.object({
+          name: zod.string(),
+          configured: zod.boolean(),
+        }),
+      ),
+      details: zod.record(zod.string(), zod.unknown()),
+    }),
+  ),
+});
+
+/**
+ * Sends a fixed-subject test email to the requested recipient (defaults
+to the calling admin's email). Returns disabled state when
+RESEND_API_KEY is missing rather than crashing. Provider error
+messages are returned to the admin UI only — never surfaced publicly.
+
+ * @summary Send a one-off test email (support_admin only)
+ */
+export const sendSupportIntegrationEmailTestBodyRecipientMax = 320;
+
+export const SendSupportIntegrationEmailTestBody = zod.object({
+  recipient: zod
+    .string()
+    .max(sendSupportIntegrationEmailTestBodyRecipientMax)
+    .nullish()
+    .describe(
+      "Email address to send the test to. Defaults to the calling admin's email.",
+    ),
+});
+
+export const SendSupportIntegrationEmailTestResponse = zod.object({
+  success: zod.boolean(),
+  disabled: zod.boolean(),
+  recipient: zod.string(),
+  sentAt: zod.coerce.date(),
+  providerMessageId: zod.string().nullish(),
+  errorMessage: zod
+    .string()
+    .nullish()
+    .describe("Internal-only error string. Never shown on public pages."),
+});
+
+/**
  * @summary List Sentry links recorded against a ticket (newest first)
  */
 export const ListSupportTicketSentryLinksParams = zod.object({

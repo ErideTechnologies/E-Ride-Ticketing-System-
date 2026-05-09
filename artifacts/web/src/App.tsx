@@ -15,6 +15,7 @@ import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
 import AdminWallboardPage from "@/pages/admin-wallboard";
 import AdminTemplatesPage from "@/pages/admin-templates";
 import AdminSettingsPage from "@/pages/admin-settings";
+import AdminIntegrationsPage from "@/pages/admin-integrations";
 import ErrorBoundaryTestPage from "@/pages/error-boundary-test";
 
 // Frontend smoke route. Only mounted outside production builds. To enable
@@ -48,6 +49,11 @@ function Router() {
       <Route path="/admin/support/settings">
         <RequireSupportAuth roles={["support_admin"]}>
           <AdminSettingsPage />
+        </RequireSupportAuth>
+      </Route>
+      <Route path="/admin/support/integrations">
+        <RequireSupportAuth roles={["support_admin"]}>
+          <AdminIntegrationsPage />
         </RequireSupportAuth>
       </Route>
       <Route path="/admin/support/tickets">

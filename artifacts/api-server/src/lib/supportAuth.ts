@@ -329,6 +329,9 @@ const PERMISSION_RULES: PermRule[] = [
   // Settings + templates: support_admin only (reads + writes)
   rule("GET", "/support/settings", "manage_settings"),
   rule("PATCH", "/support/settings", "manage_settings"),
+  // Integrations status + admin-only test actions
+  rule("GET", "/support/integrations/status", "manage_settings"),
+  rule("POST", "/support/integrations/email/test", "manage_settings"),
   rule("GET", "/support/templates", "manage_templates"),
   rule("GET", "/support/templates/:id", "manage_templates"),
   rule("PATCH", "/support/templates/:id", "manage_templates"),

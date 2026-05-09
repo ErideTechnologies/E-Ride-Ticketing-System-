@@ -58,6 +58,7 @@ import {
   isLinearEnabled,
   resolveLinearTeamId,
 } from "../lib/linearClient";
+import { getIntegrationsStatus } from "../lib/integrationStatus";
 import * as Sentry from "@sentry/node";
 import {
   isSupportEmailEnabled,
@@ -1593,6 +1594,97 @@ router.get(
       );
     }
     res.json({ configured, hasTeamForProductCode });
+  },
+);
+
+// Full integration-status snapshot. Admin-only via supportPermissionGuard
+// (manage_settings). Never exposes secret values.
+router.get(
+  "/support/integrations/status",
+  async (_req, res): Promise<void> => {
+    res.json(getIntegrationsStatus());
+  },
+);
+
+// Admin-only test email. Returns { disabled: true } when RESEND_API_KEY is
+// missing instead of throwing. Provider error messages are returned to the
+// admin UI only (errorMessage). The audit log records every attempt.
+const TEST_EMAIL_SUBJECT = "Eride Support Email Test";
+const TEST_EMAIL_TEXT =
+  "This confirms that Eride Support email delivery is configured.";
+const TEST_EMAIL_HTML = `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#0F172A"><div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:24px"><p style="margin:0 0 12px;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#475569">Eride Support</p><h1 style="margin:0 0 12px;font-size:20px;color:#0F172A">Email delivery is configured</h1><p style="margin:0;color:#334155;line-height:1.5">${TEST_EMAIL_TEXT}</p></div></body></html>`;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+router.post(
+  "/support/integrations/email/test",
+  async (req, res): Promise<void> => {
+    const user = getCurrentSupportUser(req);
+    if (!user) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    // Defense-in-depth: the global supportPermissionGuard already enforces
+    // manage_settings for this route, but re-check here so a future
+    // misconfiguration of the guard cannot let a non-admin trigger a send.
+    if (!roleHasPermission(user.role, "manage_settings")) {
+      res.status(403).json({ error: "Permission required" });
+      return;
+    }
+    const body = (req.body ?? {}) as { recipient?: unknown };
+    const requested =
+      typeof body.recipient === "string" ? body.recipient.trim() : "";
+    const recipient = requested || user.email;
+    if (!recipient || !EMAIL_REGEX.test(recipient) || recipient.length > 320) {
+      res.status(400).json({ error: "Invalid recipient email address" });
+      return;
+    }
+
+    const sentAt = new Date().toISOString();
+
+    if (!isSupportEmailEnabled()) {
+      void recordSupportAuditLog({
+        action: "integration.email_test",
+        actor: user,
+        metadata: { recipient, disabled: true },
+      });
+      res.json({
+        success: false,
+        disabled: true,
+        recipient,
+        sentAt,
+        providerMessageId: null,
+        errorMessage:
+          "RESEND_API_KEY is not configured. Set the secret to enable email delivery.",
+      });
+      return;
+    }
+
+    const result = await sendSupportEmail({
+      to: recipient,
+      subject: TEST_EMAIL_SUBJECT,
+      html: TEST_EMAIL_HTML,
+      text: TEST_EMAIL_TEXT,
+    });
+
+    void recordSupportAuditLog({
+      action: "integration.email_test",
+      actor: user,
+      metadata: {
+        recipient,
+        success: result.success,
+        providerMessageId: result.providerMessageId ?? null,
+      },
+    });
+
+    res.json({
+      success: result.success,
+      disabled: result.disabled,
+      recipient,
+      sentAt,
+      providerMessageId: result.providerMessageId ?? null,
+      errorMessage: result.errorMessage ?? null,
+    });
   },
 );
 

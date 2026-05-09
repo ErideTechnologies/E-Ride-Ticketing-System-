@@ -115,7 +115,19 @@ Final go-live checks for the **Eride Dogma Support Centre** (public users see "E
 - [ ] On-call rotation defined for triage queue + wallboard monitoring.
 - [ ] Escalation path to engineering is clear.
 
-## 14. Final verification
+## 14. WhatsApp + Integrations status
+
+- [ ] `WHATSAPP_PROVIDER` is intentionally set (`none`/`manual` is OK; `meta_cloud_api`/`twilio` requires the matching env vars).
+- [ ] If a real WhatsApp provider is selected, the matching `WHATSAPP_*` / `TWILIO_*` env vars are set (see `docs/support-env-vars.md`).
+- [ ] Sign in as a `support_admin` and visit `/admin/support/integrations`:
+  - [ ] Every card shows the expected configured / fallback / not-configured chip.
+  - [ ] No secret values appear anywhere on the page or in the network response.
+  - [ ] Click **Send test email** with the default recipient → arrives in inbox; success row shown with provider message id.
+  - [ ] Send to a deliberately invalid address → 400 returned, UI shows error.
+  - [ ] If `RESEND_API_KEY` is unset, the email card shows **Not configured** and the test action returns `disabled:true` instead of crashing.
+- [ ] Audit log shows `integration.email_test` rows for each test send.
+
+## 15. Final verification
 
 - [ ] `pnpm run typecheck` — clean
 - [ ] `pnpm run build` — clean

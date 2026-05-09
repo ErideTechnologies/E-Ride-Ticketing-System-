@@ -1,0 +1,288 @@
+Start the Final Production Integration Setup for the Eride Dogma Support Centre.
+
+Context:
+The Lovable public UI redesign has been completed and applied to the existing public support routes.
+
+The core system is already built:
+- public ticket creation
+- public ticket tracking
+- public reply/upload
+- internal admin dashboard
+- ticket detail
+- attachments
+- communication log
+- email system via Resend
+- Sentry setup
+- Linear setup
+- SLA tracking
+- auth and roles
+- audit logging
+- public UI redesign
+
+Goal:
+Prepare and verify all production integrations without changing the UI design or core ticketing workflow.
+
+Important:
+Do not redesign public pages.
+Do not redesign internal admin pages.
+Do not change database table names unless absolutely required.
+Do not change API route names unless absolutely required.
+Do not break public ticket creation.
+Do not break public ticket tracking.
+Do not break public reply/upload.
+Do not expose internal data publicly.
+Do not remove existing disabled/fallback modes.
+Keep all integrations safe when env vars are missing.
+
+Scope:
+1. Internal auth secrets verification
+2. Public ticket token secret verification
+3. Resend email live integration verification
+4. Sentry live integration verification
+5. Linear live integration verification
+6. WhatsApp integration readiness plan and safe provider abstraction
+7. Attachment storage readiness
+8. Final integration test checklist
+
+Part A — Environment variable audit
+
+Create or update a single integration status helper that checks whether these env vars are configured:
+
+Auth:
+- SUPPORT_AUTH_PASSWORD
+- SUPPORT_AUTH_SECRET
+- SUPPORT_ADMIN_EMAILS
+- SUPPORT_AGENT_EMAILS
+- SUPPORT_PRODUCT_OWNER_EMAILS
+- SUPPORT_DEVELOPER_EMAILS
+- SUPPORT_QA_EMAILS
+- SUPPORT_VIEWER_EMAILS
+
+Public ticket:
+- SUPPORT_PUBLIC_TICKET_SECRET
+
+Email:
+- RESEND_API_KEY
+- SUPPORT_EMAIL_FROM
+- SUPPORT_EMAIL_REPLY_TO
+
+Sentry:
+- SENTRY_DSN_API
+- VITE_SENTRY_DSN_WEB
+- ENABLE_SENTRY_TEST_ENDPOINT
+
+Linear:
+- LINEAR_API_KEY
+- LINEAR_TEAM_ID_EMA
+- LINEAR_TEAM_ID_8BT
+- LINEAR_TEAM_ID_ERD
+- LINEAR_DEFAULT_TEAM_ID
+
+Attachments:
+- SUPPORT_ATTACHMENTS_DIR
+
+WhatsApp placeholder:
+- WHATSAPP_PROVIDER
+- WHATSAPP_ACCESS_TOKEN
+- WHATSAPP_PHONE_NUMBER_ID
+- WHATSAPP_BUSINESS_ACCOUNT_ID
+- WHATSAPP_VERIFY_TOKEN
+- WHATSAPP_FROM_NUMBER
+- WHATSAPP_WEBHOOK_SECRET
+
+Do not expose secret values.
+Only show:
+- configured / not configured
+- provider name if safe
+- last checked timestamp
+
+Part B — Admin integration status page
+
+Create an internal-only admin page:
+
+/admin/support/integrations
+
+Only support_admin may access it.
+
+Show cards for:
+- Auth
+- Public ticket security
+- Email / Resend
+- WhatsApp
+- Sentry
+- Linear
+- Attachments
+
+Each card should show:
+- configured / not configured
+- required env vars checklist
+- safe test button if available
+- last test result
+- warning if disabled/fallback mode is active
+
+Do not show raw secret values.
+
+Add a button/link to this page from:
+/admin/support/settings
+
+Part C — Email live test
+
+Add or verify a safe admin-only email test action.
+
+Requirements:
+- Only support_admin can run it.
+- It sends a test email to the currently logged-in admin email or a typed test recipient.
+- Subject: Eride Support Email Test
+- Body: This confirms that Eride Support email delivery is configured.
+- Record the result internally.
+- If RESEND_API_KEY is missing, return disabled state, do not crash.
+- If sending fails, show provider error internally only.
+- Never expose provider errors publicly.
+
+Acceptance:
+- Test works when RESEND_API_KEY is set.
+- Disabled state works when key is missing.
+- Communication log still works.
+- Public pages do not show providerMessageId or errorMessage.
+
+Part D — Sentry live test
+
+Verify existing Sentry setup.
+
+Requirements:
+- SENTRY_DSN_API is used for backend.
+- VITE_SENTRY_DSN_WEB is used for frontend.
+- Test endpoint is disabled by default in production.
+- ENABLE_SENTRY_TEST_ENDPOINT=true is required to expose test endpoint.
+- PII redaction remains active.
+- Add internal-only Sentry status/test card on /admin/support/integrations.
+
+Acceptance:
+- If DSNs are missing, status shows not configured.
+- If DSNs are present, status shows configured.
+- Test endpoint remains gated.
+- Public pages never show Sentry details.
+
+Part E — Linear live test
+
+Verify existing Linear API integration.
+
+Requirements:
+- LINEAR_API_KEY controls enabled/disabled state.
+- Product to team mapping:
+  - EMA → LINEAR_TEAM_ID_EMA
+  - 8BT → LINEAR_TEAM_ID_8BT
+  - ERD → LINEAR_TEAM_ID_ERD
+  - fallback → LINEAR_DEFAULT_TEAM_ID
+- Internal-only test should verify configuration without creating a real issue if possible.
+- Real issue creation remains available only from ticket detail engineering escalation flow.
+- Duplicate Linear issue creation remains blocked.
+- Linear details remain hidden from public pages.
+
+Acceptance:
+- Configured state works.
+- Disabled state works.
+- Create Linear Issue works only for allowed roles.
+- Public tracking page never leaks Linear data.
+
+Part F — WhatsApp readiness
+
+Do not implement a real provider-specific WhatsApp send yet unless the required provider env vars are available.
+
+Create a safe WhatsApp provider abstraction:
+
+lib/supportWhatsApp.ts
+
+Functions:
+- isWhatsAppEnabled()
+- sendWhatsAppMessageIfPossible()
+- verifyWhatsAppWebhookIfConfigured()
+- normalizeWhatsAppNumber()
+
+Provider mode:
+- none
+- meta_cloud_api
+- twilio
+- manual
+
+For now:
+- If WHATSAPP_PROVIDER is missing or set to none/manual, WhatsApp actions should be recorded as manual/disabled, not sent.
+- Do not crash.
+- Do not expose provider errors publicly.
+- Keep existing WhatsApp number capture in public forms.
+- Keep WhatsApp as a selectable/manual communication channel in admin.
+- Add WhatsApp integration card on /admin/support/integrations.
+
+If WHATSAPP_PROVIDER=meta_cloud_api:
+Prepare the structure, but do not send unless these are present:
+- WHATSAPP_ACCESS_TOKEN
+- WHATSAPP_PHONE_NUMBER_ID
+- WHATSAPP_FROM_NUMBER
+
+If WHATSAPP_PROVIDER=twilio:
+Prepare the structure, but do not send unless these are present:
+- TWILIO_ACCOUNT_SID
+- TWILIO_AUTH_TOKEN
+- TWILIO_WHATSAPP_FROM
+
+Acceptance:
+- WhatsApp disabled/manual mode works safely.
+- Admin page clearly shows WhatsApp not configured.
+- Existing WhatsApp contact capture remains working.
+- No public privacy leak.
+
+Part G — Attachment storage readiness
+
+Verify:
+- SUPPORT_ATTACHMENTS_DIR is used if present.
+- local fallback works safely.
+- file type/size/magic-byte validation still works.
+- public upload requires valid ticket token.
+- admin access requires auth.
+- direct raw filesystem paths are never exposed.
+
+Add integration card:
+- local storage configured / fallback
+- storage directory path must not expose server internals publicly
+
+Part H — Documentation update
+
+Update or create:
+- docs/support-env-vars.md
+- docs/support-integrations.md
+- docs/support-launch-checklist.md
+
+Include:
+- exact env vars required
+- where to get each key
+- safe test procedure
+- go-live checklist
+- rollback notes
+
+Do not include actual secrets.
+
+Part I — Final integration verification
+
+Run:
+- typecheck
+- auth smoke test
+- public ticket creation smoke test
+- public tracking smoke test
+- public reply/upload smoke test
+- email disabled/configured mode test
+- Sentry disabled/configured mode test
+- Linear disabled/configured mode test
+- WhatsApp disabled/manual mode test
+- public privacy invariant test
+
+Acceptance criteria:
+- /admin/support/integrations exists and is admin-only.
+- Missing env vars show safe disabled/not-configured state.
+- Email test works or safely reports disabled.
+- Sentry test/status works safely.
+- Linear status works safely.
+- WhatsApp manual/disabled state works safely.
+- Attachment storage remains secure.
+- Public pages remain redesigned and functional.
+- No public privacy leaks.
+- Typecheck passes.

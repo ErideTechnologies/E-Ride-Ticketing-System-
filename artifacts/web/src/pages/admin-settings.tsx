@@ -71,6 +71,27 @@ export default function AdminSettingsPage() {
 
         {query.data && <SettingsForm settings={query.data} />}
 
+        <Card data-testid="card-settings-integrations-link">
+          <CardHeader>
+            <CardTitle className="text-base">Integrations</CardTitle>
+            <CardDescription>
+              Verify which external services (email, Sentry, Linear, WhatsApp,
+              attachments) are configured. No secrets are shown.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/admin/support/integrations">
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="link-integrations"
+              >
+                Open integrations status
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
         <Card data-testid="card-settings-help">
           <CardHeader>
             <CardTitle className="text-base">Heads up</CardTitle>
