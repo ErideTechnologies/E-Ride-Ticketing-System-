@@ -10,23 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   Loader2,
   MessageSquare,
   Paperclip,
   Send,
 } from "lucide-react";
+import { PublicShell } from "@/components/PublicShell";
 import { PublicHero } from "@/components/PublicHero";
 import {
   CATEGORY_LABELS,
@@ -180,10 +172,10 @@ function VerifyPanel({
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC]">
+    <PublicShell data-testid="page-verify-ticket">
       <PublicHero
-        align="center"
-        title="Verify your ticket access"
+        title="Verify your"
+        titleAccent="ticket access"
         subtitle="Enter the email or WhatsApp number you used when submitting this report."
         showBackLink
         backHref="/help/track-ticket"
@@ -191,91 +183,77 @@ function VerifyPanel({
         data-testid="hero-verify-ticket"
       >
         <p
-          className="inline-flex items-center rounded-full border border-[#3B4652] bg-[#1F2933]/60 px-3 py-1 font-mono text-xs text-[#E5E7EB]"
+          className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-[#B8C5D0]"
           data-testid="text-verify-ticket-reference"
         >
           {ticketReference}
         </p>
       </PublicHero>
 
-      <div className="mx-auto -mt-8 max-w-xl space-y-6 px-4 pb-16 sm:-mt-10">
-        <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
+      <div className="mx-auto w-full max-w-xl px-5 pb-16 sm:px-8">
+        <div className="pd-card relative overflow-hidden rounded-3xl p-6 sm:p-8">
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#38BDF8]/30 to-transparent"
           />
-          <CardHeader>
-            <CardTitle>Confirm it's you</CardTitle>
-            <CardDescription>
-              Enter the email or WhatsApp number you used when submitting this
-              report.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={onSubmit}
-              className="space-y-5"
-              noValidate
-              data-testid="form-verify-ticket"
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="verify-contact-email">Email address</Label>
-                <Input
-                  id="verify-contact-email"
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  autoComplete="email"
-                  data-testid="input-verify-contact-email"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="verify-contact-whatsapp">
-                  Or WhatsApp number
-                </Label>
-                <Input
-                  id="verify-contact-whatsapp"
-                  value={contactWhatsapp}
-                  onChange={(e) => setContactWhatsapp(e.target.value)}
-                  autoComplete="tel"
-                  data-testid="input-verify-contact-whatsapp"
-                />
-              </div>
-              {error && (
-                <Alert
-                  variant="destructive"
-                  data-testid="alert-verify-error"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  asChild
-                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#8FA1B5]"
-                >
-                  <Link href="/help/track-ticket">Use a different reference</Link>
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  data-testid="button-verify-submit"
-                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#8FA1B5]"
-                >
-                  {submitting && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  View ticket
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <form
+            onSubmit={onSubmit}
+            className="space-y-5"
+            noValidate
+            data-testid="form-verify-ticket"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="verify-contact-email">Email address</Label>
+              <Input
+                id="verify-contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                data-testid="input-verify-contact-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="verify-contact-whatsapp">
+                Or WhatsApp number
+              </Label>
+              <Input
+                id="verify-contact-whatsapp"
+                value={contactWhatsapp}
+                onChange={(e) => setContactWhatsapp(e.target.value)}
+                autoComplete="tel"
+                placeholder="+14155552671"
+                data-testid="input-verify-contact-whatsapp"
+              />
+            </div>
+            {error && (
+              <Alert variant="destructive" data-testid="alert-verify-error">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+              >
+                <Link href="/help/track-ticket">Use a different reference</Link>
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                data-testid="button-verify-submit"
+              >
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                View ticket
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
-    </main>
+    </PublicShell>
   );
 }
 
@@ -359,20 +337,18 @@ function TicketView({
 
   if (ticketQuery.isLoading) {
     return (
-      <main className="min-h-screen bg-muted/30 px-4 py-10">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
-          </div>
+      <PublicShell data-testid="page-public-ticket-loading">
+        <div className="mx-auto flex max-w-3xl items-center justify-center px-5 py-24 text-[#7B8694]">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
         </div>
-      </main>
+      </PublicShell>
     );
   }
 
   if (ticketQuery.isError || !ticketQuery.data) {
     return (
-      <main className="min-h-screen bg-muted/30 px-4 py-10">
-        <div className="mx-auto max-w-xl">
+      <PublicShell data-testid="page-public-ticket-error">
+        <div className="mx-auto w-full max-w-xl px-5 py-16 sm:px-8">
           <Alert variant="destructive" data-testid="alert-ticket-load-failed">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
@@ -380,13 +356,13 @@ function TicketView({
               Please verify again.
             </AlertDescription>
           </Alert>
-          <div className="mt-4 flex justify-center">
+          <div className="mt-6 flex justify-center">
             <Button asChild>
               <Link href="/help/track-ticket">Back to ticket lookup</Link>
             </Button>
           </div>
         </div>
-      </main>
+      </PublicShell>
     );
   }
 
@@ -394,11 +370,11 @@ function TicketView({
   const isReopenable = REOPEN_FROM.has(ticket.publicStatus);
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC]">
+    <PublicShell data-testid="page-public-ticket">
       <PublicHero
         title={
           <span
-            className="font-mono"
+            className="font-mono text-2xl tracking-tight text-[#E5E7EB] sm:text-4xl"
             data-testid="text-public-ticket-reference"
           >
             {ticket.ticketReference}
@@ -410,130 +386,119 @@ function TicketView({
       >
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className="inline-flex items-center rounded-full border border-[#3B4652] bg-[#1F2933]/60 px-3 py-1 text-xs font-medium text-[#E5E7EB]"
+            className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-[#B8C5D0]"
             data-testid="badge-product"
           >
             {ticket.productName}
           </span>
           <span
-            className="inline-flex items-center rounded-full border border-[#8FA1B5]/40 bg-[#8FA1B5]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#B8C5D0]"
+            className="inline-flex items-center rounded-full border border-[#38BDF8]/30 bg-[#38BDF8]/[0.08] px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7DD3FC]"
             data-testid="badge-public-status"
           >
+            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-[#38BDF8]" />
             {humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
           </span>
         </div>
       </PublicHero>
 
-      <div className="mx-auto -mt-8 max-w-3xl space-y-6 px-4 pb-16 sm:-mt-10">
-
-        <Alert data-testid="alert-privacy-warning">
+      <div className="mx-auto w-full max-w-3xl space-y-5 px-5 pb-16 sm:px-8">
+        <Alert data-testid="alert-privacy-warning" className="rounded-2xl">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
+          <AlertDescription className="text-[#B8C5D0]">
             Only share information related to this support request. Do not send
             passwords, payment card details, or sensitive documents unless
             support specifically asks for them.
           </AlertDescription>
         </Alert>
 
-        <Card data-testid="card-status">
-          <CardHeader>
-            <CardTitle>Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row
-              label="Current status"
-              value={humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
-            />
-            <Row label="Submitted" value={formatDateTime(ticket.createdAt)} />
-            <Row
-              label="Last update"
-              value={formatDateTime(ticket.updatedAt)}
-            />
-            {ticket.resolvedAt && (
-              <Row
-                label="Resolved"
-                value={formatDateTime(ticket.resolvedAt)}
-              />
-            )}
-            {ticket.closedAt && (
-              <Row label="Closed" value={formatDateTime(ticket.closedAt)} />
-            )}
-          </CardContent>
-        </Card>
+        <PdCard title="Status" testId="card-status">
+          <Row
+            label="Current"
+            value={humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
+          />
+          <Row label="Submitted" value={formatDateTime(ticket.createdAt)} />
+          <Row
+            label="Last update"
+            value={formatDateTime(ticket.updatedAt)}
+          />
+          {ticket.resolvedAt && (
+            <Row label="Resolved" value={formatDateTime(ticket.resolvedAt)} />
+          )}
+          {ticket.closedAt && (
+            <Row label="Closed" value={formatDateTime(ticket.closedAt)} />
+          )}
+        </PdCard>
 
-        <Card data-testid="card-summary">
-          <CardHeader>
-            <CardTitle>Ticket summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row label="Product" value={ticket.productName} />
-            <Row
-              label="Category"
-              value={humanLabel(CATEGORY_LABELS, ticket.category)}
-            />
-            <Row
-              label="Priority"
-              value={humanLabel(PRIORITY_LABELS, ticket.priority)}
-            />
-            {ticket.pageOrStep && (
-              <Row label="Page or step" value={ticket.pageOrStep} />
-            )}
-            <Row label="What you reported" value={ticket.issueSummary} />
-          </CardContent>
-        </Card>
+        <PdCard title="Ticket summary" testId="card-summary">
+          <Row label="Product" value={ticket.productName} />
+          <Row
+            label="Category"
+            value={humanLabel(CATEGORY_LABELS, ticket.category)}
+          />
+          <Row
+            label="Priority"
+            value={humanLabel(PRIORITY_LABELS, ticket.priority)}
+          />
+          {ticket.pageOrStep && (
+            <Row label="Page or step" value={ticket.pageOrStep} />
+          )}
+          <Row label="What you reported" value={ticket.issueSummary} />
+        </PdCard>
 
-        <Card data-testid="card-messages">
-          <CardHeader>
-            <CardTitle>Latest updates</CardTitle>
-            <CardDescription>
-              Public messages between you and the support team.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {messagesQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading messages…</p>
-            ) : messagesQuery.data && messagesQuery.data.length > 0 ? (
-              <ul className="space-y-3">
-                {messagesQuery.data.map((m) => (
-                  <li
-                    key={m.id}
-                    data-testid={`message-row-${m.id}`}
-                    className={`rounded-md border p-3 ${
-                      m.direction === "outbound"
-                        ? "border-primary/30 bg-primary/5"
-                        : "border-border bg-background"
-                    }`}
-                  >
-                    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline">
-                        {m.direction === "outbound" ? "From support" : "From you"}
-                      </Badge>
-                      <Badge variant="outline">
-                        {humanLabel(MESSAGE_TYPE_LABELS, m.messageType)}
-                      </Badge>
-                      <Badge variant="outline">
-                        {humanLabel(MESSAGE_CHANNEL_LABELS, m.channel)}
-                      </Badge>
-                      <span>{formatDateTime(m.createdAt)}</span>
-                      {m.senderName && <span>· {m.senderName}</span>}
-                    </div>
-                    <p className="whitespace-pre-wrap text-sm">{m.messageBody}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No public messages yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <PdCard
+          title="Latest updates"
+          subtitle="Public messages between you and the support team."
+          testId="card-messages"
+        >
+          {messagesQuery.isLoading ? (
+            <p className="text-sm text-[#7B8694]">Loading messages…</p>
+          ) : messagesQuery.data && messagesQuery.data.length > 0 ? (
+            <ul className="space-y-3">
+              {messagesQuery.data.map((m) => (
+                <li
+                  key={m.id}
+                  data-testid={`message-row-${m.id}`}
+                  className={`rounded-2xl border p-4 ${
+                    m.direction === "outbound"
+                      ? "border-[#38BDF8]/20 bg-[#38BDF8]/[0.04]"
+                      : "border-white/[0.06] bg-white/[0.02]"
+                  }`}
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#7B8694]">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 ${
+                        m.direction === "outbound"
+                          ? "border-[#38BDF8]/30 text-[#7DD3FC]"
+                          : "border-white/10 text-[#B8C5D0]"
+                      }`}
+                    >
+                      {m.direction === "outbound" ? "From support" : "From you"}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-white/10 px-2 py-0.5 text-[#B8C5D0]">
+                      {humanLabel(MESSAGE_TYPE_LABELS, m.messageType)}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-white/10 px-2 py-0.5 text-[#B8C5D0]">
+                      {humanLabel(MESSAGE_CHANNEL_LABELS, m.channel)}
+                    </span>
+                    <span>{formatDateTime(m.createdAt)}</span>
+                    {m.senderName && <span>· {m.senderName}</span>}
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm text-[#E5E7EB]">
+                    {m.messageBody}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-[#7B8694]">No public messages yet.</p>
+          )}
+        </PdCard>
 
         {isReopenable && (
-          <Alert data-testid="alert-reopen-helper">
-            <AlertDescription>
-              If the issue continues, send us an update and our team will review
-              it.
+          <Alert data-testid="alert-reopen-helper" className="rounded-2xl">
+            <AlertDescription className="text-[#B8C5D0]">
+              If the issue continues, send us an update and our team will
+              review it.
             </AlertDescription>
           </Alert>
         )}
@@ -555,7 +520,7 @@ function TicketView({
           onTokenInvalid={onTokenInvalid}
         />
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
           <Button variant="outline" asChild>
             <Link href="/help">Back to Help</Link>
           </Button>
@@ -564,17 +529,48 @@ function TicketView({
           </Button>
         </div>
       </div>
-    </main>
+    </PublicShell>
+  );
+}
+
+function PdCard({
+  title,
+  subtitle,
+  testId,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  testId?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="pd-card relative overflow-hidden rounded-3xl p-6 sm:p-7"
+      data-testid={testId}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
+      />
+      <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#7B8694]">
+        {title}
+      </p>
+      {subtitle && (
+        <p className="mt-1 text-sm text-[#7B8694]">{subtitle}</p>
+      )}
+      <div className="mt-4 space-y-2.5 text-sm">{children}</div>
+    </section>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-      <span className="min-w-[7rem] text-xs uppercase tracking-wide text-muted-foreground">
+      <span className="min-w-[8rem] font-mono text-[10px] uppercase tracking-[0.2em] text-[#7B8694]">
         {label}
       </span>
-      <span className="text-sm text-foreground">{value}</span>
+      <span className="text-sm text-[#E5E7EB]">{value}</span>
     </div>
   );
 }
@@ -611,7 +607,6 @@ function ReplyCard({
     | null
   >(null);
 
-  // After a successful reply, clear the textarea once.
   useEffect(() => {
     if (submitted) setMessageBody("");
   }, [submitted]);
@@ -669,7 +664,6 @@ function ReplyCard({
       }
       setUploadOutcome({ kind: "success", name: attachment.name });
       setAttachment(null);
-      // Refresh ticket (updatedAt) on the chance the team responds.
       queryClient.invalidateQueries({
         queryKey: ["public-ticket", ticketReference, token],
       });
@@ -684,151 +678,152 @@ function ReplyCard({
   }
 
   return (
-    <Card data-testid="card-add-info">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
-          Add more information
-        </CardTitle>
-        <CardDescription>
-          Send an update or upload a screenshot. The support team will see your
-          reply on this ticket.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4"
-          noValidate
-          data-testid="form-public-reply"
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="public-reply-name">Your name</Label>
-            <Input
-              id="public-reply-name"
-              value={contactName}
-              onChange={(e) => setContactName(e.target.value)}
-              data-testid="input-public-reply-name"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="public-reply-body">
-              Update <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="public-reply-body"
-              rows={4}
-              value={messageBody}
-              onChange={(e) => setMessageBody(e.target.value)}
-              data-testid="input-public-reply-body"
-            />
-          </div>
-          {localError && (
-            <Alert variant="destructive" data-testid="alert-reply-local-error">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{localError}</AlertDescription>
-            </Alert>
-          )}
-          {submitError && (
-            <Alert
-              variant="destructive"
-              data-testid="alert-reply-submit-error"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{submitError}</AlertDescription>
-            </Alert>
-          )}
-          {submitted && !submitError && (
-            <Alert data-testid="alert-reply-success">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
-                Thank you. Your update has been added to the ticket.
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={submitting}
-              data-testid="button-public-reply-submit"
-            >
-              {submitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="mr-2 h-4 w-4" />
-              )}
-              Send update
-            </Button>
-          </div>
-        </form>
+    <section
+      className="pd-card relative overflow-hidden rounded-3xl p-6 sm:p-7"
+      data-testid="card-add-info"
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#38BDF8]/30 to-transparent"
+      />
+      <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[#7B8694]">
+        <MessageSquare className="h-3.5 w-3.5" />
+        Add more information
+      </p>
+      <p className="mt-1 text-sm text-[#7B8694]">
+        Send an update or upload a screenshot. The support team will see your
+        reply on this ticket.
+      </p>
 
-        <div className="space-y-2 border-t pt-4">
-          <Label>Attach a screenshot or short recording</Label>
-          <p className="text-xs text-muted-foreground">
-            {ATTACHMENT_HELP_TEXT} Please do not upload sensitive documents
-            unless support asks for them.
-          </p>
+      <form
+        onSubmit={handleSubmit}
+        className="mt-5 space-y-4"
+        noValidate
+        data-testid="form-public-reply"
+      >
+        <div className="space-y-2">
+          <Label htmlFor="public-reply-name">Your name</Label>
           <Input
-            type="file"
-            accept={ATTACHMENT_ACCEPT}
-            onChange={(e) =>
-              handleSelectAttachment(e.target.files?.[0] ?? null)
-            }
-            data-testid="input-public-attachment"
+            id="public-reply-name"
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            data-testid="input-public-reply-name"
           />
-          {attachment && (
-            <p
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-              data-testid="text-public-attachment-selected"
-            >
-              <Paperclip className="h-3 w-3" />
-              {attachment.name} · {formatFileSize(attachment.size)}
-            </p>
-          )}
-          {attachmentError && (
-            <Alert
-              variant="destructive"
-              data-testid="alert-public-attachment-error"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{attachmentError}</AlertDescription>
-            </Alert>
-          )}
-          {uploadOutcome?.kind === "error" && (
-            <Alert
-              variant="destructive"
-              data-testid="alert-public-upload-error"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{uploadOutcome.message}</AlertDescription>
-            </Alert>
-          )}
-          {uploadOutcome?.kind === "success" && (
-            <Alert data-testid="alert-public-upload-success">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>
-                Uploaded {uploadOutcome.name}. Thank you.
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!attachment || uploading}
-              onClick={handleUpload}
-              data-testid="button-public-attachment-upload"
-            >
-              {uploading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Paperclip className="mr-2 h-4 w-4" />
-              )}
-              Upload attachment
-            </Button>
-          </div>
         </div>
-      </CardContent>
-    </Card>
+        <div className="space-y-2">
+          <Label htmlFor="public-reply-body">
+            Update <span className="text-destructive">*</span>
+          </Label>
+          <Textarea
+            id="public-reply-body"
+            rows={4}
+            value={messageBody}
+            onChange={(e) => setMessageBody(e.target.value)}
+            data-testid="input-public-reply-body"
+          />
+        </div>
+        {localError && (
+          <Alert variant="destructive" data-testid="alert-reply-local-error">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{localError}</AlertDescription>
+          </Alert>
+        )}
+        {submitError && (
+          <Alert variant="destructive" data-testid="alert-reply-submit-error">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
+        {submitted && !submitError && (
+          <Alert data-testid="alert-reply-success">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              Thank you. Your update has been added to the ticket.
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={submitting}
+            data-testid="button-public-reply-submit"
+          >
+            {submitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Send update
+          </Button>
+        </div>
+      </form>
+
+      <div className="mt-6 space-y-3 border-t border-white/[0.06] pt-5">
+        <Label>Attach screenshot or recording</Label>
+        <p className="text-[11px] text-[#7B8694]">
+          {ATTACHMENT_HELP_TEXT} Please do not upload sensitive documents
+          unless support asks for them.
+        </p>
+        <Input
+          type="file"
+          accept={ATTACHMENT_ACCEPT}
+          onChange={(e) =>
+            handleSelectAttachment(e.target.files?.[0] ?? null)
+          }
+          data-testid="input-public-attachment"
+        />
+        {attachment && (
+          <p
+            className="inline-flex items-center gap-1 text-[11px] text-[#B8C5D0]"
+            data-testid="text-public-attachment-selected"
+          >
+            <Paperclip className="h-3 w-3" />
+            {attachment.name} · {formatFileSize(attachment.size)}
+          </p>
+        )}
+        {attachmentError && (
+          <Alert
+            variant="destructive"
+            data-testid="alert-public-attachment-error"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{attachmentError}</AlertDescription>
+          </Alert>
+        )}
+        {uploadOutcome?.kind === "error" && (
+          <Alert
+            variant="destructive"
+            data-testid="alert-public-upload-error"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{uploadOutcome.message}</AlertDescription>
+          </Alert>
+        )}
+        {uploadOutcome?.kind === "success" && (
+          <Alert data-testid="alert-public-upload-success">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              Uploaded {uploadOutcome.name}. Thank you.
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!attachment || uploading}
+            onClick={handleUpload}
+            data-testid="button-public-attachment-upload"
+          >
+            {uploading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Paperclip className="mr-2 h-4 w-4" />
+            )}
+            Upload attachment
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 }

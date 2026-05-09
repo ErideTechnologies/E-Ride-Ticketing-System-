@@ -1,111 +1,96 @@
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
 type PublicHeroProps = {
+  /** Plain leading portion of the headline, rendered in silver-white. */
   title: ReactNode;
+  /** Optional accented tail of the headline, rendered in ice-blue. */
+  titleAccent?: ReactNode;
+  /** Optional supporting paragraph below the headline. */
   subtitle?: ReactNode;
-  /** Small uppercase eyebrow text shown above the title. Defaults to "Eride Support". */
+  /** Small uppercase eyebrow above the title. Defaults to "Eride Support". */
   eyebrow?: string;
-  /** Optional content rendered below the subtitle (e.g. badges, ticket reference). */
+  /** Optional content rendered below the subtitle (badges, references, etc). */
   children?: ReactNode;
-  /** Optional right-aligned slot (e.g. action buttons). */
-  actions?: ReactNode;
-  /** Centre-align the hero text (used on landing-style pages). */
-  align?: "left" | "center";
-  /** Show a "Back to Help" link on the left of the eyebrow row. */
+  /** Show a small "BACK TO HELP" link above the eyebrow. */
   showBackLink?: boolean;
-  /** Override the back link target/label. */
   backHref?: string;
   backLabel?: string;
   /** data-testid for the hero root, useful in QA. */
   "data-testid"?: string;
+  /** Hide the right-side LIVE indicator (used inside the verify panel etc). */
+  hideLive?: boolean;
 };
 
 /**
- * Premium dark hero used at the top of every public support page.
+ * Cinematic hero used at the top of every public support page.
  *
- * Branding rule: public pages still surface as "Eride Support" — the eyebrow
- * MUST default to "Eride Support" and callers should not surface "Dogma"
- * publicly. Visual styling uses the Dogma palette (Carbon #0B0F14 background,
- * Silver #E5E7EB text, Steel Slate #8FA1B5 accent line with a Silver Mist
- * #B8C5D0 highlight — Pinarello-inspired matte/metallic finish).
+ * Branding rule: public pages still surface as "Eride Support". The
+ * `eyebrow` defaults to "Eride Support · Live" and callers should not
+ * surface "Dogma" prominently; that name only appears as a small
+ * footer attribution via <PublicFooter />.
  */
 export function PublicHero({
   title,
+  titleAccent,
   subtitle,
   eyebrow = "Eride Support",
   children,
-  actions,
-  align = "left",
   showBackLink = false,
   backHref = "/help",
   backLabel = "Back to Help",
+  hideLive = false,
   "data-testid": testId,
 }: PublicHeroProps) {
-  const alignClass = align === "center" ? "text-center items-center" : "";
   return (
     <section
-      className="relative isolate overflow-hidden bg-gradient-to-br from-[#050505] via-[#0B0F14] to-[#1F2933] text-[#E5E7EB]"
+      className="relative px-5 pb-12 pt-10 sm:px-8 sm:pb-16 sm:pt-14"
       data-testid={testId ?? "public-hero"}
     >
-      {/* Soft steel-slate radial glow in the corner — subtle premium accent */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-24 -right-20 h-80 w-80 rounded-full bg-[#8FA1B5] opacity-[0.10] blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-16 -left-24 h-72 w-72 rounded-full bg-[#5F7182] opacity-[0.08] blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#B8C5D0]/40 to-transparent"
-      />
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
+      <div className="mx-auto max-w-6xl">
         {showBackLink && (
-          <div className="mb-6">
-            <Link
-              href={backHref}
-              className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-[#94A3B8] hover:text-[#E5E7EB] transition-colors"
-              data-testid="link-hero-back"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {backLabel}
-            </Link>
-          </div>
+          <Link
+            href={backHref}
+            data-testid="link-hero-back"
+            className="mb-8 inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[#7B8694] transition-colors hover:text-[#B8C5D0]"
+          >
+            <span aria-hidden className="h-px w-6 bg-current" />
+            {backLabel}
+          </Link>
         )}
-        <div
-          className={`flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between ${align === "center" ? "sm:flex-col sm:items-center" : ""}`}
+
+        <p
+          className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#38BDF8]"
+          data-testid="hero-eyebrow"
         >
-          <div className={`flex flex-col gap-3 ${alignClass}`}>
-            <div
-              className={`inline-flex items-center gap-2 ${align === "center" ? "self-center" : "self-start"}`}
-            >
-              <span className="h-[2px] w-7 rounded-full bg-gradient-to-r from-[#8FA1B5] to-[#B8C5D0]" />
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B8C5D0]">
-                {eyebrow}
-              </span>
-            </div>
-            <h1
-              className="text-3xl font-semibold tracking-tight text-[#E5E7EB] sm:text-4xl"
-              data-testid="text-hero-title"
-            >
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="max-w-2xl text-sm text-[#94A3B8] sm:text-base">
-                {subtitle}
-              </p>
-            )}
-            {children && <div className="pt-1">{children}</div>}
-          </div>
-          {actions && (
-            <div className="flex flex-shrink-0 items-center gap-2">
-              {actions}
-            </div>
+          {eyebrow}
+          {!hideLive && (
+            <span className="ml-3 text-[#7B8694]">· Live</span>
           )}
-        </div>
+        </p>
+
+        <h1
+          className="mt-5 max-w-4xl text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-[#E5E7EB] sm:text-5xl lg:text-6xl"
+          data-testid="text-hero-title"
+        >
+          {title}
+          {titleAccent && (
+            <>
+              {" "}
+              <span className="bg-gradient-to-r from-[#38BDF8] via-[#7DD3FC] to-[#38BDF8] bg-clip-text text-transparent">
+                {titleAccent}
+              </span>
+            </>
+          )}
+        </h1>
+
+        {subtitle && (
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#94A3B8] sm:text-lg">
+            {subtitle}
+          </p>
+        )}
+
+        {children && <div className="mt-6">{children}</div>}
       </div>
     </section>
   );

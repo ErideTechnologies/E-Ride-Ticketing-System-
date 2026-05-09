@@ -357,3 +357,150 @@
     border-radius: 2px;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+ * PUBLIC DARK SHELL — scoped to the four public support routes
+ * (/help, /help/report-problem, /help/track-ticket, /help/ticket/:ref)
+ *
+ * Internal admin pages and the wallboard MUST NOT be affected — all
+ * rules are nested under `.public-dark`.
+ *
+ * Visual reference: dogma-support-nexus.lovable.app — cinematic black
+ * canvas, ultra-thin steel borders, ice-blue (#38BDF8) accents, mono
+ * eyebrow labels.
+ * ───────────────────────────────────────────────────────────────── */
+.public-dark {
+  background: #000;
+  color: #E5E7EB;
+  min-height: 100vh;
+}
+
+.public-dark a { color: inherit; }
+
+/* Cards — flat, near-black with a faint top sheen + thin steel border */
+.public-dark [class*="rounded-xl border"][class*="bg-card"],
+.public-dark .pd-card {
+  background: linear-gradient(180deg, rgba(15,22,30,0.85) 0%, rgba(7,11,16,0.95) 100%);
+  border: 1px solid rgba(56,189,248,0.10);
+  color: #E5E7EB;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -30px rgba(0,0,0,0.8);
+}
+
+/* Inputs / textareas / select triggers — dark, subtle border */
+.public-dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.public-dark textarea,
+.public-dark [data-slot="select-trigger"],
+.public-dark button[role="combobox"],
+.public-dark .pd-input {
+  background: rgba(8,12,18,0.7) !important;
+  border: 1px solid rgba(148,163,184,0.18) !important;
+  color: #E5E7EB !important;
+  border-radius: 9999px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.public-dark textarea,
+.public-dark .pd-textarea {
+  border-radius: 1rem !important;
+  padding: 0.75rem 1rem !important;
+  min-height: 7rem;
+}
+
+.public-dark input[type="file"] {
+  background: rgba(8,12,18,0.7) !important;
+  border: 1px dashed rgba(148,163,184,0.25) !important;
+  color: #B8C5D0 !important;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.public-dark input::placeholder,
+.public-dark textarea::placeholder {
+  color: rgba(148,163,184,0.45);
+}
+
+.public-dark input:focus-visible,
+.public-dark textarea:focus-visible,
+.public-dark [data-slot="select-trigger"]:focus-visible,
+.public-dark button[role="combobox"]:focus-visible {
+  outline: none !important;
+  border-color: rgba(56,189,248,0.55) !important;
+  box-shadow: 0 0 0 4px rgba(56,189,248,0.10) !important;
+}
+
+/* Labels — small uppercase mono eyebrow */
+.public-dark label {
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* Required marker */
+.public-dark label .text-destructive {
+  color: #38BDF8 !important;
+}
+
+/* Hint / muted helper text */
+.public-dark .text-muted-foreground { color: #7B8694 !important; }
+
+/* Alerts */
+.public-dark [role="alert"] {
+  background: rgba(8,12,18,0.6);
+  border-color: rgba(148,163,184,0.18);
+  color: #E5E7EB;
+}
+.public-dark [role="alert"].border-destructive\/50,
+.public-dark [role="alert"][class*="text-destructive"] {
+  border-color: rgba(248,113,113,0.45) !important;
+  color: #FCA5A5 !important;
+}
+
+/* Buttons — primary uses ice-blue pill, outline becomes ghost-on-dark */
+.public-dark button[class*="bg-primary"]:not([data-variant="outline"]) {
+  background: linear-gradient(180deg, #F1F5F9 0%, #CBD5E1 100%) !important;
+  color: #050B12 !important;
+  border-color: rgba(255,255,255,0.15) !important;
+  border-radius: 9999px !important;
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+}
+.public-dark button[class*="bg-primary"]:hover {
+  background: #FFFFFF !important;
+}
+
+.public-dark button[class*="border-input"],
+.public-dark button[class*="bg-background"][class*="border"],
+.public-dark a[class*="bg-background"][class*="border"] {
+  background: transparent !important;
+  border: 1px solid rgba(148,163,184,0.25) !important;
+  color: #E5E7EB !important;
+  border-radius: 9999px !important;
+}
+
+/* Checkbox checked color */
+.public-dark [data-state="checked"] {
+  background-color: #38BDF8 !important;
+  border-color: #38BDF8 !important;
+  color: #050B12 !important;
+}
+
+/* Badges */
+.public-dark [class*="rounded-full border"][class*="text-foreground"] {
+  background: rgba(8,12,18,0.6);
+  border-color: rgba(148,163,184,0.20);
+  color: #B8C5D0;
+}
+
+/* Utility — accent line under hero eyebrow */
+.public-dark .pd-eyebrow-line {
+  display: inline-block;
+  width: 1.75rem;
+  height: 1px;
+  background: #94A3B8;
+  margin-right: 0.75rem;
+  vertical-align: middle;
+}

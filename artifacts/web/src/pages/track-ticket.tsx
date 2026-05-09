@@ -4,14 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { AlertTriangle, Loader2, Search } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Loader2 } from "lucide-react";
+import { PublicShell } from "@/components/PublicShell";
 import { PublicHero } from "@/components/PublicHero";
 import { storePublicTicketToken } from "@/lib/publicTicketAccess";
 
@@ -84,121 +78,112 @@ export default function TrackTicketPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC]">
+    <PublicShell data-testid="page-track-ticket">
       <PublicHero
-        align="center"
-        title="Track your support ticket"
-        subtitle="Enter your ticket reference and the contact email or WhatsApp number you used when you submitted it."
+        title="Track your"
+        titleAccent="ticket"
+        subtitle="Enter the reference and the email or WhatsApp number you used to report it."
         showBackLink
         data-testid="hero-track-ticket"
       />
 
-      <div className="mx-auto -mt-8 max-w-xl space-y-6 px-4 pb-16 sm:-mt-10">
-        <Card className="relative overflow-hidden border-[#E5E7EB] bg-white shadow-sm">
+      <div className="mx-auto w-full max-w-xl px-5 pb-16 sm:px-8">
+        <div
+          className="pd-card relative overflow-hidden rounded-3xl p-6 sm:p-8"
+          data-testid="card-track-ticket"
+        >
           <span
             aria-hidden
-            className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-[#8FA1B5] to-[#5F7182]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#38BDF8]/30 to-transparent"
           />
-          <CardHeader>
-            <CardTitle>Find your ticket</CardTitle>
-            <CardDescription>
-              Use the reference we sent when you submitted the report.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={onSubmit}
-              className="space-y-5"
-              noValidate
-              data-testid="form-track-ticket"
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="track-ticket-reference">
-                  Ticket reference <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="track-ticket-reference"
-                  value={ticketReference}
-                  onChange={(e) => setTicketReference(e.target.value)}
-                  placeholder="e.g. ER1-SUP-2026-000123"
-                  data-testid="input-track-ticket-reference"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="track-contact-email">Email address</Label>
-                <Input
-                  id="track-contact-email"
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  autoComplete="email"
-                  data-testid="input-track-contact-email"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use the email you submitted with your report.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="track-contact-whatsapp">
-                  Or WhatsApp number
-                </Label>
-                <Input
-                  id="track-contact-whatsapp"
-                  value={contactWhatsapp}
-                  onChange={(e) => setContactWhatsapp(e.target.value)}
-                  autoComplete="tel"
-                  data-testid="input-track-contact-whatsapp"
-                />
-              </div>
 
-              {error && (
-                <Alert
-                  variant="destructive"
-                  data-testid="alert-track-ticket-error"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  asChild
-                  className="border-[#CBD5E1] bg-white text-[#1F2933] hover:bg-[#F8FAFC] focus-visible:ring-[#8FA1B5]"
-                >
-                  <Link href="/help">Back to Help</Link>
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  data-testid="button-track-ticket-submit"
-                  className="bg-[#0B0F14] text-white hover:bg-[#050505] focus-visible:ring-[#8FA1B5]"
-                >
-                  {submitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="mr-2 h-4 w-4" />
-                  )}
-                  View ticket
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-xs text-[#64748B]">
-          Don't have a reference?{" "}
-          <Link
-            href="/help/report-problem"
-            className="font-medium text-[#1F2933] underline decoration-[#8FA1B5] decoration-2 underline-offset-4 hover:text-[#0B0F14]"
+          <form
+            onSubmit={onSubmit}
+            className="space-y-6"
+            noValidate
+            data-testid="form-track-ticket"
           >
-            Report a new problem
-          </Link>
-          .
-        </p>
+            <div className="space-y-2">
+              <Label htmlFor="track-ticket-reference">Ticket reference</Label>
+              <Input
+                id="track-ticket-reference"
+                value={ticketReference}
+                onChange={(e) => setTicketReference(e.target.value)}
+                placeholder="ER1-SUP-2026-000123"
+                data-testid="input-track-ticket-reference"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="track-contact-email">Email or WhatsApp</Label>
+              <Input
+                id="track-contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                data-testid="input-track-contact-email"
+              />
+              <Input
+                id="track-contact-whatsapp"
+                value={contactWhatsapp}
+                onChange={(e) => setContactWhatsapp(e.target.value)}
+                autoComplete="tel"
+                placeholder="or +14155552671"
+                data-testid="input-track-contact-whatsapp"
+              />
+              <p className="text-[11px] text-[#7B8694]">
+                Use the email or WhatsApp number you submitted with your
+                report.
+              </p>
+            </div>
+
+            {error && (
+              <Alert
+                variant="destructive"
+                data-testid="alert-track-ticket-error"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                asChild
+                data-testid="button-back-to-help"
+              >
+                <Link href="/help">Back to Help</Link>
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                data-testid="button-track-ticket-submit"
+              >
+                {submitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                View ticket
+                {!submitting && <ArrowUpRight className="ml-1 h-4 w-4" />}
+              </Button>
+            </div>
+
+            <p className="text-center text-[11px] text-[#7B8694]">
+              Don't have a reference?{" "}
+              <Link
+                href="/help/report-problem"
+                className="text-[#7DD3FC] underline decoration-[#38BDF8]/40 underline-offset-4 hover:text-[#38BDF8]"
+              >
+                Report a new problem
+              </Link>
+              .
+            </p>
+          </form>
+        </div>
       </div>
-    </main>
+    </PublicShell>
   );
 }
