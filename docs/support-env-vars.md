@@ -75,9 +75,9 @@ The WhatsApp abstraction never crashes when nothing is configured — it falls b
 | `WHATSAPP_WEBHOOK_SECRET` | Optional | Signing key used to verify inbound webhooks. Without it, signed-only verification returns `false` and unsigned hooks are rejected. |
 | `TWILIO_ACCOUNT_SID` | Required for `twilio` | Twilio account SID. |
 | `TWILIO_AUTH_TOKEN` | Required for `twilio` | Twilio auth token. |
-| `TWILIO_WHATSAPP_FROM` | Required for `twilio` | Outbound WhatsApp sender (e.g. `whatsapp:+1...`). |
+| `TWILIO_WHATSAPP_FROM` | Required for `twilio` | Outbound WhatsApp sender. Plain E.164 (e.g. `+14155238886`) or `whatsapp:+...` — both are accepted. Falls back to `WHATSAPP_FROM_NUMBER` if unset. |
 
-Even when a real provider is selected, no real send is wired yet — outbound calls are recorded as manual until a provider implementation is added. This is by design so the audit trail is honest.
+`twilio` is wired end-to-end — outbound sends call Twilio's REST API and record the returned message SID. `meta_cloud_api` is prepared but not wired yet, so it falls back to recording sends as manual.
 
 ## Attachments
 

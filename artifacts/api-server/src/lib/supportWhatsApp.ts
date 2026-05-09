@@ -180,13 +180,27 @@ export async function sendWhatsAppMessageIfPossible(
     };
   }
 
-  // Provider is selected and env vars are present, but no real send code is
-  // wired up yet. Record as a no-op (NOT a fake success) so audit trails stay
-  // honest and the admin sees the integration as "configured but not wired".
   const to = normalizeWhatsAppNumber(params.to);
+  if (!to) {
+    return {
+      success: false,
+      disabled: false,
+      manualMode: false,
+      provider: status.provider,
+      providerMessageId: null,
+      errorMessage: "Invalid WhatsApp recipient number.",
+    };
+  }
+
+  if (status.provider === "twilio") {
+    return await sendViaTwilio({ to, body: params.body });
+  }
+
+  // Other providers (e.g. meta_cloud_api) are not wired yet — record as a
+  // no-op (NOT a fake success) so audit trails stay honest.
   logger.info(
-    { provider: status.provider, to: to ? to.slice(0, 4) + "***" : "" },
-    "WhatsApp send requested but provider implementation is not wired yet — recording as manual",
+    { provider: status.provider, to: to.slice(0, 4) + "***" },
+    "WhatsApp send requested but this provider implementation is not wired yet — recording as manual",
   );
   return {
     success: false,
@@ -194,7 +208,152 @@ export async function sendWhatsAppMessageIfPossible(
     manualMode: false,
     provider: status.provider,
     providerMessageId: null,
-    errorMessage:
-      "WhatsApp provider configured but send implementation is not wired yet.",
+    errorMessage: `WhatsApp provider \"${status.provider}\" is not wired yet.`,
   };
+}
+
+/**
+ * Format a number into Twilio's `whatsapp:+E164` channel address. The
+ * `WHATSAPP_FROM_NUMBER` env var may already be in `whatsapp:+...` form.
+ */
+function toTwilioChannelAddress(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.toLowerCase().startsWith("whatsapp:")) return trimmed;
+  const normalized = normalizeWhatsAppNumber(trimmed);
+  if (!normalized) return "";
+  return `whatsapp:${normalized.startsWith("+") ? normalized : `+${normalized}`}`;
+}
+
+async function sendViaTwilio(params: {
+  to: string;
+  body: string;
+}): Promise<WhatsAppSendResult> {
+  const accountSid = process.env["TWILIO_ACCOUNT_SID"]?.trim() ?? "";
+  const authToken = process.env["TWILIO_AUTH_TOKEN"]?.trim() ?? "";
+  const fromRaw =
+    process.env["TWILIO_WHATSAPP_FROM"]?.trim() ||
+    process.env["WHATSAPP_FROM_NUMBER"]?.trim() ||
+    "";
+  if (!accountSid || !authToken || !fromRaw) {
+    return {
+      success: false,
+      disabled: true,
+      manualMode: false,
+      provider: "twilio",
+      providerMessageId: null,
+      errorMessage: "Twilio credentials missing.",
+    };
+  }
+
+  const to = toTwilioChannelAddress(params.to);
+  const from = toTwilioChannelAddress(fromRaw);
+  if (!to || !from) {
+    return {
+      success: false,
+      disabled: false,
+      manualMode: false,
+      provider: "twilio",
+      providerMessageId: null,
+      errorMessage: "Invalid Twilio WhatsApp from/to number.",
+    };
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
+    accountSid,
+  )}/Messages.json`;
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  const body = new URLSearchParams({
+    From: from,
+    To: to,
+    Body: params.body,
+  });
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: body.toString(),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const text = await response.text();
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      parsed = null;
+    }
+
+    if (!response.ok) {
+      const providerMessage =
+        parsed &&
+        typeof parsed === "object" &&
+        typeof (parsed as { message?: unknown }).message === "string"
+          ? (parsed as { message: string }).message
+          : null;
+      const errMessage: string =
+        providerMessage ?? `Twilio HTTP ${response.status}`;
+      logger.warn(
+        {
+          provider: "twilio",
+          status: response.status,
+          to: to.slice(0, 12) + "***",
+        },
+        "Twilio WhatsApp send failed",
+      );
+      return {
+        success: false,
+        disabled: false,
+        manualMode: false,
+        provider: "twilio",
+        providerMessageId: null,
+        errorMessage: errMessage,
+      };
+    }
+
+    const sid =
+      parsed &&
+      typeof parsed === "object" &&
+      typeof (parsed as { sid?: unknown }).sid === "string"
+        ? (parsed as { sid: string }).sid
+        : null;
+    logger.info(
+      { provider: "twilio", sid, to: to.slice(0, 12) + "***" },
+      "Twilio WhatsApp send accepted",
+    );
+    return {
+      success: true,
+      disabled: false,
+      manualMode: false,
+      provider: "twilio",
+      providerMessageId: sid,
+      errorMessage: null,
+    };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Twilio request failed";
+    logger.warn(
+      { provider: "twilio", err: message },
+      "Twilio WhatsApp send threw",
+    );
+    return {
+      success: false,
+      disabled: false,
+      manualMode: false,
+      provider: "twilio",
+      providerMessageId: null,
+      errorMessage: message,
+    };
+  }
 }

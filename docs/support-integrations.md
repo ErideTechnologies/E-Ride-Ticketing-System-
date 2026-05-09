@@ -53,10 +53,14 @@ The page never displays secret values — only `set` / `not set` for every env v
 
 ## WhatsApp
 
-- **What it does:** abstraction for outbound WhatsApp delivery. Today every concrete provider is in "prepared but not wired" mode — a real send always returns `disabled:true` so the audit trail stays honest.
+- **What it does:** abstraction for outbound WhatsApp delivery.
 - **Required env vars:** `WHATSAPP_PROVIDER` (one of `none`, `manual`, `meta_cloud_api`, `twilio`). Each non-trivial provider has its own required vars (see `docs/support-env-vars.md` § WhatsApp).
-- **Fallback:** when `WHATSAPP_PROVIDER` is `none` or `manual`, or when the chosen provider is missing required vars, the system records the action as manual instead of crashing.
-- **Verify:** the integrations card shows the chosen provider, manual-mode flag, and which provider env vars are set. Webhook signature verification is wired but always returns `false` until a real provider is wired, so unsigned/spoofed webhooks are rejected.
+- **Provider status:**
+  - `twilio` — wired end-to-end. Sends call Twilio's REST API (`POST /2010-04-01/Accounts/{SID}/Messages.json`) with HTTP basic auth, a 10s timeout, and record the returned message SID as `providerMessageId`. Errors are returned as internal-only `errorMessage` strings.
+  - `meta_cloud_api` — prepared (env vars + status card) but not wired; falls back to manual.
+  - `manual` / `none` — agents send from their own device; the system only logs the action.
+- **Fallback:** when the chosen provider is missing required vars, the system records the action as manual instead of crashing.
+- **Verify:** the integrations card shows the chosen provider, manual-mode flag, and which provider env vars are set. Webhook signature verification is wired but always returns `false` until a real provider implementation is added, so unsigned/spoofed webhooks are rejected.
 
 ## Attachment storage
 
