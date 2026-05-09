@@ -59,6 +59,10 @@ import {
   resolveLinearTeamId,
 } from "../lib/linearClient";
 import { getIntegrationsStatus } from "../lib/integrationStatus";
+import {
+  sendWhatsAppMessageIfPossible,
+  isWhatsAppManualMode,
+} from "../lib/supportWhatsApp";
 import * as Sentry from "@sentry/node";
 import {
   isSupportEmailEnabled,
@@ -873,7 +877,22 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
     },
   );
 
+  // Fire-and-forget: attempt to send a "ticket received" WhatsApp message.
+  // Never block ticket creation on WhatsApp outcome. Skips silently if no
+  // WhatsApp number on the ticket or if WhatsApp is in manual / disabled mode.
+  sendTicketReceivedWhatsAppIfPossible(ticket, product.productName).catch(
+    (err) => {
+      req.log.warn({ err }, "Failed to send ticket_received WhatsApp");
+    },
+  );
+
+  // Existing keys (id, ticketReference, publicStatus, productName, createdAt)
+  // are preserved so prior callers do not break. The `success`, `message`,
+  // and `ticketNumber` keys are additive aliases for newer integrations.
   res.status(201).json({
+    success: true,
+    message: "Ticket submitted successfully",
+    ticketNumber: ticket.ticketReference,
     id: ticket.id,
     ticketReference: ticket.ticketReference,
     publicStatus: ticket.publicStatus,
@@ -2200,6 +2219,99 @@ async function renderAdminEmailIfActive(
           bodyText: text,
         });
   return { subject, text, html };
+}
+
+/**
+ * Fire-and-forget WhatsApp confirmation for a freshly-created ticket. Never
+ * throws and never blocks ticket creation. Mirrors the two-phase pattern
+ * used for email: insert a `drafted` outbound row first so we always have an
+ * audit trail, then attempt the send and patch the row with the outcome.
+ *
+ * Skips silently when:
+ *   - the ticket has no reporter WhatsApp number
+ *   - WhatsApp is in manual / disabled mode (no real provider)
+ */
+export async function sendTicketReceivedWhatsAppIfPossible(
+  ticket: SupportTicket,
+  productName: string,
+): Promise<void> {
+  const recipient = ticket.reporterWhatsapp?.trim();
+  if (!recipient) return;
+  // In manual / unconfigured mode, do not write a drafted row — no send was
+  // attempted and the agent will follow up by hand.
+  if (isWhatsAppManualMode()) return;
+
+  const reporterName = ticket.reporterName?.trim() || "there";
+  const issueType = humaniseTicketCategory(ticket.category);
+  const messageBody = [
+    `Hello ${reporterName},`,
+    "",
+    "Your support ticket has been successfully recorded.",
+    "",
+    `Ticket Number: ${ticket.ticketReference}`,
+    "",
+    `Issue Type: ${issueType}`,
+    "",
+    `Product: ${productName}`,
+    "",
+    "Our Eride Technologies support team is currently reviewing your request and will assist you shortly.",
+    "",
+    "Thank you for contacting Eride Technologies.",
+  ].join("\n");
+
+  let pendingId: string | null = null;
+  try {
+    const [row] = await db
+      .insert(supportTicketMessagesTable)
+      .values({
+        supportTicketId: ticket.id,
+        direction: "outbound",
+        channel: "whatsapp",
+        messageType: "ticket_received",
+        senderName: "Eride Support",
+        senderRole: "support",
+        recipientName: ticket.reporterName ?? null,
+        recipientEmail: ticket.reporterEmail || null,
+        recipientWhatsapp: recipient,
+        messageBody,
+        deliveryStatus: "drafted",
+        relatedPublicStatus: ticket.publicStatus,
+        relatedInternalStatus: ticket.internalStatus,
+        providerMessageId: null,
+        errorMessage: null,
+      })
+      .returning();
+    pendingId = row?.id ?? null;
+  } catch (err) {
+    Sentry.captureException(err);
+    return; // refuse to send without an audit row
+  }
+  if (!pendingId) return;
+
+  const sendResult = await sendWhatsAppMessageIfPossible({
+    to: recipient,
+    body: messageBody,
+  });
+
+  try {
+    await db
+      .update(supportTicketMessagesTable)
+      .set({
+        deliveryStatus: deliveryStatusFor(sendResult),
+        providerMessageId: sendResult.providerMessageId ?? null,
+        errorMessage: sendResult.errorMessage ?? null,
+      })
+      .where(eq(supportTicketMessagesTable.id, pendingId));
+  } catch (err) {
+    Sentry.captureException(err);
+  }
+}
+
+function humaniseTicketCategory(category: TicketCategory): string {
+  return category
+    .split("_")
+    .map((w) => (w.length > 0 ? w[0]!.toUpperCase() + w.slice(1) : w))
+    .join(" ");
 }
 
 export async function sendTicketReceivedEmailIfPossible(

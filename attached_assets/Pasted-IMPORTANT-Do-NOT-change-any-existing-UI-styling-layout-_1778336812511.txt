@@ -1,0 +1,153 @@
+IMPORTANT:
+- Do NOT change any existing UI, styling, layout, responsiveness, animations, form structure, or current submission flow.
+- Do NOT modify the current Twilio integration that already works.
+- Only ADD the functionality below after successful ticket submission.
+- Preserve all existing desktop, tablet, and mobile views exactly as they are.
+
+TASK:
+After a user successfully submits the support ticket form, automatically:
+
+1. Generate a unique ticket number
+2. Save the ticket number together with the form submission
+3. Send a confirmation EMAIL to the user
+4. Send a WhatsApp confirmation message using Twilio
+5. Show the generated ticket number in the success response
+
+The application already has:
+- Twilio WhatsApp integrated
+- Existing support ticket form
+- Existing submission endpoint/API
+
+DO NOT BREAK ANY EXISTING FUNCTIONALITY.
+
+==================================================
+TICKET NUMBER FORMAT
+==================================================
+
+Generate ticket numbers like:
+
+ERIDE-2026-0001
+ERIDE-2026-0002
+
+Format:
+ERIDE-{YEAR}-{4_DIGIT_INCREMENT}
+
+==================================================
+AFTER SUCCESSFUL SUBMISSION
+==================================================
+
+After the ticket is saved successfully:
+
+1. Generate ticket number
+2. Save ticket number in database
+3. Send email
+4. Send WhatsApp message
+5. Return success response
+
+==================================================
+EMAIL REQUIREMENTS
+==================================================
+
+Subject:
+Support Ticket Received - {ticketNumber}
+
+Email Content:
+
+Hello {fullName},
+
+Your support ticket has been successfully received by the Eride Technologies support team.
+
+Ticket Number:
+{ticketNumber}
+
+Issue Type:
+{issueType}
+
+Our team will review your request and get back to you as soon as possible.
+
+Thank you for contacting Eride Technologies.
+
+Regards,
+Eride Technologies Support Team
+
+==================================================
+WHATSAPP MESSAGE REQUIREMENTS
+==================================================
+
+Send WhatsApp message using existing Twilio integration.
+
+Message:
+
+Hello {fullName},
+
+Your support ticket has been successfully recorded.
+
+Ticket Number: {ticketNumber}
+
+Issue Type: {issueType}
+
+Our Eride Technologies support team is currently reviewing your request and will assist you shortly.
+
+Thank you for contacting Eride Technologies.
+
+==================================================
+DATABASE UPDATE
+==================================================
+
+Add these fields if they do not already exist:
+
+- TicketNumber
+- CreatedAt
+
+Do NOT remove or rename any existing columns.
+
+==================================================
+BACKEND REQUIREMENTS
+==================================================
+
+- Use the existing backend architecture
+- Keep all existing APIs unchanged
+- Add logic cleanly
+- Add proper error handling
+- If email sending fails, the ticket should still save
+- If WhatsApp sending fails, the ticket should still save
+- Log errors properly without crashing the app
+
+==================================================
+SUCCESS RESPONSE
+==================================================
+
+After successful submission return:
+
+{
+  success: true,
+  message: "Ticket submitted successfully",
+  ticketNumber: "ERIDE-2026-0001"
+}
+
+==================================================
+FRONTEND REQUIREMENTS
+==================================================
+
+DO NOT redesign anything.
+
+Only:
+- Display the generated ticket number in the existing success message/modal/toast
+- Keep all current styling exactly the same
+
+Example success text:
+
+"Your ticket has been submitted successfully.
+Ticket Number: ERIDE-2026-0001"
+
+==================================================
+IMPORTANT
+==================================================
+
+- Do NOT change the current UI
+- Do NOT modify styling
+- Do NOT touch responsiveness
+- Do NOT remove existing functionality
+- Only enhance the current ticket submission process
+- Keep the current Twilio implementation intact and reuse it
+- Ensure the solution is production ready
