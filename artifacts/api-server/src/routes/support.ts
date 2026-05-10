@@ -71,6 +71,12 @@ import {
 import { getCurrentSupportUser, roleHasPermission } from "../lib/supportAuth";
 import { recordSupportAuditLog } from "../lib/supportAudit";
 import {
+  buildHermesTicketSnapshot,
+  sendHermesEvent,
+  type HermesActor,
+  type HermesEventType,
+} from "../lib/hermesWebhook";
+import {
   renderCustomEmailHtml,
   renderSupportEmailTemplate,
   SUPPORT_EMAIL_TEMPLATE_KEYS,
@@ -938,6 +944,14 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
     },
   );
 
+  // Hermes Phase 1: outbound-only lifecycle event. Public ticket submission
+  // has no authenticated actor.
+  void sendHermesEvent({
+    event: "ticket.created",
+    ticket: buildHermesTicketSnapshot(ticket, product.productCode),
+    actor: null,
+  });
+
   // Existing keys (id, ticketReference, publicStatus, productName, createdAt)
   // are preserved so prior callers do not break. The `success`, `message`,
   // and `ticketNumber` keys are additive aliases for newer integrations.
@@ -1143,10 +1157,11 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
     productCode: existing.productCode,
   };
   const sla = await computeTicketSlaForDetail(updatedRow);
+  const actorUser = getCurrentSupportUser(req);
   void recordSupportAuditLog({
     action: "ticket.update",
     supportTicketId: updated.id,
-    actor: getCurrentSupportUser(req),
+    actor: actorUser,
     metadata: {
       ticketReference: updated.ticketReference,
       changedFields: Object.keys(updates),
@@ -1154,8 +1169,66 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
       internalChanged,
     },
   });
+
+  // Hermes Phase 1: emit lifecycle events for status/assignment transitions.
+  const assignmentChanged =
+    (updates.assignedSupportUserId !== undefined &&
+      updates.assignedSupportUserId !== existing.ticket.assignedSupportUserId) ||
+    (updates.assignedDeveloperId !== undefined &&
+      updates.assignedDeveloperId !== existing.ticket.assignedDeveloperId) ||
+    (updates.assignedProductOwnerId !== undefined &&
+      updates.assignedProductOwnerId !== existing.ticket.assignedProductOwnerId) ||
+    (updates.assignedQaVerifierId !== undefined &&
+      updates.assignedQaVerifierId !== existing.ticket.assignedQaVerifierId);
+  emitTicketLifecycleHermesEvents({
+    prev: existing,
+    next: updatedRow,
+    actor: actorUser,
+    assignmentChanged,
+    publicChanged,
+    internalChanged,
+    wasResolved,
+    wasClosed,
+    nowResolved,
+    nowClosed,
+  });
+
   res.json(serializeTicketDetail(updatedRow, sla));
 });
+
+/**
+ * Hermes Phase 1: derive and dispatch lifecycle webhook events from a
+ * before/after ticket pair. Pure side-effect, fire-and-forget — never throws.
+ */
+function emitTicketLifecycleHermesEvents(opts: {
+  prev: DetailRow;
+  next: DetailRow;
+  actor: ReturnType<typeof getCurrentSupportUser>;
+  assignmentChanged: boolean;
+  publicChanged: boolean;
+  internalChanged: boolean;
+  wasResolved: boolean;
+  wasClosed: boolean;
+  nowResolved: boolean;
+  nowClosed: boolean;
+  /** Optional explicit escalation flag (used by workflow-action / linear). */
+  escalated?: boolean;
+}): void {
+  const events: HermesEventType[] = [];
+  if (opts.assignmentChanged) events.push("ticket.assigned");
+  if (opts.publicChanged || opts.internalChanged) events.push("ticket.status_changed");
+  if (opts.escalated) events.push("ticket.escalated");
+  if (opts.nowResolved && !opts.wasResolved) events.push("ticket.resolved");
+  if (opts.nowClosed && !opts.wasClosed) events.push("ticket.closed");
+  if (events.length === 0) return;
+  const snapshot = buildHermesTicketSnapshot(opts.next.ticket, opts.next.productCode);
+  const actor: HermesActor | null = opts.actor
+    ? { name: opts.actor.name, email: opts.actor.email, role: opts.actor.role }
+    : null;
+  for (const event of events) {
+    void sendHermesEvent({ event, ticket: snapshot, actor });
+  }
+}
 
 type WorkflowAction =
   | "start_review"
@@ -1303,10 +1376,11 @@ router.post(
       productCode: existing.productCode,
     };
     const sla = await computeTicketSlaForDetail(updatedRow);
+    const actorUser = getCurrentSupportUser(req);
     void recordSupportAuditLog({
       action: "ticket.workflow_action",
       supportTicketId: updated.id,
-      actor: getCurrentSupportUser(req),
+      actor: actorUser,
       metadata: {
         ticketReference: updated.ticketReference,
         workflowAction: action,
@@ -1314,6 +1388,26 @@ router.post(
         newInternalStatus: updated.internalStatus,
       },
     });
+
+    // Hermes Phase 1: derive lifecycle events from this transition.
+    const wasResolved =
+      t.publicStatus === "resolved" || RESOLVED_INTERNAL_STATUSES.has(t.internalStatus);
+    const wasClosed =
+      t.publicStatus === "closed" || CLOSED_INTERNAL_STATUSES.has(t.internalStatus);
+    emitTicketLifecycleHermesEvents({
+      prev: existing,
+      next: updatedRow,
+      actor: actorUser,
+      assignmentChanged: false,
+      publicChanged,
+      internalChanged,
+      wasResolved,
+      wasClosed,
+      nowResolved: becomesResolved,
+      nowClosed: becomesClosed,
+      escalated: action === "escalate_to_engineering",
+    });
+
     res.json(serializeTicketDetail(updatedRow, sla));
   },
 );
@@ -1950,10 +2044,11 @@ router.post(
       return;
     }
 
+    const actorUser = getCurrentSupportUser(req);
     void recordSupportAuditLog({
       action: "ticket.linear_issue_created",
       supportTicketId: ticket.id,
-      actor: getCurrentSupportUser(req),
+      actor: actorUser,
       metadata: {
         ticketReference: ticket.ticketReference,
         linearIssueKey: outcome.linearIssueKey,
@@ -1961,6 +2056,36 @@ router.post(
         teamId,
       },
     });
+
+    // Hermes Phase 1: linking a ticket to a Linear issue is an escalation
+    // event. Use the up-to-date status from outcome.savedLink-side tx, which
+    // also flips internalStatus to "linear_created" when eligible.
+    const escalatedSnapshot = buildHermesTicketSnapshot(
+      {
+        id: ticket.id,
+        ticketReference: ticket.ticketReference,
+        category: ticket.category,
+        priority: ticket.priority,
+        severity: ticket.severity,
+        publicStatus: ticket.publicStatus,
+        // The transaction may have advanced internalStatus to "linear_created".
+        internalStatus:
+          ticket.internalStatus === "engineering_escalation_required" ||
+          ticket.internalStatus === "support_review"
+            ? "linear_created"
+            : ticket.internalStatus,
+        issueSummary: ticket.issueSummary,
+      },
+      existing.productCode,
+    );
+    void sendHermesEvent({
+      event: "ticket.escalated",
+      ticket: escalatedSnapshot,
+      actor: actorUser
+        ? { name: actorUser.name, email: actorUser.email, role: actorUser.role }
+        : null,
+    });
+
     res.json({
       success: true,
       disabled: false,

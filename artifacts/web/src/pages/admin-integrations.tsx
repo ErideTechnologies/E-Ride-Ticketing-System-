@@ -281,6 +281,8 @@ function describeCard(card: SupportIntegrationStatusCard): string {
       return "WhatsApp delivery — manual mode is intentionally OK.";
     case "attachments":
       return "On-disk storage for ticket attachments.";
+    case "hermes":
+      return "Outbound-only signed webhook to the Hermes agent on ticket lifecycle events. No reporter PII or message content is sent.";
   }
 }
 

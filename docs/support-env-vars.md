@@ -85,6 +85,18 @@ The WhatsApp abstraction never crashes when nothing is configured — it falls b
 | --- | --- | --- |
 | `SUPPORT_ATTACHMENTS_DIR` | Optional | Override the on-disk attachments directory. Default: `./.local-storage/attachments`. Swap to a mounted volume in production. |
 
+## Hermes agent webhook (Phase 1: outbound only)
+
+Phase 1 pushes safe ticket-lifecycle metadata to Hermes. Hermes has **no** write access to this system in Phase 1. The payload includes only event type, ticket id/reference/product code, subject, category, priority, severity, public + internal status, actor, and timestamp. Reporter contact details, message bodies, attachments, and internal notes are intentionally excluded.
+
+| Variable | Required? | Purpose |
+| --- | --- | --- |
+| `HERMES_WEBHOOK_URL` | Required to enable | Full HTTPS URL Hermes exposes to receive POST events. |
+| `HERMES_WEBHOOK_SECRET` | Required to enable | HMAC-SHA256 signing key. Never logged. Hermes verifies the `X-Hermes-Signature: sha256=<hex>` header. |
+| `HERMES_WEBHOOK_ENABLED` | Required to enable | Must be the literal string `"true"` to activate delivery. Anything else (unset, `"false"`, `"1"`) keeps the integration dormant. |
+
+When the URL/secret are missing the card shows "not configured". When configured but `HERMES_WEBHOOK_ENABLED !== "true"` the card shows "configured / disabled" and no events are sent. Last-delivery timestamp, status, and error are surfaced on `/admin/support/integrations` (in-process memory — resets on restart).
+
 ## Frontend dev/test
 
 | Variable | Required? | Purpose |
@@ -105,4 +117,5 @@ The WhatsApp abstraction never crashes when nothing is configured — it falls b
 - [ ] `SUPPORT_ATTACHMENTS_DIR` points at a persistent volume
 - [ ] `WHATSAPP_PROVIDER` set explicitly (`manual` is OK)
 - [ ] `ENABLE_SENTRY_TEST_ENDPOINT` is **not** set (or only temporarily for verification)
+- [ ] `HERMES_WEBHOOK_URL` + `HERMES_WEBHOOK_SECRET` set (or accept Hermes-disabled), and `HERMES_WEBHOOK_ENABLED="true"` only when ready to go live
 - [ ] `support_admin` has visited `/admin/support/integrations` and every card shows the expected state

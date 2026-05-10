@@ -1604,7 +1604,16 @@ components:
         key:
           type: string
           enum:
-            [auth, publicTicket, email, sentry, linear, whatsapp, attachments]
+            [
+              auth,
+              publicTicket,
+              email,
+              sentry,
+              linear,
+              whatsapp,
+              attachments,
+              hermes,
+            ]
         label: { type: string }
         configured: { type: boolean }
         fallback: { type: boolean }

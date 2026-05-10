@@ -3,6 +3,11 @@ import { isLinearEnabled, resolveLinearTeamId } from "./linearClient";
 import { isSupportEmailEnabled, getSupportEmailFrom, getSupportEmailReplyTo } from "./supportEmail";
 import { isLoginConfigured } from "./supportAuth";
 import { getWhatsAppStatus } from "./supportWhatsApp";
+import {
+  isHermesConfigured,
+  isHermesEnabled,
+  getHermesLastDelivery,
+} from "./hermesWebhook";
 
 /**
  * Internal-only integration status snapshot. Every field is safe to render in
@@ -31,7 +36,8 @@ export type IntegrationStatusCard = {
     | "sentry"
     | "linear"
     | "whatsapp"
-    | "attachments";
+    | "attachments"
+    | "hermes";
   /** Display label. */
   label: string;
   /** True when the integration has the minimum env vars to operate. */
@@ -217,6 +223,35 @@ function attachmentsCard(): IntegrationStatusCard {
   };
 }
 
+function hermesCard(): IntegrationStatusCard {
+  const configured = isHermesConfigured();
+  const enabled = isHermesEnabled();
+  const last = getHermesLastDelivery();
+  const details: Record<string, string | boolean | number | null> = {
+    enabled,
+    description:
+      "Outbound-only Phase 1: pushes safe ticket-lifecycle metadata to Hermes. " +
+      "No reporter contact details, message bodies, attachments, or notes are sent. " +
+      "Hermes has no write access to this system.",
+    lastDeliveryAt: last ? last.at : null,
+    lastDeliveryEvent: last ? last.event : null,
+    lastDeliveryStatus: last ? (last.ok ? "ok" : "failed") : null,
+    lastDeliveryHttpStatus: last ? last.status : null,
+    lastError: last ? last.error : null,
+  };
+  return {
+    key: "hermes",
+    label: "Hermes agent webhook",
+    configured,
+    // Configured but not enabled is the dormant-by-default state — flag it as
+    // a fallback so the UI shows an amber chip rather than green.
+    fallback: configured && !enabled,
+    requiredEnvVars: envList(["HERMES_WEBHOOK_URL", "HERMES_WEBHOOK_SECRET"]),
+    optionalEnvVars: envList(["HERMES_WEBHOOK_ENABLED"]),
+    details,
+  };
+}
+
 export function getIntegrationsStatus(): IntegrationsStatusSnapshot {
   return {
     generatedAt: new Date().toISOString(),
@@ -228,6 +263,7 @@ export function getIntegrationsStatus(): IntegrationsStatusSnapshot {
       linearCard(),
       whatsappCard(),
       attachmentsCard(),
+      hermesCard(),
     ],
   };
 }

@@ -517,6 +517,7 @@ export const GetSupportIntegrationsStatusResponse = zod.object({
         "linear",
         "whatsapp",
         "attachments",
+        "hermes",
       ]),
       label: zod.string(),
       configured: zod.boolean(),

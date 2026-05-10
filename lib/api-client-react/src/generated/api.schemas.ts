@@ -534,6 +534,7 @@ export const SupportIntegrationStatusCardKey = {
   linear: "linear",
   whatsapp: "whatsapp",
   attachments: "attachments",
+  hermes: "hermes",
 } as const;
 
 export type SupportIntegrationStatusCardDetails = { [key: string]: unknown };
