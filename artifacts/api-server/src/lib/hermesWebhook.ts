@@ -142,8 +142,13 @@ export async function sendHermesEvent(opts: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-Hermes-Source": "eride-support",
         "X-Hermes-Event": opts.event,
         "X-Hermes-Signature": `sha256=${signature}`,
+        // Send both header names so receivers expecting either work. The
+        // Hermes receiver currently looks for `X-Hermes-Timestamp`; the
+        // longer name is kept for backward compatibility.
+        "X-Hermes-Timestamp": timestamp,
         "X-Hermes-Delivery-Timestamp": timestamp,
       },
       body,
