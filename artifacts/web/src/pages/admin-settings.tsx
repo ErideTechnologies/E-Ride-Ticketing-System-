@@ -7,7 +7,14 @@ import {
   getGetSupportSettingsQueryKey,
   type SupportSettings,
 } from "@workspace/api-client-react";
-import { ArrowLeft, Loader2, Save, AlertTriangle, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Save,
+  AlertTriangle,
+  Check,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +28,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminSettingsPage() {
   const query = useGetSupportSettings();
@@ -101,8 +119,135 @@ export default function AdminSettingsPage() {
             their own settings.
           </CardContent>
         </Card>
+
+        <DangerZone />
       </div>
     </main>
+  );
+}
+
+function DangerZone() {
+  const qc = useQueryClient();
+  const [confirmText, setConfirmText] = useState("");
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function purge() {
+    if (pending) return;
+    setPending(true);
+    setError(null);
+    setResult(null);
+    try {
+      const resp = await fetch("/api/support/admin/purge-tickets", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await resp.json().catch(() => ({}))) as {
+        success?: boolean;
+        deletedTickets?: number;
+        error?: string;
+        attachmentDirsFailed?: number;
+      };
+      if (!resp.ok || data.success === false) {
+        setError(
+          data.error ??
+            `Purge failed (HTTP ${resp.status}). The endpoint may be disabled.`,
+        );
+      } else {
+        setResult(
+          `Deleted ${data.deletedTickets ?? 0} ticket(s). The list will now be empty and numbering restarts at 000001.`,
+        );
+        qc.invalidateQueries();
+        setOpen(false);
+        setConfirmText("");
+      }
+    } catch {
+      setError("Network error while contacting the server.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Card
+      className="border-destructive/40"
+      data-testid="card-settings-danger-zone"
+    >
+      <CardHeader>
+        <CardTitle className="text-base text-destructive">
+          Danger zone
+        </CardTitle>
+        <CardDescription>
+          Permanently delete every support ticket and its attachments. This
+          cannot be undone. Ticket numbering restarts at 000001.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {result && (
+          <Alert data-testid="alert-purge-result">
+            <Check className="h-4 w-4" />
+            <AlertDescription>{result}</AlertDescription>
+          </Alert>
+        )}
+        {error && (
+          <Alert variant="destructive" data-testid="alert-purge-error">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <AlertDialog open={open} onOpenChange={setOpen}>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="destructive"
+              data-testid="button-purge-tickets"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete all tickets
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all support tickets?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes every ticket, message, note,
+                attachment, and history entry. It cannot be undone. Type{" "}
+                <span className="font-semibold">DELETE</span> below to confirm.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              autoFocus
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="Type DELETE to confirm"
+              data-testid="input-purge-confirm"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-purge-cancel">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={confirmText !== "DELETE" || pending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void purge();
+                }}
+                data-testid="button-purge-confirm"
+              >
+                {pending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                Delete everything
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
   );
 }
 
