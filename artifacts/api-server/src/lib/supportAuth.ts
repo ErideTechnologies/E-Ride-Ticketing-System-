@@ -366,6 +366,8 @@ const PERMISSION_RULES: PermRule[] = [
   rule("POST", "/support/tickets/:id/messages", "edit_ticket"),
   // Workflow action
   rule("POST", "/support/tickets/:id/workflow-action", "manage_workflow"),
+  // One-time maintenance: purge all tickets (admin only; also env-flag gated)
+  rule("POST", "/support/admin/purge-tickets", "manage_settings"),
 ];
 
 export function supportPermissionGuard(

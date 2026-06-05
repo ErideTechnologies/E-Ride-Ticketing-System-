@@ -1,0 +1,1 @@
+- [Production data writes](prod-data-writes.md) — prod DB is read-only to agent tools; mutate prod data only via a gated app endpoint + redeploy + admin-triggered call. Dev/prod are separate DBs.

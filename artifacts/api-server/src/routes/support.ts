@@ -13,6 +13,7 @@ import {
   supportTicketMessagesTable,
   supportTicketStatusHistoryTable,
   supportTicketsTable,
+  supportTicketSequencesTable,
   supportMessageTemplatesTable,
   supportSettingsTable,
   type SupportTicket,
@@ -30,6 +31,7 @@ import {
   buildStoragePath,
   ensureStorageReady,
   removeStored,
+  removeTicketDir,
   statStored,
   streamStored,
   validateAttachment,
@@ -3701,6 +3703,82 @@ router.post("/support/templates/preview", async (req, res): Promise<void> => {
     renderedBodyText,
     renderedBodyHtml,
     usedSampleTicket: usedSample,
+  });
+});
+
+// One-time maintenance endpoint: purge ALL tickets for the Eride org.
+// GATED: only active when SUPPORT_ENABLE_PURGE_ENDPOINT === "true"; otherwise
+// returns 404 so it is invisible in normal operation. Admin-only via
+// PERMISSION_RULES (manage_settings). Used to clear test data before go-live,
+// then disabled by removing the env flag.
+router.post("/support/admin/purge-tickets", async (req, res): Promise<void> => {
+  if (process.env.SUPPORT_ENABLE_PURGE_ENDPOINT !== "true") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const org = await getErideOrganisation();
+  if (!org) {
+    req.log.error({ orgCode: ERIDE_ORG_CODE }, "Eride organisation not found");
+    res.status(500).json({ error: "Support is temporarily unavailable" });
+    return;
+  }
+
+  // Snapshot ticket ids first so we can remove their on-disk attachment
+  // directories after the DB rows (which cascade-delete) are gone.
+  const tickets = await db
+    .select({ id: supportTicketsTable.id })
+    .from(supportTicketsTable)
+    .where(eq(supportTicketsTable.organisationId, org.id));
+  const ticketIds = tickets.map((t) => t.id);
+
+  const result = await db.transaction(async (tx) => {
+    const deletedTickets = await tx
+      .delete(supportTicketsTable)
+      .where(eq(supportTicketsTable.organisationId, org.id))
+      .returning({ id: supportTicketsTable.id });
+    const deletedSeqs = await tx
+      .delete(supportTicketSequencesTable)
+      .where(eq(supportTicketSequencesTable.organisationId, org.id))
+      .returning({ year: supportTicketSequencesTable.year });
+    return {
+      tickets: deletedTickets.length,
+      sequences: deletedSeqs.length,
+    };
+  });
+
+  // Remove each ticket's attachment directory and verify it is gone. Counting
+  // only verified removals avoids reporting a clean purge while sensitive files
+  // remain on disk; removing the whole dir also sweeps up any racing writes.
+  let attachmentDirsRemoved = 0;
+  const attachmentDirsFailed: string[] = [];
+  for (const id of ticketIds) {
+    const ok = await removeTicketDir(id);
+    if (ok) attachmentDirsRemoved += 1;
+    else attachmentDirsFailed.push(id);
+  }
+
+  const logPayload = {
+    tickets: result.tickets,
+    sequences: result.sequences,
+    attachmentDirsRemoved,
+    attachmentDirsFailed: attachmentDirsFailed.length,
+    actor: (req as { supportUser?: { email?: string } }).supportUser?.email,
+  };
+  if (attachmentDirsFailed.length > 0) {
+    req.log.error(
+      logPayload,
+      "Purged support tickets but some attachment dirs could not be removed",
+    );
+  } else {
+    req.log.warn(logPayload, "Purged all support tickets via maintenance endpoint");
+  }
+
+  res.json({
+    success: attachmentDirsFailed.length === 0,
+    deletedTickets: result.tickets,
+    deletedSequences: result.sequences,
+    attachmentDirsRemoved,
+    attachmentDirsFailed: attachmentDirsFailed.length,
   });
 });
 

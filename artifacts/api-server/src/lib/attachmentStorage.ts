@@ -1,4 +1,4 @@
-import { mkdir, unlink, stat } from "node:fs/promises";
+import { mkdir, unlink, stat, rm } from "node:fs/promises";
 import { createReadStream, type ReadStream } from "node:fs";
 import { join, resolve, extname } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -221,5 +221,29 @@ export async function removeStored(storagePath: string): Promise<void> {
     await unlink(resolveStoredPath(storagePath));
   } catch {
     /* ignore */
+  }
+}
+
+/**
+ * Recursively remove the entire on-disk attachment directory for a ticket
+ * (`<ROOT>/<ticketId>`), including any files written concurrently. Returns
+ * `true` only when the directory is verifiably gone afterwards, so callers can
+ * detect and report partial-cleanup failures instead of silently succeeding.
+ */
+export async function removeTicketDir(ticketId: string): Promise<boolean> {
+  const dir = resolve(join(ROOT, ticketId));
+  if (dir !== ROOT && !dir.startsWith(ROOT + "/")) {
+    throw new Error("Refusing to remove path outside attachments root");
+  }
+  try {
+    await rm(dir, { recursive: true, force: true });
+  } catch {
+    /* fall through to existence check */
+  }
+  try {
+    await stat(dir);
+    return false; // still exists → removal failed
+  } catch {
+    return true; // gone
   }
 }
