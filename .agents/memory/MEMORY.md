@@ -1,1 +1,2 @@
 - [Production data writes](prod-data-writes.md) — prod DB is read-only to agent tools; mutate prod data only via a gated app endpoint + redeploy + admin-triggered call. Dev/prod are separate DBs.
+- [Public /help auth gate](public-help-auth-gate.md) — /help* web routes are login-gated (frontend only); keep POST /support/tickets + GET /support/products open for the external E-Migration Assist API integration.

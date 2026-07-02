@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SupportAuthProvider } from "@/components/SupportAuthProvider";
 import { RequireSupportAuth } from "@/components/RequireSupportAuth";
+import { PublicLoginGate } from "@/components/PublicLoginGate";
 import NotFound from "@/pages/not-found";
 import HelpPage from "@/pages/help";
 import ReportProblemPage from "@/pages/report-problem";
@@ -32,14 +33,31 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={() => <Redirect to="/help" />} />
-      <Route path="/help" component={HelpPage} />
-      <Route path="/help/report-problem" component={ReportProblemPage} />
-      <Route
-        path="/help/report-problem/confirmation"
-        component={ReportProblemConfirmationPage}
-      />
-      <Route path="/help/track-ticket" component={TrackTicketPage} />
-      <Route path="/help/ticket/:ticketReference" component={PublicTicketPage} />
+      <Route path="/help">
+        <PublicLoginGate>
+          <HelpPage />
+        </PublicLoginGate>
+      </Route>
+      <Route path="/help/report-problem">
+        <PublicLoginGate>
+          <ReportProblemPage />
+        </PublicLoginGate>
+      </Route>
+      <Route path="/help/report-problem/confirmation">
+        <PublicLoginGate>
+          <ReportProblemConfirmationPage />
+        </PublicLoginGate>
+      </Route>
+      <Route path="/help/track-ticket">
+        <PublicLoginGate>
+          <TrackTicketPage />
+        </PublicLoginGate>
+      </Route>
+      <Route path="/help/ticket/:ticketReference">
+        <PublicLoginGate>
+          <PublicTicketPage />
+        </PublicLoginGate>
+      </Route>
       <Route path="/admin/support/login" component={AdminLoginPage} />
       <Route path="/admin/support/wallboard">
         <RequireSupportAuth>
