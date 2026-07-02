@@ -2,7 +2,6 @@ import { Link } from "wouter";
 import {
   ArrowUpRight,
   LifeBuoy,
-  Search,
   ShieldCheck,
   Hash,
   MessagesSquare,
@@ -41,7 +40,7 @@ export default function HelpPage() {
 
       {/* ─── Action cards ──────────────────────────────────────────────── */}
       <section className="px-5 sm:px-8" data-testid="section-action-cards">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-xl grid-cols-1 gap-5">
           {/* Primary — Report a problem */}
           <Link
             href="/help/report-problem"
@@ -82,41 +81,6 @@ export default function HelpPage() {
               </span>
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#7B8694]">
                 ~ 60 seconds
-              </span>
-            </div>
-          </Link>
-
-          {/* Secondary — Track a ticket */}
-          <Link
-            href="/help/track-ticket"
-            data-testid="card-track-ticket"
-            className="group relative block overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#0B1218] via-[#080D13] to-[#04080C] p-7 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 sm:p-9"
-          >
-            <span
-              aria-hidden
-              className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
-            />
-
-            <div className="flex items-start justify-between">
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#7B8694]">
-                Existing
-              </span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03]">
-                <Search className="h-5 w-5 text-[#B8C5D0]" />
-              </span>
-            </div>
-
-            <h2 className="mt-12 text-3xl font-semibold tracking-tight text-[#E5E7EB] sm:text-[2rem]">
-              Track a ticket
-            </h2>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-[#7B8694]">
-              Enter your reference and contact to view the latest status.
-            </p>
-
-            <div className="mt-10 flex items-center border-t border-white/[0.06] pt-5">
-              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#E5E7EB]">
-                Look up status
-                <ArrowUpRight className="h-4 w-4 text-[#B8C5D0] transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </span>
             </div>
           </Link>
