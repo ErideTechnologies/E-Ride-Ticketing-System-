@@ -67,16 +67,12 @@ export default function HelpPage() {
             </div>
 
             <h2 className="relative mt-12 text-3xl font-semibold tracking-tight text-[#E5E7EB] sm:text-[2rem]">
-              Report a problem
+              Create a support ticket
             </h2>
-            <p className="relative mt-3 max-w-md text-sm leading-relaxed text-[#7B8694]">
-              Tell us what happened. We assign a tracked reference and respond
-              by email or WhatsApp.
-            </p>
 
             <div className="relative mt-10 flex items-center justify-between border-t border-white/[0.06] pt-5">
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#E5E7EB]">
-                Start a report
+                Create ticket →
                 <ArrowUpRight className="h-4 w-4 text-[#38BDF8] transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </span>
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#7B8694]">
