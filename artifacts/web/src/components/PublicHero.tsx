@@ -20,6 +20,8 @@ type PublicHeroProps = {
   "data-testid"?: string;
   /** Hide the right-side LIVE indicator (used inside the verify panel etc). */
   hideLive?: boolean;
+  /** Centre-align the eyebrow, title and subtitle (used on the help landing). */
+  centered?: boolean;
 };
 
 /**
@@ -40,6 +42,7 @@ export function PublicHero({
   backHref = "/help",
   backLabel = "Back to Help",
   hideLive = false,
+  centered = false,
   "data-testid": testId,
 }: PublicHeroProps) {
   return (
@@ -47,7 +50,7 @@ export function PublicHero({
       className="relative px-5 pb-12 pt-10 sm:px-8 sm:pb-16 sm:pt-14"
       data-testid={testId ?? "public-hero"}
     >
-      <div className="mx-auto max-w-6xl">
+      <div className={`mx-auto max-w-6xl${centered ? " text-center" : ""}`}>
         {showBackLink && (
           <Link
             href={backHref}
@@ -70,7 +73,9 @@ export function PublicHero({
         </p>
 
         <h1
-          className="mt-5 max-w-4xl text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-[#E5E7EB] sm:text-5xl lg:text-6xl"
+          className={`mt-5 max-w-4xl text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-[#E5E7EB] sm:text-5xl lg:text-6xl${
+            centered ? " mx-auto" : ""
+          }`}
           data-testid="text-hero-title"
         >
           {title}
@@ -85,7 +90,11 @@ export function PublicHero({
         </h1>
 
         {subtitle && (
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-[#94A3B8] sm:text-lg">
+          <p
+            className={`mt-5 max-w-2xl text-base leading-relaxed text-[#94A3B8] sm:text-lg${
+              centered ? " mx-auto" : ""
+            }`}
+          >
             {subtitle}
           </p>
         )}

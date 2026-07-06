@@ -34,6 +34,7 @@ export default function HelpPage() {
         title="How can"
         titleAccent="we help?"
         subtitle="Report an issue, track a ticket, and stay updated until resolution. One controlled, transparent thread between you and our team."
+        centered
       />
 
       {/* ─── Action cards ──────────────────────────────────────────────── */}
