@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import "react-phone-number-input/style.css";
-import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
 import {
   useListPublicSupportProducts,
   useCreateSupportTicket,
@@ -17,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertTriangle,
@@ -27,14 +24,12 @@ import {
 } from "lucide-react";
 import { PublicShell } from "@/components/PublicShell";
 import { PublicHero } from "@/components/PublicHero";
-import { REPORTER_TYPE_OPTIONS } from "@/lib/supportOptions";
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_HELP_TEXT,
   formatFileSize,
   validateAttachmentFile,
 } from "@/lib/attachmentRules";
-import { COUNTRY_OPTIONS_ORDER } from "@/lib/sadcCountries";
 import { captureDeviceInfo } from "@/lib/deviceInfo";
 
 const SUMMARY_MAX = 140;
@@ -56,11 +51,6 @@ type FormState = {
   pageOrStep: string;
   stepsToReproduce: string;
   applicationReference: string;
-  reporterName: string;
-  reporterType: string;
-  reporterEmail: string;
-  reporterWhatsapp: string;
-  consent: boolean;
 };
 
 const EMPTY_FORM: FormState = {
@@ -72,11 +62,6 @@ const EMPTY_FORM: FormState = {
   pageOrStep: "",
   stepsToReproduce: "",
   applicationReference: "",
-  reporterName: "",
-  reporterType: "",
-  reporterEmail: "",
-  reporterWhatsapp: "",
-  consent: false,
 };
 
 type FieldKey = keyof FormState | "attachment";
@@ -90,11 +75,6 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   pageOrStep: "Page or step",
   stepsToReproduce: "Steps to reproduce",
   applicationReference: "Application or account reference",
-  reporterName: "Your name",
-  reporterType: "You are a…",
-  reporterEmail: "Email address",
-  reporterWhatsapp: "WhatsApp number",
-  consent: "Consent",
   attachment: "Attachment",
 };
 
@@ -155,23 +135,6 @@ export default function ReportProblemPage() {
         "Tell us what you were trying to do (at least 5 characters).";
     if (!form.whatWentWrong.trim())
       next.whatWentWrong = "Please tell us what went wrong.";
-    if (!form.reporterName.trim())
-      next.reporterName = "Your name is required.";
-    if (!form.reporterType) next.reporterType = "Please select an option.";
-
-    const email = form.reporterEmail.trim();
-    const whatsapp = form.reporterWhatsapp.trim();
-    if (!email && !whatsapp) {
-      next.reporterEmail =
-        "Provide either an email address or a WhatsApp number.";
-    }
-    if (whatsapp && !isValidPhoneNumber(whatsapp)) {
-      next.reporterWhatsapp = "Enter a valid mobile number.";
-    }
-    if (!form.consent) {
-      next.consent =
-        "Please confirm consent before we contact you about this report.";
-    }
 
     setErrors(next);
     const order: FieldKey[] = [
@@ -180,11 +143,6 @@ export default function ReportProblemPage() {
       "issueSummary",
       "whatWereYouTryingToDo",
       "whatWentWrong",
-      "reporterName",
-      "reporterType",
-      "reporterEmail",
-      "reporterWhatsapp",
-      "consent",
     ];
     const firstErrorKey = order.find((k) => next[k]) ?? null;
     return { ok: Object.keys(next).length === 0, firstErrorKey };
@@ -218,10 +176,6 @@ export default function ReportProblemPage() {
       const result = await createTicket.mutateAsync({
         data: {
           productId: form.productId,
-          reporterName: form.reporterName.trim(),
-          reporterEmail: form.reporterEmail.trim() || null,
-          reporterWhatsapp: form.reporterWhatsapp.trim() || null,
-          reporterType: form.reporterType as never,
           category: form.category as never,
           pageOrStep: form.pageOrStep.trim() || null,
           applicationReference: form.applicationReference.trim() || null,
@@ -230,8 +184,6 @@ export default function ReportProblemPage() {
           whatWentWrong: combinedWhatHappened,
           deviceType: null,
           browser: null,
-          canContact: true,
-          consent: true,
           deviceInfo: captureDeviceInfo() as unknown as Record<string, unknown>,
         },
       });
@@ -240,9 +192,7 @@ export default function ReportProblemPage() {
         try {
           const fd = new FormData();
           fd.append("file", attachment);
-          fd.append("uploadedByName", form.reporterName.trim() || "Reporter");
-          if (form.reporterEmail.trim())
-            fd.append("uploadedByEmail", form.reporterEmail.trim());
+          fd.append("uploadedByName", "Reporter");
           fd.append("uploadedByRole", "reporter");
           await fetch(`/api/support/tickets/${result.id}/attachments`, {
             method: "POST",
@@ -476,143 +426,6 @@ export default function ReportProblemPage() {
               />
             </Field>
 
-            {/* Divider before reporter section */}
-            <div
-              role="separator"
-              aria-hidden
-              className="border-t border-white/[0.06]"
-            />
-
-            {/* 10. Name + reporter type */}
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field
-                label={FIELD_LABELS.reporterName}
-                required
-                error={errors.reporterName}
-                fieldKey="reporterName"
-                fieldRefs={fieldRefs}
-              >
-                <Input
-                  value={form.reporterName}
-                  onChange={(e) => update("reporterName", e.target.value)}
-                  autoComplete="name"
-                  data-testid="input-reporter-name"
-                />
-              </Field>
-              <Field
-                label={FIELD_LABELS.reporterType}
-                required
-                error={errors.reporterType}
-                fieldKey="reporterType"
-                fieldRefs={fieldRefs}
-              >
-                <Select
-                  value={form.reporterType}
-                  onValueChange={(v) => update("reporterType", v)}
-                >
-                  <SelectTrigger data-testid="select-reporter-type">
-                    <SelectValue placeholder="Select reporter type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REPORTER_TYPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-
-            {/* 11. Email + WhatsApp */}
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field
-                label={FIELD_LABELS.reporterEmail}
-                hint="Either email or WhatsApp required"
-                error={errors.reporterEmail}
-                fieldKey="reporterEmail"
-                fieldRefs={fieldRefs}
-              >
-                <Input
-                  type="email"
-                  inputMode="email"
-                  value={form.reporterEmail}
-                  onChange={(e) => update("reporterEmail", e.target.value)}
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  data-testid="input-reporter-email"
-                />
-              </Field>
-              <Field
-                label={FIELD_LABELS.reporterWhatsapp}
-                hint="Default South Africa · pick another country if needed"
-                error={errors.reporterWhatsapp}
-                fieldKey="reporterWhatsapp"
-                fieldRefs={fieldRefs}
-              >
-                <div className="pd-phone-input">
-                  <PhoneInput
-                    international
-                    defaultCountry="ZA"
-                    countryOptionsOrder={COUNTRY_OPTIONS_ORDER}
-                    value={form.reporterWhatsapp}
-                    onChange={(v) =>
-                      update("reporterWhatsapp", (v ?? "") as string)
-                    }
-                    autoComplete="tel"
-                    data-testid="input-reporter-whatsapp"
-                  />
-                </div>
-              </Field>
-            </div>
-
-            {/* 12. POPIA consent */}
-            <div
-              ref={(el) => {
-                fieldRefs.current.consent = el;
-              }}
-              className={`flex items-start gap-3 rounded-2xl border p-4 ${
-                errors.consent
-                  ? "border-[#FCA5A5]/40 bg-[#FCA5A5]/[0.04]"
-                  : "border-white/[0.06] bg-white/[0.02]"
-              }`}
-            >
-              <Checkbox
-                id="consent"
-                checked={form.consent}
-                onCheckedChange={(v) => update("consent", v === true)}
-                data-testid="checkbox-consent"
-                aria-invalid={errors.consent ? true : undefined}
-                aria-describedby={
-                  errors.consent ? "consent-error" : undefined
-                }
-              />
-              <div className="space-y-1">
-                <Label
-                  htmlFor="consent"
-                  className="!text-xs !normal-case !tracking-normal !font-normal !text-[#B8C5D0] leading-relaxed"
-                  style={{ fontFamily: "inherit" }}
-                >
-                  I agree to be contacted by the Eride support team about this
-                  report. My contact details and the information I provide will
-                  be processed in line with POPIA for the purpose of resolving
-                  this issue.
-                </Label>
-                {errors.consent && (
-                  <p
-                    id="consent-error"
-                    className="text-[11px] text-[#FCA5A5]"
-                  >
-                    {errors.consent}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <p className="text-[11px] text-[#7B8694]">
-              Please do not include passwords or payment card details.
-            </p>
-
             {/* Validation summary (a11y) */}
             {errorList.length > 0 && (
               <Alert
@@ -669,7 +482,7 @@ export default function ReportProblemPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={createTicket.isPending || !form.consent}
+                disabled={createTicket.isPending}
                 data-testid="button-submit"
               >
                 {createTicket.isPending ? (

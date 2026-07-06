@@ -79,13 +79,13 @@ export type SupportTicketSubmissionDeviceInfo = { [key: string]: unknown };
 
 export interface SupportTicketSubmission {
   productId: string;
-  /** @minLength 1 */
-  reporterName: string;
+  /** @nullable */
+  reporterName?: string | null;
   /** @nullable */
   reporterEmail?: string | null;
   /** @nullable */
   reporterWhatsapp?: string | null;
-  reporterType: SupportReporterType;
+  reporterType?: SupportReporterType;
   category: SupportTicketCategory;
   /** @nullable */
   pageOrStep?: string | null;
@@ -105,8 +105,8 @@ export interface SupportTicketSubmission {
   /** @nullable */
   browser?: string | null;
   canContact?: boolean;
-  /** POPIA consent given by reporter. Must be true to submit. */
-  consent: boolean;
+  /** Optional POPIA consent flag from the reporter. No longer required to submit. */
+  consent?: boolean;
   /** Client-captured device info (os, ua, viewport, language, referrer, href). */
   deviceInfo?: SupportTicketSubmissionDeviceInfo;
 }

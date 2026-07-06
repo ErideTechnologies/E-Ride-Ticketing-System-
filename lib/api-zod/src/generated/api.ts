@@ -2035,7 +2035,6 @@ export const ListSupportTicketsResponse = zod.array(
 /**
  * @summary Submit a support ticket from the public report-a-problem form
  */
-
 export const createSupportTicketBodyIssueSummaryMax = 140;
 
 export const createSupportTicketBodyWhatWereYouTryingToDoMin = 5;
@@ -2044,20 +2043,22 @@ export const createSupportTicketBodyCanContactDefault = true;
 
 export const CreateSupportTicketBody = zod.object({
   productId: zod.string().uuid(),
-  reporterName: zod.string().min(1),
+  reporterName: zod.string().nullish(),
   reporterEmail: zod.string().nullish(),
   reporterWhatsapp: zod.string().nullish(),
-  reporterType: zod.enum([
-    "public_visitor",
-    "applicant",
-    "b2b_firm_admin",
-    "consultant",
-    "beauty_client",
-    "beauty_professional",
-    "partner",
-    "internal_tester",
-    "other",
-  ]),
+  reporterType: zod
+    .enum([
+      "public_visitor",
+      "applicant",
+      "b2b_firm_admin",
+      "consultant",
+      "beauty_client",
+      "beauty_professional",
+      "partner",
+      "internal_tester",
+      "other",
+    ])
+    .optional(),
   category: zod.enum([
     "technical_bug",
     "account_login_issue",
@@ -2088,7 +2089,10 @@ export const CreateSupportTicketBody = zod.object({
   canContact: zod.boolean().default(createSupportTicketBodyCanContactDefault),
   consent: zod
     .boolean()
-    .describe("POPIA consent given by reporter. Must be true to submit."),
+    .optional()
+    .describe(
+      "Optional POPIA consent flag from the reporter. No longer required to submit.",
+    ),
   deviceInfo: zod
     .record(zod.string(), zod.unknown())
     .optional()

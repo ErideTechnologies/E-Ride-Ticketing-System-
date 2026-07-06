@@ -812,28 +812,10 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
 
   const body = parsed.data;
 
+  // Reporter contact details and POPIA consent are optional. Tickets may be
+  // submitted with no name, contact information, or consent at all.
   const reporterEmail = body.reporterEmail?.trim() ?? "";
   const reporterWhatsapp = body.reporterWhatsapp?.trim() ?? "";
-  if (!reporterEmail && !reporterWhatsapp) {
-    res.status(400).json({
-      error: "Provide either an email address or a WhatsApp number.",
-    });
-    return;
-  }
-
-  if (body.consent !== true) {
-    res.status(400).json({
-      error: "Consent is required to submit a report.",
-    });
-    return;
-  }
-
-  // Capture client IP for POPIA consent audit. Honours X-Forwarded-For when
-  // configured (Express trust proxy), otherwise falls back to socket address.
-  const consentIp =
-    (typeof req.ip === "string" && req.ip.length > 0 ? req.ip : null) ??
-    req.socket?.remoteAddress ??
-    null;
 
   // Sanitise deviceInfo: only persist a known allowlist of fields, length-cap
   // each value, and never accept arbitrary client-supplied keys (which would
@@ -906,9 +888,9 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
       internalStatus: "triage_required",
       priority: suggestPriority(body.category),
       severity: suggestSeverity(body.category),
-      reporterType: body.reporterType,
-      reporterName: body.reporterName,
-      reporterEmail: reporterEmail || "",
+      reporterType: body.reporterType ?? null,
+      reporterName: body.reporterName ?? null,
+      reporterEmail: reporterEmail || null,
       reporterWhatsapp: reporterWhatsapp || null,
       pageOrStep: body.pageOrStep ?? null,
       applicationReference: body.applicationReference ?? null,
@@ -917,8 +899,8 @@ router.post("/support/tickets", async (req, res): Promise<void> => {
       whatWereYouTryingToDo: body.whatWereYouTryingToDo ?? null,
       whatWentWrong: body.whatWentWrong,
       environment: "production",
-      consentGivenAt: new Date(),
-      consentIp,
+      consentGivenAt: null,
+      consentIp: null,
       deviceInfo,
     })
     .returning();
