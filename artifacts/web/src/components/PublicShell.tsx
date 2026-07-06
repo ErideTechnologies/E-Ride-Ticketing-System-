@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { PublicNav } from "@/components/PublicNav";
-import { PublicFooter } from "@/components/PublicFooter";
 
 type PublicShellProps = {
   children: ReactNode;
@@ -41,7 +40,6 @@ export function PublicShell({
 
       <PublicNav />
       <main className="relative z-10 flex-1">{children}</main>
-      <PublicFooter />
     </div>
   );
 }

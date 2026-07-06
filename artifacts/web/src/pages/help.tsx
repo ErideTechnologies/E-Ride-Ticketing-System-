@@ -9,8 +9,6 @@ import {
 import { PublicShell } from "@/components/PublicShell";
 import { PublicHero } from "@/components/PublicHero";
 
-const PRODUCTS = ["E-Migration Assist", "8Beauty", "Eride"] as const;
-
 const TRUST_ITEMS = [
   {
     icon: ShieldCheck,
@@ -100,42 +98,6 @@ export default function HelpPage() {
                     {description}
                   </p>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ─── Supported products ────────────────────────────────────────── */}
-      <section
-        className="mt-14 px-5 pb-12 sm:mt-20 sm:px-8 sm:pb-16"
-        data-testid="section-products"
-      >
-        <div className="mx-auto max-w-6xl">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-[#7B8694]">
-              Supported products
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#E5E7EB] sm:text-3xl">
-              One support surface across the Eride suite
-            </h2>
-          </div>
-
-          <ul
-            className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3"
-            data-testid="list-product-chips"
-          >
-            {PRODUCTS.map((product) => (
-              <li
-                key={product}
-                className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-[#0B1218]/80 to-[#04080C]/80 p-5"
-              >
-                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#7B8694]">
-                  Product
-                </p>
-                <p className="mt-2 text-base font-medium text-[#E5E7EB]">
-                  {product}
-                </p>
               </li>
             ))}
           </ul>
