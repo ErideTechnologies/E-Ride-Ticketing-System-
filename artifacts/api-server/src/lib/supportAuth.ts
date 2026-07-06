@@ -315,6 +315,17 @@ export function isPublicSupportPath(method: string, path: string): boolean {
   return PUBLIC_PATH_MATCHERS.some((fn) => fn(m, path));
 }
 
+// Express matches trailing-slash variants (`/support/tickets/`) by default, but
+// the public/permission matchers use anchored regexes (`^/support/tickets$`).
+// Without normalization a reporter could bypass authorization by appending a
+// trailing slash. Collapse trailing slashes (keep root) before matching.
+function normalizeSupportPath(path: string): string {
+  if (path.length > 1 && path.endsWith("/")) {
+    return path.replace(/\/+$/, "") || "/";
+  }
+  return path;
+}
+
 // Declarative permission table for protected routes. Paths are relative to
 // the /api mount; `:param` segments match a single non-slash component.
 // First-match-wins. Routes not listed here only require authentication
@@ -337,6 +348,25 @@ function rule(
 }
 
 const PERMISSION_RULES: PermRule[] = [
+  // Dashboard reads: any internal ticket/dashboard data requires view_dashboard.
+  // Reporters (ticket-logging users) have no permissions and are blocked here,
+  // while still using the public /support/public/* + POST /support/tickets flow.
+  rule("GET", "/support/wallboard", "view_dashboard"),
+  rule("GET", "/support/sla-summary", "view_dashboard"),
+  rule("GET", "/support/tickets", "view_dashboard"),
+  rule("GET", "/support/tickets/:id", "view_dashboard"),
+  rule("GET", "/support/tickets/:id/notes", "view_dashboard"),
+  rule("GET", "/support/tickets/:id/messages", "view_dashboard"),
+  rule("GET", "/support/tickets/:id/status-history", "view_dashboard"),
+  rule("GET", "/support/tickets/:id/linear-link", "view_dashboard"),
+  rule("GET", "/support/tickets/:id/sentry-links", "view_dashboard"),
+  rule("GET", "/support/tickets/:id/attachments", "view_dashboard"),
+  rule(
+    "GET",
+    "/support/tickets/:id/attachments/:attachmentId",
+    "view_dashboard",
+  ),
+  rule("GET", "/support/integrations/linear/status", "view_dashboard"),
   // Settings + templates: support_admin only (reads + writes)
   rule("GET", "/support/settings", "manage_settings"),
   rule("PATCH", "/support/settings", "manage_settings"),
@@ -386,10 +416,11 @@ export function supportPermissionGuard(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!req.path.startsWith("/support")) return next();
-  if (isPublicSupportPath(req.method, req.path)) return next();
+  const path = normalizeSupportPath(req.path);
+  if (!path.startsWith("/support")) return next();
+  if (isPublicSupportPath(req.method, path)) return next();
   const matched = PERMISSION_RULES.find(
-    (r) => r.method === req.method.toUpperCase() && r.pattern.test(req.path),
+    (r) => r.method === req.method.toUpperCase() && r.pattern.test(path),
   );
   if (!matched) return next();
   const user =
@@ -414,8 +445,9 @@ export function supportAuthGuard(
   next: NextFunction,
 ): void {
   // Only guard /support/* (paths are relative to the /api mount point).
-  if (!req.path.startsWith("/support")) return next();
-  if (isPublicSupportPath(req.method, req.path)) return next();
+  const path = normalizeSupportPath(req.path);
+  if (!path.startsWith("/support")) return next();
+  if (isPublicSupportPath(req.method, path)) return next();
   const user = getCurrentSupportUser(req);
   if (!user) {
     res.status(401).json({ error: "Authentication required" });
