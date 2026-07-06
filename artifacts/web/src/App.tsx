@@ -60,7 +60,7 @@ function Router() {
       </Route>
       <Route path="/admin/support/login" component={AdminLoginPage} />
       <Route path="/admin/support/wallboard">
-        <RequireSupportAuth>
+        <RequireSupportAuth permission="view_dashboard">
           <AdminWallboardPage />
         </RequireSupportAuth>
       </Route>
@@ -80,12 +80,12 @@ function Router() {
         </RequireSupportAuth>
       </Route>
       <Route path="/admin/support/tickets">
-        <RequireSupportAuth>
+        <RequireSupportAuth permission="view_dashboard">
           <AdminTicketsPage />
         </RequireSupportAuth>
       </Route>
       <Route path="/admin/support/tickets/:id">
-        <RequireSupportAuth>
+        <RequireSupportAuth permission="view_dashboard">
           <AdminTicketDetailPage />
         </RequireSupportAuth>
       </Route>

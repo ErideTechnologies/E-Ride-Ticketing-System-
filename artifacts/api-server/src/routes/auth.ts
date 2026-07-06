@@ -56,7 +56,7 @@ router.post("/support/auth/login", async (req, res): Promise<void> => {
     return;
   }
   const role = lookupRoleForEmail(email);
-  const passwordOk = verifyLoginPassword(password);
+  const passwordOk = role ? verifyLoginPassword(password, role) : false;
   if (!role || !passwordOk) {
     res.status(401).json({ error: "Invalid email or password" });
     return;

@@ -51,3 +51,6 @@ channel = "stable-25_05"
 
 [userenv.production]
 SUPPORT_ENABLE_PURGE_ENDPOINT = "true"
+
+[userenv.shared]
+SUPPORT_REPORTER_EMAILS = "joshuaratau@gmail.com"

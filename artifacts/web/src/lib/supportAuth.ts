@@ -5,6 +5,7 @@ export const SUPPORT_ROLES = [
   "developer",
   "qa_verifier",
   "viewer",
+  "reporter",
 ] as const;
 
 export type SupportRole = (typeof SUPPORT_ROLES)[number];
@@ -16,6 +17,7 @@ export const SUPPORT_ROLE_LABELS: Record<SupportRole, string> = {
   developer: "Developer",
   qa_verifier: "QA verifier",
   viewer: "Viewer",
+  reporter: "Ticket reporter",
 };
 
 export const SUPPORT_PERMISSIONS = [
@@ -76,6 +78,7 @@ const ROLE_PERMISSIONS: Record<SupportRole, ReadonlyArray<SupportPermission>> =
     ],
     qa_verifier: ["view_dashboard", "edit_ticket", "manage_workflow"],
     viewer: ["view_dashboard"],
+    reporter: [],
   };
 
 export function roleHasPermission(

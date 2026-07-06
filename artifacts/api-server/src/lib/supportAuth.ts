@@ -9,6 +9,7 @@ export const SUPPORT_ROLES = [
   "developer",
   "qa_verifier",
   "viewer",
+  "reporter",
 ] as const;
 
 export type SupportRole = (typeof SUPPORT_ROLES)[number];
@@ -61,6 +62,7 @@ const ROLE_PERMISSIONS: Record<SupportRole, ReadonlySet<SupportPermission>> = {
     "manage_workflow",
   ]),
   viewer: new Set(["view_dashboard"]),
+  reporter: new Set([]),
 };
 
 export function roleHasPermission(
@@ -87,6 +89,7 @@ const ROLE_ENV_KEYS: Record<SupportRole, string> = {
   developer: "SUPPORT_DEVELOPER_EMAILS",
   qa_verifier: "SUPPORT_QA_EMAILS",
   viewer: "SUPPORT_VIEWER_EMAILS",
+  reporter: "SUPPORT_REPORTER_EMAILS",
 };
 
 function parseEmailList(value: string | undefined): Set<string> {
@@ -219,8 +222,14 @@ export function clearSupportSessionCookie(res: Response): void {
   res.setHeader("Set-Cookie", parts.join("; "));
 }
 
-export function verifyLoginPassword(password: string): boolean {
-  const expected = process.env.SUPPORT_AUTH_PASSWORD || "";
+export function verifyLoginPassword(
+  password: string,
+  role: SupportRole,
+): boolean {
+  const expected =
+    role === "reporter"
+      ? process.env.SUPPORT_REPORTER_PASSWORD || ""
+      : process.env.SUPPORT_AUTH_PASSWORD || "";
   if (!expected || !password) return false;
   const a = Buffer.from(password, "utf8");
   const b = Buffer.from(expected, "utf8");
@@ -229,7 +238,9 @@ export function verifyLoginPassword(password: string): boolean {
 }
 
 export function isLoginConfigured(): boolean {
-  return Boolean(process.env.SUPPORT_AUTH_PASSWORD);
+  return Boolean(
+    process.env.SUPPORT_AUTH_PASSWORD || process.env.SUPPORT_REPORTER_PASSWORD,
+  );
 }
 
 // ---- Express middleware ----
