@@ -27,10 +27,7 @@ import {
 } from "lucide-react";
 import { PublicShell } from "@/components/PublicShell";
 import { PublicHero } from "@/components/PublicHero";
-import {
-  CATEGORY_OPTIONS,
-  REPORTER_TYPE_OPTIONS,
-} from "@/lib/supportOptions";
+import { REPORTER_TYPE_OPTIONS } from "@/lib/supportOptions";
 import {
   ATTACHMENT_ACCEPT,
   ATTACHMENT_HELP_TEXT,
@@ -41,6 +38,14 @@ import { COUNTRY_OPTIONS_ORDER } from "@/lib/sadcCountries";
 import { captureDeviceInfo } from "@/lib/deviceInfo";
 
 const SUMMARY_MAX = 140;
+
+// Report-form ticket-type options. Kept local (not the shared CATEGORY_OPTIONS)
+// so the public form only offers these two, while admin surfaces keep the full
+// category list. Values must remain valid ticket-category enum members.
+const TICKET_TYPE_OPTIONS = [
+  { value: "technical_bug", label: "Bug Report" },
+  { value: "feature_request", label: "Feature Request" },
+] as const;
 
 type FormState = {
   productId: string;
@@ -78,7 +83,7 @@ type FieldKey = keyof FormState | "attachment";
 
 const FIELD_LABELS: Record<FieldKey, string> = {
   productId: "Which product",
-  category: "What kind of issue",
+  category: "Ticket type",
   issueSummary: "Short summary",
   whatWereYouTryingToDo: "What were you trying to do",
   whatWentWrong: "What happened",
@@ -327,10 +332,10 @@ export default function ReportProblemPage() {
                 onValueChange={(v) => update("category", v)}
               >
                 <SelectTrigger data-testid="select-category">
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder="Select a ticket type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map((o) => (
+                  {TICKET_TYPE_OPTIONS.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
                     </SelectItem>
