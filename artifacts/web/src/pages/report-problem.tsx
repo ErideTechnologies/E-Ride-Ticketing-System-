@@ -50,7 +50,6 @@ type FormState = {
   whatWentWrong: string;
   pageOrStep: string;
   stepsToReproduce: string;
-  applicationReference: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -61,7 +60,6 @@ const EMPTY_FORM: FormState = {
   whatWentWrong: "",
   pageOrStep: "",
   stepsToReproduce: "",
-  applicationReference: "",
 };
 
 type FieldKey = keyof FormState | "attachment";
@@ -74,7 +72,6 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   whatWentWrong: "What happened",
   pageOrStep: "Page or step",
   stepsToReproduce: "Steps to reproduce",
-  applicationReference: "Application or account reference",
   attachment: "Attachment",
 };
 
@@ -178,7 +175,6 @@ export default function ReportProblemPage() {
           productId: form.productId,
           category: form.category as never,
           pageOrStep: form.pageOrStep.trim() || null,
-          applicationReference: form.applicationReference.trim() || null,
           issueSummary: form.issueSummary.trim(),
           whatWereYouTryingToDo: form.whatWereYouTryingToDo.trim(),
           whatWentWrong: combinedWhatHappened,
@@ -408,22 +404,6 @@ export default function ReportProblemPage() {
                   {attachment.name} · {formatFileSize(attachment.size)}
                 </p>
               )}
-            </Field>
-
-            {/* 9. Application or account reference */}
-            <Field
-              label={FIELD_LABELS.applicationReference}
-              hint="Optional · paste your application ID or account number if you have one"
-              fieldKey="applicationReference"
-              fieldRefs={fieldRefs}
-            >
-              <Input
-                value={form.applicationReference}
-                onChange={(e) =>
-                  update("applicationReference", e.target.value)
-                }
-                data-testid="input-application-reference"
-              />
             </Field>
 
             {/* Validation summary (a11y) */}
