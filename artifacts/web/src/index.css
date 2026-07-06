@@ -369,6 +369,15 @@
  * canvas, ultra-thin steel borders, ice-blue (#38BDF8) accents, mono
  * eyebrow labels.
  * ───────────────────────────────────────────────────────────────── */
+/* When a public-dark surface is mounted, keep the root document background
+ * black too. Otherwise the light `body` background (--background) shows through
+ * as a white band below the footer whenever the dark container is shorter than
+ * the viewport/document. */
+html:has(.public-dark),
+body:has(.public-dark) {
+  background: #000;
+}
+
 .public-dark {
   background: #000;
   color: #E5E7EB;
