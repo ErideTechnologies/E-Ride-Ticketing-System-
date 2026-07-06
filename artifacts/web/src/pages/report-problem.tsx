@@ -275,12 +275,28 @@ export default function ReportProblemPage() {
     if (errorList.length > 0) setSubmitAttempt((n) => n + 1);
   }, [errors, errorList.length]);
 
+  // Product selection is fixed to "E-Migration Assist" — the dropdown is hidden
+  // and the id is resolved from the products list once it loads. Match on the
+  // stable product code first, falling back to the display name, so a rename on
+  // either side does not break the auto-selection.
+  useEffect(() => {
+    const list = products.data ?? [];
+    const match =
+      list.find((p) => p.productCode === "EMA") ??
+      list.find((p) => p.productName === "E-Migration Assist");
+    if (match) {
+      setForm((prev) =>
+        prev.productId === match.id ? prev : { ...prev, productId: match.id },
+      );
+    }
+  }, [products.data]);
+
   return (
     <PublicShell data-testid="page-report-problem">
       <PublicHero
-        title="Report a"
-        titleAccent="problem"
-        subtitle="Tell us what happened. Required fields are marked. We respond on email or WhatsApp."
+        title="Create a support"
+        titleAccent="ticket"
+        subtitle="Required fields are marked. We respond by email or WhatsApp."
         showBackLink
         data-testid="hero-report-problem"
       />
@@ -298,42 +314,7 @@ export default function ReportProblemPage() {
             noValidate
             data-testid="form-report-problem"
           >
-            {/* 1. Product */}
-            <Field
-              label={FIELD_LABELS.productId}
-              required
-              error={errors.productId}
-              fieldKey="productId"
-              fieldRefs={fieldRefs}
-            >
-              <Select
-                value={form.productId}
-                onValueChange={(v) => update("productId", v)}
-                disabled={products.isLoading}
-              >
-                <SelectTrigger data-testid="select-product">
-                  <SelectValue
-                    placeholder={
-                      products.isLoading ? "Loading…" : "Select a product"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {(products.data ?? []).map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.productName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {products.isError && (
-                <p className="text-xs text-[#FCA5A5]">
-                  Could not load products. Please refresh the page.
-                </p>
-              )}
-            </Field>
-
-            {/* 2. Category */}
+            {/* Category */}
             <Field
               label={FIELD_LABELS.category}
               required
