@@ -1,78 +1,24 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import {
   useListSupportTickets,
-  useListPublicSupportProducts,
-  type ListSupportTicketsParams,
   type SupportTicketListItem,
 } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { CATEGORY_OPTIONS } from "@/lib/supportOptions";
-import { SupportUserBadge } from "@/components/SupportUserBadge";
-import { useSupportAuth } from "@/components/SupportAuthProvider";
 import {
   CATEGORY_LABELS,
   INTERNAL_STATUS_LABELS,
-  INTERNAL_STATUS_OPTIONS,
   PRIORITY_LABELS,
-  PRIORITY_OPTIONS,
   PUBLIC_STATUS_LABELS,
-  PUBLIC_STATUS_OPTIONS,
   REPORTER_TYPE_LABELS,
   SLA_STATUS_LABELS,
   formatSlaDuration,
   humanLabel,
   slaStatusBadgeClass,
 } from "@/lib/supportLabels";
-
-const ALL = "__all__";
-
-type Filters = {
-  productId: string;
-  priority: string;
-  publicStatus: string;
-  internalStatus: string;
-  category: string;
-  slaStatus: string;
-  search: string;
-};
-
-const EMPTY_FILTERS: Filters = {
-  productId: ALL,
-  priority: ALL,
-  publicStatus: ALL,
-  internalStatus: ALL,
-  category: ALL,
-  slaStatus: ALL,
-  search: "",
-};
-
-const SLA_STATUS_FILTER_OPTIONS = [
-  { value: "on_track", label: "On track" },
-  { value: "approaching", label: "Due soon" },
-  { value: "breached", label: "Overdue" },
-  { value: "paused", label: "Paused" },
-  { value: "completed", label: "Met" },
-  { value: "not_started", label: "Not started" },
-] as const;
 
 function priorityBadgeClass(p: string): string {
   switch (p) {
@@ -105,35 +51,7 @@ function formatDateTime(iso: string): string {
 
 export default function AdminTicketsPage() {
   const [, navigate] = useLocation();
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const products = useListPublicSupportProducts();
-  const { user } = useSupportAuth();
-  const isAdmin = user?.role === "support_admin";
-
-  const params: ListSupportTicketsParams = useMemo(() => {
-    const p: ListSupportTicketsParams = {};
-    if (filters.productId !== ALL) p.productId = filters.productId;
-    if (filters.priority !== ALL)
-      p.priority = filters.priority as ListSupportTicketsParams["priority"];
-    if (filters.publicStatus !== ALL)
-      p.publicStatus =
-        filters.publicStatus as ListSupportTicketsParams["publicStatus"];
-    if (filters.internalStatus !== ALL)
-      p.internalStatus =
-        filters.internalStatus as ListSupportTicketsParams["internalStatus"];
-    if (filters.category !== ALL)
-      p.category = filters.category as ListSupportTicketsParams["category"];
-    if (filters.slaStatus !== ALL)
-      p.slaStatus = filters.slaStatus as ListSupportTicketsParams["slaStatus"];
-    if (filters.search.trim()) p.search = filters.search.trim();
-    return p;
-  }, [filters]);
-
-  const tickets = useListSupportTickets(params);
-
-  function update<K extends keyof Filters>(key: K, value: Filters[K]) {
-    setFilters((f) => ({ ...f, [key]: value }));
-  }
+  const tickets = useListSupportTickets();
 
   const data = tickets.data ?? [];
 
@@ -147,10 +65,6 @@ export default function AdminTicketsPage() {
       dueSoon: data.filter((t) => t.sla?.slaStatus === "approaching").length,
     };
   }, [data]);
-
-  function clearFilters() {
-    setFilters(EMPTY_FILTERS);
-  }
 
   function handleRowClick(t: SupportTicketListItem) {
     navigate(`/admin/support/tickets/${t.id}`);
@@ -180,98 +94,6 @@ export default function AdminTicketsPage() {
           <SummaryCard label="SLA overdue" value={summary.overdue} accent="destructive" />
           <SummaryCard label="SLA due soon" value={summary.dueSoon} accent="amber" />
         </section>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Filters</CardTitle>
-            <CardDescription>
-              Narrow the list by product, priority, status, or keyword.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-7">
-              <FilterSelect
-                testId="filter-product"
-                placeholder="All products"
-                value={filters.productId}
-                onChange={(v) => update("productId", v)}
-                options={[
-                  { value: ALL, label: "All products" },
-                  ...(products.data ?? []).map((p) => ({
-                    value: p.id,
-                    label: p.productName,
-                  })),
-                ]}
-              />
-              <FilterSelect
-                testId="filter-priority"
-                placeholder="All priorities"
-                value={filters.priority}
-                onChange={(v) => update("priority", v)}
-                options={[
-                  { value: ALL, label: "All priorities" },
-                  ...PRIORITY_OPTIONS.map((o) => ({ ...o })),
-                ]}
-              />
-              <FilterSelect
-                testId="filter-public-status"
-                placeholder="All public statuses"
-                value={filters.publicStatus}
-                onChange={(v) => update("publicStatus", v)}
-                options={[
-                  { value: ALL, label: "All public statuses" },
-                  ...PUBLIC_STATUS_OPTIONS.map((o) => ({ ...o })),
-                ]}
-              />
-              <FilterSelect
-                testId="filter-internal-status"
-                placeholder="All internal statuses"
-                value={filters.internalStatus}
-                onChange={(v) => update("internalStatus", v)}
-                options={[
-                  { value: ALL, label: "All internal statuses" },
-                  ...INTERNAL_STATUS_OPTIONS.map((o) => ({ ...o })),
-                ]}
-              />
-              <FilterSelect
-                testId="filter-category"
-                placeholder="All categories"
-                value={filters.category}
-                onChange={(v) => update("category", v)}
-                options={[
-                  { value: ALL, label: "All categories" },
-                  ...CATEGORY_OPTIONS.map((o) => ({ ...o })),
-                ]}
-              />
-              <FilterSelect
-                testId="filter-sla-status"
-                placeholder="All SLA states"
-                value={filters.slaStatus}
-                onChange={(v) => update("slaStatus", v)}
-                options={[
-                  { value: ALL, label: "All SLA states" },
-                  ...SLA_STATUS_FILTER_OPTIONS.map((o) => ({ ...o })),
-                ]}
-              />
-              <Input
-                placeholder="Search reference, name, summary…"
-                value={filters.search}
-                onChange={(e) => update("search", e.target.value)}
-                data-testid="filter-search"
-              />
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                data-testid="button-clear-filters"
-              >
-                Clear filters
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         <section data-testid="tickets-section">
           {tickets.isLoading && (
@@ -466,34 +288,5 @@ function SlaCell({
         <span className="text-xs text-muted-foreground">{detail}</span>
       )}
     </div>
-  );
-}
-
-function FilterSelect({
-  value,
-  onChange,
-  options,
-  placeholder,
-  testId,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  placeholder: string;
-  testId: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger data-testid={testId}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }

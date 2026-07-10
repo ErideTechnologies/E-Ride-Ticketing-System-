@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Link } from "wouter";
 import {
   useGetSupportWallboard,
@@ -7,8 +6,8 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, Activity, Target, Inbox, Ticket, ListChecks } from "lucide-react";
-import { formatSlaDuration, humanLabel, SLA_STATUS_LABELS, PRIORITY_LABELS, CATEGORY_LABELS } from "@/lib/supportLabels";
+import { AlertTriangle, Clock, Inbox, ListChecks } from "lucide-react";
+import { humanLabel, INTERNAL_STATUS_LABELS, PRIORITY_LABELS } from "@/lib/supportLabels";
 import { Button } from "@/components/ui/button";
 
 export default function AdminDashboardPage() {
@@ -157,7 +156,7 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className="font-normal">
-                          {humanLabel(SLA_STATUS_LABELS, t.sla.slaStatus)}
+                          {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
