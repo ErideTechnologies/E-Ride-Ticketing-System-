@@ -162,57 +162,22 @@ export default function AdminTicketsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="dogma-eyebrow" data-testid="text-dogma-eyebrow">
-              Eride Dogma Support Centre
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Support Tickets
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Structured support. Controlled resolution.
-            </p>
-            <p className="text-muted-foreground">
-              View and triage support tickets submitted across Eride products.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {isAdmin && (
-              <>
-                <Button
-                  asChild
-                  variant="outline"
-                  data-testid="link-templates"
-                >
-                  <a href="/admin/support/templates">Templates</a>
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  data-testid="link-settings"
-                >
-                  <a href="/admin/support/settings">Settings</a>
-                </Button>
-              </>
-            )}
-            <Button
-              asChild
-              variant="outline"
-              data-testid="link-wallboard"
-            >
-              <a href="/admin/support/wallboard">Open Live Wallboard</a>
-            </Button>
-            <SupportUserBadge className="ml-2" />
-          </div>
-        </header>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Support Tickets
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            View and triage support tickets.
+          </p>
+        </div>
+      </header>
 
-        <section
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-9"
-          data-testid="summary-cards"
-        >
+      <section
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-9"
+        data-testid="summary-cards"
+      >
           <SummaryCard label="Total tickets" value={summary.total} />
           <SummaryCard label="Awaiting triage" value={summary.triage} accent="amber" />
           <SummaryCard label="Urgent" value={summary.urgent} accent="destructive" />
@@ -449,8 +414,7 @@ export default function AdminTicketsPage() {
             </>
           )}
         </section>
-      </div>
-    </main>
+    </div>
   );
 }
 

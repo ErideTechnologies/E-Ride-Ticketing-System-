@@ -44,32 +44,21 @@ export default function AdminSettingsPage() {
   const query = useGetSupportSettings();
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-8">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <Link href="/admin/support/tickets">
-          <Button variant="ghost" size="sm" data-testid="link-back-tickets">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
-          </Button>
-        </Link>
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="dogma-eyebrow">Eride Dogma Support Centre</p>
-            <h1
-              className="text-3xl font-semibold tracking-tight text-foreground"
-              data-testid="text-settings-title"
-            >
-              Support Settings
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Structured support. Controlled resolution.
-            </p>
-            <p className="text-muted-foreground">
-              Configure email defaults, sender identity, and public-ticket
-              behaviour for the support workspace.
-            </p>
-          </div>
-          <SupportUserBadge />
-        </header>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1
+            className="text-2xl font-semibold tracking-tight text-foreground"
+            data-testid="text-settings-title"
+          >
+            Support Settings
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Configure email defaults, sender identity, and public-ticket
+            behaviour for the support workspace.
+          </p>
+        </div>
+      </header>
 
         {query.isLoading && (
           <p
@@ -121,8 +110,7 @@ export default function AdminSettingsPage() {
         </Card>
 
         <DangerZone />
-      </div>
-    </main>
+    </div>
   );
 }
 

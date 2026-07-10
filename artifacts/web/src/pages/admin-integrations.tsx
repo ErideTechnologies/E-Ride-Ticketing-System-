@@ -36,29 +36,21 @@ export default function AdminIntegrationsPage() {
   const status = useGetSupportIntegrationsStatus();
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <Link href="/admin/support/settings">
-          <Button variant="ghost" size="sm" data-testid="link-back-settings">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to settings
-          </Button>
-        </Link>
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="dogma-eyebrow">Eride Dogma Support Centre</p>
-            <h1
-              className="text-3xl font-semibold tracking-tight text-foreground"
-              data-testid="text-integrations-title"
-            >
-              Integrations
-            </h1>
-            <p className="text-muted-foreground">
-              Live snapshot of every external dependency. Secret values are
-              never shown — only configured / not-configured.
-            </p>
-          </div>
-          <SupportUserBadge />
-        </header>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1
+            className="text-2xl font-semibold tracking-tight text-foreground"
+            data-testid="text-integrations-title"
+          >
+            Integrations
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Live snapshot of every external dependency. Secret values are
+            never shown — only configured / not-configured.
+          </p>
+        </div>
+      </header>
 
         <div className="flex items-center gap-2">
           <Button
@@ -115,8 +107,7 @@ export default function AdminIntegrationsPage() {
             ))}
           </div>
         )}
-      </div>
-    </main>
+    </div>
   );
 }
 

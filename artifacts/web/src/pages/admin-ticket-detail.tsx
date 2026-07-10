@@ -282,16 +282,14 @@ export default function AdminTicketDetailPage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <Link href="/admin/support/tickets">
-          <Button variant="ghost" size="sm" data-testid="link-back">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
-          </Button>
-        </Link>
-        {children}
-      </div>
-    </main>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <Link href="/admin/support/tickets">
+        <Button variant="ghost" size="sm" data-testid="link-back">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
+        </Button>
+      </Link>
+      {children}
+    </div>
   );
 }
 
@@ -322,47 +320,36 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30 px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <Link href="/admin/support/tickets">
-          <Button variant="ghost" size="sm" data-testid="link-back">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
-          </Button>
-        </Link>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <Link href="/admin/support/tickets">
+        <Button variant="ghost" size="sm" data-testid="link-back">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to tickets
+        </Button>
+      </Link>
 
-        <div className="space-y-1">
-          <p className="dogma-eyebrow">Eride Dogma Support Centre</p>
-          <p className="text-sm text-muted-foreground">
-            Structured support. Controlled resolution.
-          </p>
-        </div>
-
-        <header className="flex flex-wrap items-center gap-3">
-          <h1
-            className="font-mono text-2xl font-semibold text-foreground"
-            data-testid="text-ticket-reference"
-          >
-            {ticket.ticketReference}
-          </h1>
-          <Badge variant="outline">
-            {ticket.productName} · {ticket.productCode}
-          </Badge>
-          <Badge
-            className={priorityBadgeClass(ticket.priority)}
-            data-testid="badge-priority"
-          >
-            {humanLabel(PRIORITY_LABELS, ticket.priority)}
-          </Badge>
-          <Badge variant="outline" data-testid="badge-public-status">
-            Public: {humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
-          </Badge>
-          <Badge variant="outline" data-testid="badge-internal-status">
-            Internal: {humanLabel(INTERNAL_STATUS_LABELS, ticket.internalStatus)}
-          </Badge>
-          <div className="ml-auto">
-            <SupportUserBadge />
-          </div>
-        </header>
+      <header className="flex flex-wrap items-center gap-3">
+        <h1
+          className="font-mono text-2xl font-semibold text-foreground"
+          data-testid="text-ticket-reference"
+        >
+          {ticket.ticketReference}
+        </h1>
+        <Badge variant="outline">
+          {ticket.productName} · {ticket.productCode}
+        </Badge>
+        <Badge
+          className={priorityBadgeClass(ticket.priority)}
+          data-testid="badge-priority"
+        >
+          {humanLabel(PRIORITY_LABELS, ticket.priority)}
+        </Badge>
+        <Badge variant="outline" data-testid="badge-public-status">
+          Public: {humanLabel(PUBLIC_STATUS_LABELS, ticket.publicStatus)}
+        </Badge>
+        <Badge variant="outline" data-testid="badge-internal-status">
+          Internal: {humanLabel(INTERNAL_STATUS_LABELS, ticket.internalStatus)}
+        </Badge>
+      </header>
 
         {!canEditTicket && (
           <Alert data-testid="alert-readonly-mode">
@@ -401,7 +388,6 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <HandoffCard ticket={ticket} />
         </div>
       </div>
-    </main>
   );
 }
 
