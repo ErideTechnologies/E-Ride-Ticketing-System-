@@ -138,8 +138,6 @@ export default function AdminTicketsPage() {
   const data = tickets.data ?? [];
 
   const summary = useMemo(() => {
-    const productCount = (code: string) =>
-      data.filter((t) => t.productCode === code).length;
     return {
       total: data.length,
       triage: data.filter((t) => t.internalStatus === "triage_required").length,
@@ -147,9 +145,6 @@ export default function AdminTicketsPage() {
       high: data.filter((t) => t.priority === "high").length,
       overdue: data.filter((t) => t.sla?.slaStatus === "breached").length,
       dueSoon: data.filter((t) => t.sla?.slaStatus === "approaching").length,
-      ema: productCount("EMA"),
-      bt8: productCount("8BT"),
-      erd: productCount("ERD"),
     };
   }, [data]);
 
@@ -175,7 +170,7 @@ export default function AdminTicketsPage() {
       </header>
 
       <section
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-9"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
         data-testid="summary-cards"
       >
           <SummaryCard label="Total tickets" value={summary.total} />
@@ -184,9 +179,6 @@ export default function AdminTicketsPage() {
           <SummaryCard label="High priority" value={summary.high} accent="orange" />
           <SummaryCard label="SLA overdue" value={summary.overdue} accent="destructive" />
           <SummaryCard label="SLA due soon" value={summary.dueSoon} accent="amber" />
-          <SummaryCard label="E-Migration Assist" value={summary.ema} />
-          <SummaryCard label="8Beauty" value={summary.bt8} />
-          <SummaryCard label="Eride General" value={summary.erd} />
         </section>
 
         <Card>
