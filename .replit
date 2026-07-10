@@ -53,4 +53,4 @@ channel = "stable-25_05"
 SUPPORT_ENABLE_PURGE_ENDPOINT = "true"
 
 [userenv.shared]
-SUPPORT_REPORTER_EMAILS = "joshuaratau@gmail.com"
+SUPPORT_REPORTER_EMAILS = "user@eride.co.za"
