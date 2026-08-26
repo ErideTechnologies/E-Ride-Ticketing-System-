@@ -6,13 +6,13 @@ import {
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Eye } from "lucide-react";
 import {
   CATEGORY_LABELS,
   INTERNAL_STATUS_LABELS,
   PRIORITY_LABELS,
-  PUBLIC_STATUS_LABELS,
   REPORTER_TYPE_LABELS,
   SLA_STATUS_LABELS,
   formatSlaDuration,
@@ -121,62 +121,56 @@ export default function AdminTicketsPage() {
 
           {!tickets.isLoading && !tickets.isError && data.length > 0 && (
             <>
-              <div className="hidden overflow-hidden rounded-md border bg-background lg:block">
+              <div className="hidden overflow-x-auto rounded-md border bg-background lg:block">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2">Reference</th>
-                      <th className="px-3 py-2">Product</th>
-                      <th className="px-3 py-2">Summary</th>
-                      <th className="px-3 py-2">Reporter</th>
-                      <th className="px-3 py-2">Category</th>
-                      <th className="px-3 py-2">Priority</th>
-                      <th className="px-3 py-2">Public</th>
-                      <th className="px-3 py-2">Internal</th>
-                      <th className="px-3 py-2">SLA</th>
-                      <th className="px-3 py-2">Created</th>
+                      <th className="px-4 py-3">Reference</th>
+                      <th className="px-4 py-3">Product</th>
+                      <th className="min-w-80 px-4 py-3">Summary</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Priority</th>
+                      <th className="px-4 py-3">Created</th>
+                      <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.map((t) => (
                       <tr
                         key={t.id}
-                        onClick={() => handleRowClick(t)}
-                        className={`cursor-pointer border-t hover:bg-muted/40 ${rowAccentClass(t)}`}
+                        className={`border-t align-top hover:bg-muted/40 ${rowAccentClass(t)}`}
                         data-testid={`ticket-row-${t.ticketReference}`}
                       >
-                        <td className="px-3 py-2 font-mono text-xs font-semibold">
+                        <td className="whitespace-nowrap px-4 py-4 font-mono text-xs font-semibold">
                           {t.ticketReference}
                         </td>
-                        <td className="px-3 py-2">{t.productName}</td>
-                        <td className="px-3 py-2 max-w-sm truncate" title={t.issueSummary}>
+                        <td className="px-4 py-4">{t.productName}</td>
+                        <td className="min-w-80 whitespace-normal break-words px-4 py-4 leading-relaxed">
                           {t.issueSummary}
                         </td>
-                        <td className="px-3 py-2">
-                          <div>{t.reporterName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {humanLabel(REPORTER_TYPE_LABELS, t.reporterType)}
-                          </div>
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <Badge variant="outline">
+                            {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
+                          </Badge>
                         </td>
-                        <td className="px-3 py-2">
-                          {humanLabel(CATEGORY_LABELS, t.category)}
-                        </td>
-                        <td className="px-3 py-2">
+                        <td className="whitespace-nowrap px-4 py-4">
                           <Badge className={priorityBadgeClass(t.priority)}>
                             {humanLabel(PRIORITY_LABELS, t.priority)}
                           </Badge>
                         </td>
-                        <td className="px-3 py-2">
-                          {humanLabel(PUBLIC_STATUS_LABELS, t.publicStatus)}
-                        </td>
-                        <td className="px-3 py-2">
-                          {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <SlaCell sla={t.sla} />
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                        <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">
                           {formatDateTime(t.createdAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRowClick(t)}
+                            data-testid={`button-view-${t.ticketReference}`}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -188,8 +182,7 @@ export default function AdminTicketsPage() {
                 {data.map((t) => (
                   <Card
                     key={t.id}
-                    onClick={() => handleRowClick(t)}
-                    className={`cursor-pointer ${rowAccentClass(t)}`}
+                    className={rowAccentClass(t)}
                     data-testid={`ticket-card-${t.ticketReference}`}
                   >
                     <CardContent className="space-y-2 pt-4">
@@ -207,10 +200,7 @@ export default function AdminTicketsPage() {
                       </p>
                       <div className="flex flex-wrap gap-2 text-xs">
                         <Badge variant="outline">
-                          Public: {humanLabel(PUBLIC_STATUS_LABELS, t.publicStatus)}
-                        </Badge>
-                        <Badge variant="outline">
-                          Internal: {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
+                          Status: {humanLabel(INTERNAL_STATUS_LABELS, t.internalStatus)}
                         </Badge>
                         <SlaCell sla={t.sla} compact />
                       </div>
@@ -221,6 +211,15 @@ export default function AdminTicketsPage() {
                         </span>
                         <span>{formatDateTime(t.createdAt)}</span>
                       </div>
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={() => handleRowClick(t)}
+                        data-testid={`button-view-mobile-${t.ticketReference}`}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View full ticket
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
