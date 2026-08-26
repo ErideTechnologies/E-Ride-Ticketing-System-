@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
   Ticket, 
-  FileText, 
   Settings, 
   Webhook, 
   MonitorUp, 
@@ -32,7 +31,6 @@ export function AdminShell({ children }: AdminShellProps) {
     { href: "/admin/support/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/support/tickets", label: "Tickets", icon: Ticket },
     ...(isAdmin ? [
-      { href: "/admin/support/templates", label: "Templates", icon: FileText },
       { href: "/admin/support/settings", label: "Settings", icon: Settings },
       { href: "/admin/support/integrations", label: "Integrations", icon: Webhook },
     ] : []),

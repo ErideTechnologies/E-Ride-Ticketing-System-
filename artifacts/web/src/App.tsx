@@ -17,7 +17,6 @@ import AdminDashboardPage from "@/pages/admin-dashboard";
 import AdminTicketsPage from "@/pages/admin-tickets";
 import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
 import AdminWallboardPage from "@/pages/admin-wallboard";
-import AdminTemplatesPage from "@/pages/admin-templates";
 import AdminSettingsPage from "@/pages/admin-settings";
 import AdminIntegrationsPage from "@/pages/admin-integrations";
 import ErrorBoundaryTestPage from "@/pages/error-boundary-test";
@@ -71,13 +70,6 @@ function Router() {
         <RequireSupportAuth permission="view_dashboard">
           <AdminShell>
             <AdminDashboardPage />
-          </AdminShell>
-        </RequireSupportAuth>
-      </Route>
-      <Route path="/admin/support/templates">
-        <RequireSupportAuth roles={["support_admin"]}>
-          <AdminShell>
-            <AdminTemplatesPage />
           </AdminShell>
         </RequireSupportAuth>
       </Route>
