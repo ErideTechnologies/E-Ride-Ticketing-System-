@@ -6,3 +6,18 @@ id = "wA7i9DKURzWm4SM6EpM46"
 uri = "file://docs/ui-ux-architecture-brief.md"
 type = "text"
 title = "Eride Support — UI/UX Architecture Brief"
+logical_id = "72415669-0754-4e9f-acbb-9346795ebf6d"
+
+[[outputs]]
+id = "r2JxC23ilbhFrRqd7Gbj0"
+uri = "file://docs/full-project-specification.md"
+type = "text"
+title = "Eride Dogma Support Centre — Full Project Specification"
+description = "Complete frontend, backend, database, API, authentication, workflow, SLA, integration, security, source-code, and deployment specification."
+logical_id = "eb1040ca-c48b-4b22-a373-6f6c8093ffe7"
+content_hash = "sha256:4cc3aed4cd3b77855422c1be1d5c7409d2166929821d72e4e2a6c98dba2e160c"
+size = 24989
+mtime_ms = 1788509055686
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:519a5d45-0a13-4b8d-8798-47a68ff5a307/eb1040ca-c48b-4b22-a373-6f6c8093ffe7/8f00628d-2767-41b8-89f2-d311657b10fe"
+storage_version_token = "1788509064121969"
+content_type = "text/markdown"
