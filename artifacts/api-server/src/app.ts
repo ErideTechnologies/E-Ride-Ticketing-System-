@@ -5,7 +5,7 @@ import express, {
   type NextFunction,
 } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import { pinoHttp } from "pino-http";
 import * as Sentry from "@sentry/node";
 import router from "./routes";
 import { logger } from "./lib/logger";
