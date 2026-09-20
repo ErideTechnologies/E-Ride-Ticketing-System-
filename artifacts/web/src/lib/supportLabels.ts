@@ -133,9 +133,9 @@ export function slaStatusBadgeClass(status: string): string {
     case "on_track":
       return "bg-emerald-600 text-white border-transparent";
     case "paused":
-      return "bg-slate-400 text-white border-transparent";
+      return "bg-muted text-muted-foreground border-transparent";
     case "completed":
-      return "bg-slate-200 text-slate-700 border-transparent";
+      return "bg-secondary text-secondary-foreground border-transparent";
     default:
       return "bg-muted text-muted-foreground border-transparent";
   }

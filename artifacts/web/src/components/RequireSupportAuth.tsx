@@ -26,13 +26,13 @@ function RestrictedShell({
   showLogin: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="max-w-lg w-full">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-slate-700">{message}</p>
+          <p className="text-sm text-muted-foreground">{message}</p>
           <div className="flex flex-wrap gap-2">
             {showLogin && (
               <Button asChild>
@@ -54,7 +54,7 @@ export function RequireSupportAuth({ children, roles, permission }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground bg-background">
         Loading…
       </div>
     );

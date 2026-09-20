@@ -109,7 +109,7 @@ export default function AdminWallboardPage() {
   );
 
   return (
-    <main className="dark min-h-screen bg-[#050505] px-4 py-6 text-slate-100 sm:px-8 sm:py-10">
+    <main className="dark min-h-screen bg-background px-4 py-6 text-foreground sm:px-8 sm:py-10">
       <div className="mx-auto flex max-w-[1800px] flex-col gap-6">
         <header
           className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
@@ -124,25 +124,25 @@ export default function AdminWallboardPage() {
             </p>
             <div className="mt-1 h-[2px] w-24 rounded-full bg-gradient-to-r from-[#B8C5D0]/90 via-[#8FA1B5]/70 to-transparent" />
             <h1
-              className="mt-2 text-3xl font-bold tracking-tight text-slate-50 sm:text-5xl"
+              className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-5xl"
               data-testid="text-wallboard-title"
             >
               Dogma Command Centre
             </h1>
-            <p className="mt-2 text-base text-slate-300 sm:text-lg">
+            <p className="mt-2 text-base text-muted-foreground sm:text-lg">
               Live support and resolution visibility across Eride products.
             </p>
           </div>
-          <div className="flex flex-col gap-1 text-right text-sm text-slate-300 sm:text-base">
+          <div className="flex flex-col gap-1 text-right text-sm text-muted-foreground sm:text-base">
             <p
-              className="text-2xl font-semibold tabular-nums text-slate-100 sm:text-4xl"
+              className="text-2xl font-semibold tabular-nums text-foreground sm:text-4xl"
               data-testid="text-wallboard-clock"
             >
               {formatTime(now)}
             </p>
             <p>{formatDate(now)}</p>
             <p
-              className="inline-flex items-center justify-end gap-2 text-xs text-slate-400 sm:text-sm"
+              className="inline-flex items-center justify-end gap-2 text-xs text-muted-foreground sm:text-sm"
               data-testid="text-wallboard-last-updated"
             >
               {wallboard.isFetching ? (
@@ -160,7 +160,7 @@ export default function AdminWallboardPage() {
                 asChild
                 variant="outline"
                 size="sm"
-                className="border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800"
+                className="border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground"
                 data-testid="link-full-dashboard"
               >
                 <Link href="/admin/support/tickets">
@@ -170,7 +170,7 @@ export default function AdminWallboardPage() {
               </Button>
             </div>
             <div className="mt-2 flex justify-end">
-              <SupportUserBadge className="text-slate-300" />
+              <SupportUserBadge className="text-muted-foreground" />
             </div>
           </div>
         </header>
@@ -190,7 +190,7 @@ export default function AdminWallboardPage() {
 
         {!data && wallboard.isLoading && (
           <p
-            className="flex items-center gap-2 text-slate-300"
+            className="flex items-center gap-2 text-muted-foreground"
             data-testid="text-wallboard-loading"
           >
             <Loader2 className="h-5 w-5 animate-spin" /> Loading wallboard…
@@ -280,7 +280,7 @@ export default function AdminWallboardPage() {
                   <ProductCard key={p.productId} product={p} />
                 ))}
                 {data.productBreakdown.length === 0 && (
-                  <p className="text-slate-300">No active products configured.</p>
+                  <p className="text-muted-foreground">No active products configured.</p>
                 )}
               </div>
             </section>
@@ -349,31 +349,31 @@ function KpiCard({
   testId: string;
 }) {
   const toneClasses: Record<typeof tone, string> = {
-    default: "border-slate-800 bg-slate-900",
+    default: "border-border bg-card",
     urgent:
       value > 0
         ? "border-destructive bg-destructive/20 text-destructive-foreground animate-pulse"
-        : "border-slate-800 bg-slate-900",
+        : "border-border bg-card",
     high:
       value > 0
         ? "border-orange-500/60 bg-orange-500/15"
-        : "border-slate-800 bg-slate-900",
+        : "border-border bg-card",
     warn:
       value > 0
         ? "border-amber-400/50 bg-amber-400/10"
-        : "border-slate-800 bg-slate-900",
+        : "border-border bg-card",
     info:
       value > 0
         ? "border-sky-500/50 bg-sky-500/10"
-        : "border-slate-800 bg-slate-900",
+        : "border-border bg-card",
   };
   return (
     <Card
-      className={`border-2 ${toneClasses[tone]} text-slate-100 shadow-lg`}
+      className={`border-2 ${toneClasses[tone]} text-foreground shadow-lg`}
       data-testid={testId}
     >
       <CardContent className="p-3 sm:p-5">
-        <p className="text-xs uppercase tracking-wide text-slate-300 sm:text-sm">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground sm:text-sm">
           {label}
         </p>
         <p
@@ -398,7 +398,7 @@ function SectionHeading({
     <div className="flex items-end justify-between">
       <h2 className="text-xl font-semibold sm:text-2xl">{title}</h2>
       {subtitle && (
-        <p className="text-xs text-slate-400 sm:text-sm">{subtitle}</p>
+        <p className="text-xs text-muted-foreground sm:text-sm">{subtitle}</p>
       )}
     </div>
   );
@@ -411,7 +411,7 @@ function ProductCard({
 }) {
   return (
     <Card
-      className="border-slate-800 bg-slate-900 text-slate-100 shadow-lg"
+      className="border-border bg-card text-card-foreground shadow-lg"
       data-testid={`product-${product.productCode}`}
     >
       <CardHeader className="pb-2">
@@ -419,12 +419,12 @@ function ProductCard({
           <span>{product.productName}</span>
           <Badge
             variant="outline"
-            className="border-slate-700 text-slate-300"
+            className="border-border text-muted-foreground"
           >
             {product.productCode}
           </Badge>
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-muted-foreground">
           {product.openTickets} open ticket{product.openTickets === 1 ? "" : "s"}
         </CardDescription>
       </CardHeader>
@@ -465,18 +465,18 @@ function ProductStat({
   tone?: "default" | "urgent" | "high" | "warn" | "info";
 }) {
   const colour: Record<typeof tone, string> = {
-    default: "text-slate-100",
-    urgent: value > 0 ? "text-destructive-foreground" : "text-slate-400",
-    high: value > 0 ? "text-orange-400" : "text-slate-400",
-    warn: value > 0 ? "text-amber-300" : "text-slate-400",
-    info: value > 0 ? "text-sky-300" : "text-slate-400",
+    default: "text-foreground",
+    urgent: value > 0 ? "text-destructive-foreground" : "text-muted-foreground",
+    high: value > 0 ? "text-orange-400" : "text-muted-foreground",
+    warn: value > 0 ? "text-amber-300" : "text-muted-foreground",
+    info: value > 0 ? "text-sky-300" : "text-muted-foreground",
   };
   return (
     <div>
       <p className={`text-2xl font-semibold tabular-nums ${colour[tone]}`}>
         {value}
       </p>
-      <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
     </div>
@@ -505,17 +505,17 @@ function TicketListCard({
   };
   return (
     <Card
-      className={`border-2 ${toneBorder[tone]} bg-slate-900 text-slate-100 shadow-lg`}
+      className={`border-2 ${toneBorder[tone]} bg-card text-card-foreground shadow-lg`}
       data-testid={testId}
     >
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">{title}</CardTitle>
-        <CardDescription className="text-slate-400">{subtitle}</CardDescription>
+        <CardDescription className="text-muted-foreground">{subtitle}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {tickets.length === 0 ? (
           <p
-            className="text-slate-300"
+            className="text-muted-foreground"
             data-testid={`${testId}-empty`}
           >
             {emptyMessage}
@@ -536,7 +536,7 @@ function TicketRow({ ticket }: { ticket: SupportWallboardTicket }) {
       data-testid={`wallboard-ticket-${ticket.id}`}
     >
       <div
-        className={`rounded-md bg-slate-950/40 p-3 transition hover:bg-slate-800/60 ${ticketAccentClass(
+        className={`rounded-md bg-background/40 p-3 transition hover:bg-accent/20 ${ticketAccentClass(
           ticket,
         )}`}
       >
@@ -545,18 +545,18 @@ function TicketRow({ ticket }: { ticket: SupportWallboardTicket }) {
             <Badge className={priorityBadgeClass(ticket.priority)}>
               {humanLabel(PRIORITY_LABELS, ticket.priority)}
             </Badge>
-            <span className="font-mono text-xs text-slate-300">
+            <span className="font-mono text-xs text-muted-foreground">
               {ticket.ticketReference}
             </span>
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {timeAgo(ticket.createdAt)}
           </span>
         </div>
-        <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-100">
+        <p className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
           {ticket.issueSummary}
         </p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>{ticket.productName}</span>
           <span>·</span>
           <span>

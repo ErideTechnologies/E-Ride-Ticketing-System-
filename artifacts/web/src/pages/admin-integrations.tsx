@@ -115,7 +115,7 @@ function StatusBadge({ card }: { card: SupportIntegrationStatusCard }) {
   if (card.configured && !card.fallback) {
     return (
       <Badge
-        className="bg-emerald-100 text-emerald-900 hover:bg-emerald-100"
+        className="bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 border-transparent"
         data-testid={`badge-status-${card.key}`}
       >
         <CheckCircle2 className="mr-1 h-3 w-3" /> Configured
@@ -125,7 +125,7 @@ function StatusBadge({ card }: { card: SupportIntegrationStatusCard }) {
   if (card.configured && card.fallback) {
     return (
       <Badge
-        className="bg-amber-100 text-amber-900 hover:bg-amber-100"
+        className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border-transparent"
         data-testid={`badge-status-${card.key}`}
       >
         <AlertTriangle className="mr-1 h-3 w-3" /> Fallback
@@ -135,7 +135,7 @@ function StatusBadge({ card }: { card: SupportIntegrationStatusCard }) {
   if (!card.configured && card.fallback) {
     return (
       <Badge
-        className="bg-amber-100 text-amber-900 hover:bg-amber-100"
+        className="bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 border-transparent"
         data-testid={`badge-status-${card.key}`}
       >
         <AlertTriangle className="mr-1 h-3 w-3" /> Manual
@@ -145,6 +145,7 @@ function StatusBadge({ card }: { card: SupportIntegrationStatusCard }) {
   return (
     <Badge
       variant="destructive"
+      className="bg-destructive/20 text-destructive hover:bg-destructive/30 border-transparent"
       data-testid={`badge-status-${card.key}`}
     >
       <XCircle className="mr-1 h-3 w-3" /> Not configured

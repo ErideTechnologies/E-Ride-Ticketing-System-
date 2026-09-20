@@ -16,14 +16,14 @@ export function SupportUserBadge({
   const roleLabel = SUPPORT_ROLE_LABELS[user.role];
   return (
     <div
-      className={`flex items-center gap-2 text-xs text-slate-600 ${className ?? ""}`}
+      className={`flex items-center gap-2 text-xs text-muted-foreground ${className ?? ""}`}
       data-testid="support-user-badge"
     >
       <span className="hidden sm:inline">Signed in as</span>
-      <span className="font-medium text-slate-900 truncate max-w-[14rem]">
+      <span className="font-medium text-foreground truncate max-w-[14rem]">
         {user.name || user.email}
       </span>
-      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700">
+      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-secondary-foreground">
         {roleLabel}
       </span>
       <Button

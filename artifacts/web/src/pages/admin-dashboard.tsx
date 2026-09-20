@@ -28,26 +28,26 @@ export default function AdminDashboardPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard 
-          title="Total Open Tickets" 
-          value={wallboard?.summary.totalOpenTickets ?? 0} 
+        <SummaryCard
+          title="Total Open Tickets"
+          value={wallboard?.summary.totalOpenTickets ?? 0}
           icon={Inbox}
         />
-        <SummaryCard 
-          title="Awaiting Triage" 
-          value={wallboard?.summary.awaitingTriage ?? 0} 
+        <SummaryCard
+          title="Awaiting Triage"
+          value={wallboard?.summary.awaitingTriage ?? 0}
           icon={ListChecks}
           alert={wallboard?.summary.awaitingTriage ? (wallboard.summary.awaitingTriage > 5) : false}
         />
-        <SummaryCard 
-          title="Urgent Priority" 
-          value={wallboard?.summary.urgentTickets ?? 0} 
+        <SummaryCard
+          title="Urgent Priority"
+          value={wallboard?.summary.urgentTickets ?? 0}
           icon={AlertTriangle}
           alert={wallboard?.summary.urgentTickets ? (wallboard.summary.urgentTickets > 0) : false}
         />
-        <SummaryCard 
-          title="SLA Breached" 
-          value={wallboard?.summary.slaBreached ?? 0} 
+        <SummaryCard
+          title="SLA Breached"
+          value={wallboard?.summary.slaBreached ?? 0}
           icon={Clock}
           alert={wallboard?.summary.slaBreached ? (wallboard.summary.slaBreached > 0) : false}
         />
@@ -161,8 +161,8 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="secondary" className={
-                          t.priority === 'urgent' ? 'bg-destructive/10 text-destructive border-transparent' : 
-                          t.priority === 'high' ? 'bg-orange-100 text-orange-700 border-transparent' : 'border-transparent'
+                          t.priority === 'urgent' ? 'bg-destructive/15 text-destructive border-transparent' :
+                          t.priority === 'high' ? 'bg-orange-500/15 text-orange-500 border-transparent' : 'border-transparent'
                         }>
                           {humanLabel(PRIORITY_LABELS, t.priority)}
                         </Badge>

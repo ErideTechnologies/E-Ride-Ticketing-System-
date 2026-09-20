@@ -91,16 +91,16 @@ export function AdminShell({ children }: AdminShellProps) {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-50/50">
+    <div className="flex min-h-screen bg-background text-foreground">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 flex-col border-r bg-white md:flex">
+      <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <NavContent />
       </aside>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Header */}
-        <header className="flex h-14 items-center justify-between border-b bg-white px-4 sm:px-6">
+        <header className="flex h-14 items-center justify-between border-b bg-card px-4 sm:px-6">
           <div className="flex items-center gap-4 md:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -128,7 +128,7 @@ export function AdminShell({ children }: AdminShellProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto bg-slate-50/50 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-auto bg-background p-4 sm:p-6 lg:p-8">
           <div className="mx-auto max-w-7xl">
             {children}
           </div>

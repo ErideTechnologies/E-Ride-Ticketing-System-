@@ -23,13 +23,13 @@ import {
 function priorityBadgeClass(p: string): string {
   switch (p) {
     case "urgent":
-      return "bg-destructive text-destructive-foreground";
+      return "bg-destructive text-destructive-foreground border-transparent";
     case "high":
-      return "bg-orange-500 text-white";
+      return "bg-orange-500/20 text-orange-500 border-transparent";
     case "medium":
-      return "bg-amber-400 text-amber-950";
+      return "bg-amber-500/20 text-amber-500 border-transparent";
     default:
-      return "bg-muted text-muted-foreground";
+      return "bg-muted text-muted-foreground border-transparent";
   }
 }
 
@@ -37,7 +37,7 @@ function rowAccentClass(t: SupportTicketListItem): string {
   if (t.priority === "urgent") return "border-l-4 border-l-destructive";
   if (t.priority === "high") return "border-l-4 border-l-orange-500";
   if (t.internalStatus === "triage_required")
-    return "border-l-4 border-l-amber-400";
+    return "border-l-4 border-l-amber-500";
   return "border-l-4 border-l-transparent";
 }
 
@@ -244,9 +244,9 @@ function SummaryCard({
     accent === "destructive"
       ? "text-destructive"
       : accent === "orange"
-        ? "text-orange-600"
+        ? "text-orange-500"
         : accent === "amber"
-          ? "text-amber-600"
+          ? "text-amber-500"
           : "text-foreground";
   return (
     <Card>
