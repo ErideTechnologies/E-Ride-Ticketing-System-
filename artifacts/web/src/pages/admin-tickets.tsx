@@ -131,7 +131,7 @@ export default function AdminTicketsPage() {
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Priority</th>
                       <th className="px-4 py-3">Created</th>
-                      <th className="px-4 py-3 text-right">Action</th>
+                      <th className="px-4 py-3 text-left">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -161,7 +161,7 @@ export default function AdminTicketsPage() {
                         <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">
                           {formatDateTime(t.createdAt)}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-4 text-right">
+                        <td className="whitespace-nowrap px-4 py-4 text-left">
                           <Button
                             size="sm"
                             variant="outline"
