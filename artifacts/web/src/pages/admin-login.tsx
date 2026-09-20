@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { LogIn } from "lucide-react";
 import { useSupportAuth } from "@/components/SupportAuthProvider";
 import { PublicHero } from "@/components/PublicHero";
@@ -10,13 +11,12 @@ export default function AdminLoginPage() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && authenticated) {
-      navigate("/admin/support/tickets");
+      navigate("/admin/support/dashboard");
     }
   }, [loading, authenticated, navigate]);
 
@@ -24,13 +24,13 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const result = await login(email.trim(), password, name.trim() || undefined);
+    const result = await login(email.trim(), password);
     setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    navigate("/admin/support/tickets");
+    navigate("/admin/support/dashboard");
   };
 
   const inputClass =
@@ -119,21 +119,6 @@ export default function AdminLoginPage() {
                 data-testid="login-password"
               />
               </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="name"
-                  className="block font-mono text-[10px] uppercase tracking-[0.22em] text-[#94A3B8]"
-                >
-                  Display name <span className="normal-case tracking-normal">(optional)</span>
-                </label>
-                <input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="How your name appears in audit logs"
-                  className={inputClass}
-              />
-              </div>
               {error && (
                 <p className="rounded-xl border border-red-400/30 bg-red-400/[0.06] px-4 py-3 text-xs leading-relaxed text-red-200">
                   {error}
@@ -148,6 +133,15 @@ export default function AdminLoginPage() {
               {submitting ? "Signing in…" : "Sign in"}
               </button>
             </form>
+            <p className="mt-5 text-center text-xs text-[#7B8694]">
+              Need an administrator account?{" "}
+              <Link
+                href="/admin/support/register"
+                className="font-semibold text-[#38BDF8] hover:text-[#7DD3FC]"
+              >
+                Register here
+              </Link>
+            </p>
           </div>
         </div>
       </section>

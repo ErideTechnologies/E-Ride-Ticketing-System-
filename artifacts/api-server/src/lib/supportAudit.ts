@@ -19,6 +19,7 @@ export type SupportAuditAction =
   | "settings.updated"
   | "template.updated"
   | "auth.login"
+  | "auth.register"
   | "auth.logout"
   | "integration.email_test";
 

@@ -10,3 +10,4 @@ export * from "./sentryLinks";
 export * from "./templates";
 export * from "./settings";
 export * from "./auditLog";
+export * from "./supportUsers";

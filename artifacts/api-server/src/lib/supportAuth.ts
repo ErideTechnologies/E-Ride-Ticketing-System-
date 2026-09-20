@@ -146,7 +146,12 @@ function safeEqual(a: string, b: string): boolean {
 
 function encodeToken(user: SupportSessionUser, expMs: number): string {
   const body = Buffer.from(
-    JSON.stringify({ e: user.email, n: user.name, exp: expMs }),
+    JSON.stringify({
+      e: user.email,
+      n: user.name,
+      r: user.role,
+      exp: expMs,
+    }),
     "utf8",
   ).toString("base64url");
   return `${body}.${sign(body)}`;
@@ -159,7 +164,7 @@ export function decodeToken(token: string): SupportSessionUser | null {
   const body = token.slice(0, dot);
   const sig = token.slice(dot + 1);
   if (!safeEqual(sig, sign(body))) return null;
-  let parsed: { e?: string; n?: string; exp?: number };
+  let parsed: { e?: string; n?: string; r?: string; exp?: number };
   try {
     parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
   } catch {
@@ -167,7 +172,10 @@ export function decodeToken(token: string): SupportSessionUser | null {
   }
   if (!parsed.e || typeof parsed.exp !== "number") return null;
   if (Date.now() > parsed.exp) return null;
-  const role = lookupRoleForEmail(parsed.e);
+  const storedRole = SUPPORT_ROLES.includes(parsed.r as SupportRole)
+    ? (parsed.r as SupportRole)
+    : null;
+  const role = storedRole ?? lookupRoleForEmail(parsed.e);
   if (!role) return null;
   return { email: parsed.e, name: parsed.n || parsed.e, role };
 }
@@ -238,9 +246,7 @@ export function verifyLoginPassword(
 }
 
 export function isLoginConfigured(): boolean {
-  return Boolean(
-    process.env.SUPPORT_AUTH_PASSWORD || process.env.SUPPORT_REPORTER_PASSWORD,
-  );
+  return true;
 }
 
 // ---- Express middleware ----
@@ -306,6 +312,7 @@ const PUBLIC_PATH_MATCHERS: Array<(method: string, path: string) => boolean> = [
   (m, p) => m === "GET" && p === "/healthz",
   // Auth endpoints themselves
   (m, p) => m === "POST" && p === "/support/auth/login",
+  (m, p) => m === "POST" && p === "/support/auth/register",
   (m, p) => m === "POST" && p === "/support/auth/logout",
   (m, p) => m === "GET" && p === "/support/auth/me",
 ];

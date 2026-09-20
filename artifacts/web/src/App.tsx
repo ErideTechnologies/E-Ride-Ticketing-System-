@@ -13,6 +13,7 @@ import ReportProblemConfirmationPage from "@/pages/report-problem-confirmation";
 import TrackTicketPage from "@/pages/track-ticket";
 import PublicTicketPage from "@/pages/public-ticket";
 import AdminLoginPage from "@/pages/admin-login";
+import AdminRegisterPage from "@/pages/admin-register";
 import AdminDashboardPage from "@/pages/admin-dashboard";
 import AdminTicketsPage from "@/pages/admin-tickets";
 import AdminTicketDetailPage from "@/pages/admin-ticket-detail";
@@ -61,6 +62,7 @@ function Router() {
       </Route>
       <Route path="/admin/support" component={() => <Redirect to="/admin/support/dashboard" />} />
       <Route path="/admin/support/login" component={AdminLoginPage} />
+      <Route path="/admin/support/register" component={AdminRegisterPage} />
       <Route path="/admin/support/wallboard">
         <RequireSupportAuth permission="view_dashboard">
           <AdminWallboardPage />

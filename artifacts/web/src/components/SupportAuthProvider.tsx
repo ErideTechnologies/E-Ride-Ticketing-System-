@@ -24,7 +24,6 @@ interface SupportAuthContextValue extends SupportAuthState {
   login: (
     email: string,
     password: string,
-    name?: string,
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
   hasPermission: (permission: SupportPermission) => boolean;
@@ -72,12 +71,12 @@ export function SupportAuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback<SupportAuthContextValue["login"]>(
-    async (email, password, name) => {
+    async (email, password) => {
       const res = await fetch(LOGIN_URL, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         let msg = "Sign in failed";
