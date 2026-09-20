@@ -50,14 +50,6 @@ export interface SupportTicketDetail {
   /** @nullable */
   whatWereYouTryingToDo?: string | null;
   whatWentWrong: string;
-  /** @nullable */
-  assignedSupportUserId?: string | null;
-  /** @nullable */
-  assignedProductOwnerId?: string | null;
-  /** @nullable */
-  assignedDeveloperId?: string | null;
-  /** @nullable */
-  assignedQaVerifierId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   /** @nullable */

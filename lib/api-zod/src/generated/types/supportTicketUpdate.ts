@@ -18,14 +18,6 @@ export interface SupportTicketUpdate {
   severity?: SupportTicketSeverity;
   category?: SupportTicketCategory;
   /** @nullable */
-  assignedSupportUserId?: string | null;
-  /** @nullable */
-  assignedProductOwnerId?: string | null;
-  /** @nullable */
-  assignedDeveloperId?: string | null;
-  /** @nullable */
-  assignedQaVerifierId?: string | null;
-  /** @nullable */
   pageOrStep?: string | null;
   /** @minLength 1 */
   issueSummary?: string;

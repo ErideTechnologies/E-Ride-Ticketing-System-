@@ -55,10 +55,6 @@ export const supportTicketsTable = pgTable(
     whatWereYouTryingToDo: text("what_were_you_trying_to_do"),
     whatWentWrong: text("what_went_wrong").notNull(),
     environment: text("environment"),
-    assignedSupportUserId: uuid("assigned_support_user_id"),
-    assignedProductOwnerId: uuid("assigned_product_owner_id"),
-    assignedDeveloperId: uuid("assigned_developer_id"),
-    assignedQaVerifierId: uuid("assigned_qa_verifier_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

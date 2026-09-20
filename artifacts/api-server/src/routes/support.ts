@@ -1033,10 +1033,6 @@ function serializeTicketDetail(row: DetailRow, sla: SlaResult) {
     issueSummary: t.issueSummary,
     whatWereYouTryingToDo: t.whatWereYouTryingToDo,
     whatWentWrong: t.whatWentWrong,
-    assignedSupportUserId: t.assignedSupportUserId,
-    assignedProductOwnerId: t.assignedProductOwnerId,
-    assignedDeveloperId: t.assignedDeveloperId,
-    assignedQaVerifierId: t.assignedQaVerifierId,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
     resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
@@ -1154,21 +1150,12 @@ router.patch("/support/tickets/:id", async (req, res): Promise<void> => {
     },
   });
 
-  // Hermes Phase 1: emit lifecycle events for status/assignment transitions.
-  const assignmentChanged =
-    (updates.assignedSupportUserId !== undefined &&
-      updates.assignedSupportUserId !== existing.ticket.assignedSupportUserId) ||
-    (updates.assignedDeveloperId !== undefined &&
-      updates.assignedDeveloperId !== existing.ticket.assignedDeveloperId) ||
-    (updates.assignedProductOwnerId !== undefined &&
-      updates.assignedProductOwnerId !== existing.ticket.assignedProductOwnerId) ||
-    (updates.assignedQaVerifierId !== undefined &&
-      updates.assignedQaVerifierId !== existing.ticket.assignedQaVerifierId);
+  // Hermes Phase 1: emit lifecycle events for ticket status transitions.
   emitTicketLifecycleHermesEvents({
     prev: existing,
     next: updatedRow,
     actor: actorUser,
-    assignmentChanged,
+    assignmentChanged: false,
     publicChanged,
     internalChanged,
     wasResolved,

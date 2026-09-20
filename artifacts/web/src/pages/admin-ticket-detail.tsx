@@ -373,7 +373,6 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
           <ReporterCard ticket={ticket} />
           <IssueDetailsCard ticket={ticket} onSave={save} />
           <StatusManagementCard ticket={ticket} onSave={save} />
-          <AssignmentCard ticket={ticket} onSave={save} />
           <AttachmentsCard ticketId={ticket.id} />
           <NotesCard ticketId={ticket.id} />
           <StatusHistoryCard ticketId={ticket.id} />
@@ -737,78 +736,6 @@ function StatusManagementCard({
           data-testid="button-save-status"
         >
           {saving ? "Saving…" : "Save changes"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AssignmentCard({
-  ticket,
-  onSave,
-}: {
-  ticket: SupportTicketDetail;
-  onSave: (data: Record<string, unknown>) => Promise<boolean>;
-}) {
-  const [supportUser, setSupportUser] = useState(
-    ticket.assignedSupportUserId ?? "",
-  );
-  const [productOwner, setProductOwner] = useState(
-    ticket.assignedProductOwnerId ?? "",
-  );
-  const [developer, setDeveloper] = useState(
-    ticket.assignedDeveloperId ?? "",
-  );
-  const [qa, setQa] = useState(ticket.assignedQaVerifierId ?? "");
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    await onSave({
-      assignedSupportUserId: supportUser || null,
-      assignedProductOwnerId: productOwner || null,
-      assignedDeveloperId: developer || null,
-      assignedQaVerifierId: qa || null,
-    });
-    setSaving(false);
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Assignment</CardTitle>
-        <CardDescription>
-          User IDs (full user management arrives later).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Field label="Support user">
-          <Input
-            value={supportUser}
-            onChange={(e) => setSupportUser(e.target.value)}
-          />
-        </Field>
-        <Field label="Product owner">
-          <Input
-            value={productOwner}
-            onChange={(e) => setProductOwner(e.target.value)}
-          />
-        </Field>
-        <Field label="Developer">
-          <Input
-            value={developer}
-            onChange={(e) => setDeveloper(e.target.value)}
-          />
-        </Field>
-        <Field label="QA verifier">
-          <Input value={qa} onChange={(e) => setQa(e.target.value)} />
-        </Field>
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          data-testid="button-save-assignment"
-        >
-          {saving ? "Saving…" : "Save assignment"}
         </Button>
       </CardContent>
     </Card>

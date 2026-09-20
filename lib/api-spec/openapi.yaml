@@ -1409,10 +1409,6 @@ components:
         issueSummary: { type: string }
         whatWereYouTryingToDo: { type: ["string", "null"] }
         whatWentWrong: { type: string }
-        assignedSupportUserId: { type: ["string", "null"], format: uuid }
-        assignedProductOwnerId: { type: ["string", "null"], format: uuid }
-        assignedDeveloperId: { type: ["string", "null"], format: uuid }
-        assignedQaVerifierId: { type: ["string", "null"], format: uuid }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         resolvedAt: { type: ["string", "null"], format: date-time }
@@ -1447,10 +1443,6 @@ components:
         priority: { $ref: "#/components/schemas/SupportTicketPriority" }
         severity: { $ref: "#/components/schemas/SupportTicketSeverity" }
         category: { $ref: "#/components/schemas/SupportTicketCategory" }
-        assignedSupportUserId: { type: ["string", "null"] }
-        assignedProductOwnerId: { type: ["string", "null"] }
-        assignedDeveloperId: { type: ["string", "null"] }
-        assignedQaVerifierId: { type: ["string", "null"] }
         pageOrStep: { type: ["string", "null"] }
         issueSummary: { type: string, minLength: 1 }
         whatWereYouTryingToDo: { type: ["string", "null"] }
