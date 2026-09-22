@@ -21,3 +21,17 @@ mtime_ms = 1788509055686
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:519a5d45-0a13-4b8d-8798-47a68ff5a307/eb1040ca-c48b-4b22-a373-6f6c8093ffe7/8f00628d-2767-41b8-89f2-d311657b10fe"
 storage_version_token = "1788509064121969"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "RmHfhx9YepWdEV--ssb2Q"
+uri = "file://docs/aws-vercel-migration-specification.md"
+type = "text"
+title = "AWS and Vercel Migration Specification"
+description = "Complete migration planning baseline for moving the Eride Dogma Support Centre to Vercel, AWS EC2, Amazon RDS, and private S3 while preserving dogmacommand.center/api endpoints."
+logical_id = "55e6eebf-5122-4851-bef7-4134659eda43"
+content_hash = "sha256:b530b5a660ad03b1c147afaf278f77ac1c8f67ee84f633be26bad02fc0426313"
+size = 34184
+mtime_ms = 1790063190312
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:519a5d45-0a13-4b8d-8798-47a68ff5a307/55e6eebf-5122-4851-bef7-4134659eda43/214552d5-b2bd-4ad5-9f19-dec51c069102"
+storage_version_token = "1790063213749011"
+content_type = "text/markdown"
