@@ -2,3 +2,4 @@
 - [Public /help auth gate](public-help-auth-gate.md) — /help* web routes are login-gated (frontend only); keep POST /support/tickets + GET /support/products open for the external E-Migration Assist API integration.
 - [No-contact tickets & tracking](no-contact-tickets.md) — public report form collects no reporter contact/consent; such tickets can't be verified via the email/WhatsApp-based /help/track-ticket flow.
 - [Support permission guard](support-authz-guard.md) — reporter role must be blocked server-side (view_dashboard rule on every internal GET), and both guards must normalize trailing slashes or authz is bypassable.
+- [GitHub publishing fallback](github-publishing-fallback.md) — HTTPS Git push may reject cached credentials even when the GitHub integration works; verify content and reconcile commit IDs.
