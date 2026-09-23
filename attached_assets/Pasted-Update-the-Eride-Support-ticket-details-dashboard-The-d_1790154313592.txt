@@ -1,0 +1,100 @@
+Update the Eride Support ticket details dashboard.
+
+The dashboard is managed directly by developers, and the admin users are developers. The separate engineering handoff and external issue-linking tools duplicate their existing workflow.
+
+Remove the following entire sections from the ticket details page:
+
+## 1. Engineering escalation
+
+Remove the complete **Engineering escalation** card and all functionality contained within it, including:
+
+* Engineering escalation heading and description
+* Escalation readiness summary
+* Ticket reference, product, priority, severity and category summary
+* Internal status summary
+* Attachment and internal-note readiness checks
+* Linear-link readiness status
+* Support-only ticket warning
+* Generate Linear Issue
+* Generate Replit Fix Prompt
+* Generated Linear issue content
+* Generated Replit fix prompt
+* Copy buttons
+* Linear API configuration status
+* Override title
+* Override description
+* Created-by field
+* Create Linear Issue button
+* Linear issue creation confirmation
+* Linear issue creation result messages
+* Manual Linear link form
+* Issue key
+* Issue URL
+* Team key
+* Linear status
+* Linked-by name
+* Save Linear Link
+* Existing Linear link display
+* Open in Linear button
+* Remove Linear Link button
+* Engineering and QA reminder messages
+
+## 2. Sentry links
+
+Remove the complete **Sentry links** card, including:
+
+* Existing Sentry reference list
+* Add Sentry Link form
+* Sentry issue ID
+* Sentry event ID
+* Sentry project
+* Sentry URL
+* Environment
+* Linked-by name
+* Save Sentry Link
+* Open in Sentry and delete controls
+
+## 3. Developer handoff
+
+Remove the complete **Developer handoff** card, including:
+
+* Generate Developer Handoff button
+* Generated handoff text
+* Copy handoff button
+* The `buildHandoff` helper function
+
+Primary file to inspect:
+
+`artifacts/web/src/pages/admin-ticket-detail.tsx`
+
+Remove all frontend components, helper functions, state, hooks, constants, imports and generated-text functions that become unused after removing these sections.
+
+Important safeguards:
+
+* Do not delete database tables, migrations or existing stored records.
+* Do not delete backend API routes, generated API clients or OpenAPI definitions.
+* Do not remove application-level Sentry error monitoring.
+* Do not change authentication or permissions.
+* Do not change normal ticket management, ticket status, SLA, attachments, internal notes, communication logs or email functionality.
+* Do not modify unrelated files.
+* Preserve the styling and layout of all remaining ticket sections.
+* Do not alter existing deployment configuration.
+
+After making the change:
+
+1. Search the ticket detail page and confirm that the following text and controls are no longer present:
+
+   * Engineering escalation
+   * Escalation readiness
+   * Generate Linear Issue
+   * Generate Replit Fix Prompt
+   * Linear API creation
+   * Linear link
+   * Sentry links
+   * Add Sentry link
+   * Developer handoff
+   * Generate Developer Handoff
+2. Confirm that there are no unused imports or unreachable frontend functions.
+3. Run the frontend type-check.
+4. Run the frontend production build.
+5. Report the files changed and all verification results.
