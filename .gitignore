@@ -10,6 +10,7 @@ out-tsc
 
 # dependencies
 node_modules
+migration-evidence/
 
 # IDEs and editors
 /.idea
