@@ -797,6 +797,15 @@ Required alarms:
 - email and WhatsApp delivery failures;
 - attachment reconciliation failures.
 
+Through the rollback window, run the read-only hourly attachment reconciliation
+described in `data-migration-rehearsal-and-cutover.md` from a private operations
+host. It compares current attachment rows with the immutable cutover SHA-256
+manifest and private S3 HEAD checksums/sizes, lists the attachment prefix for
+unreferenced objects, retains timestamped restricted reports, and publishes
+non-passing results to the on-call SNS topic. Configure an explicit UTC expiry
+and disable/remove the schedule after acceptance. New writes need independent
+durable checksum metadata before they can be declared reconciled.
+
 ### 13.3 Health endpoints
 
 Maintain:

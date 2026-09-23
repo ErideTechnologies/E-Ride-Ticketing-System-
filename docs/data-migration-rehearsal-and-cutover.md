@@ -127,6 +127,63 @@ plus at least 50% contingency. Rehearse rollback before approval.
 14. Monitor errors, database integrity, S3 failures, and sequence allocation
     through the agreed rollback window. Keep the source read-only and intact.
 
+### Scheduled attachment reconciliation during rollback
+
+Before re-enabling target writes, keep the **final, verified** `manifest.tsv`
+from the write-freeze inventory in restricted, durable storage. This is the
+independent SHA-256 baseline for migrated objects; do not regenerate it from
+S3 after cutover. The target database supplies current attachment IDs, sizes,
+and storage keys; legacy local paths resolve to deterministic migration keys.
+New rows without an entry in the cutover baseline are flagged for investigation,
+not silently trusted. For approved new writes, optionally supply a separate,
+operator-controlled `ATTACHMENT_RECONCILE_ADDITIONS` TSV with header
+`attachment_id	object_key	expected_bytes	sha256` and one row per attachment.
+Obtain SHA-256 at ingestion from the original upload (not by reading the S3
+object under investigation), append under change control, and retain prior
+versions as evidence. The file must not repeat IDs in the cutover manifest.
+If the S3 write path cannot supply this independent checksum, alerts for new
+rows remain open; do not attest that reconciliation passed.
+
+On a private operations host with read-only RDS access and an IAM role allowing
+only `s3:ListBucket` on the attachment prefix, `s3:GetObject` for HEAD (and
+`kms:Decrypt` if checksums require it), and `sns:Publish` on the alarm topic,
+schedule this command hourly. Install a cron entry with an absolute project
+path and secret injection appropriate to the host (not a checked-in credential
+file); for example:
+
+```cron
+0 * * * * /usr/bin/flock -n /opt/support/migration-evidence/reconcile.lock /bin/bash /opt/support/scripts/migration/run-attachment-reconcile.sh
+```
+
+Inject credentials and settings into the cron environment through the approved
+host secret mechanism, rather than writing them in the crontab. The checked-in
+wrapper changes to the project directory and executes the package command.
+Set `DATABASE_URL`, `SUPPORT_ATTACHMENTS_BUCKET`, `AWS_REGION`,
+`ATTACHMENT_RECONCILE_MANIFEST` (absolute path to the final manifest),
+`ATTACHMENT_RECONCILE_REPORT_DIR` (restricted, durable, **not** inside S3's
+attachment prefix), `ATTACHMENT_RECONCILE_SNS_TOPIC_ARN`, optionally
+`ATTACHMENT_RECONCILE_ADDITIONS`,
+`ATTACHMENT_RECONCILE_ENABLED=true`, and
+`ATTACHMENT_RECONCILE_UNTIL=YYYY-MM-DDTHH:MM:SSZ` (the agreed UTC acceptance
+deadline). The wrapper must forward nonzero exit status to host job-failure
+monitoring, including missed runs; a locked-out or failed run is not a pass.
+Configure and verify SNS delivery to the on-call operations channel before
+cutover. Do not point the job at a public bucket.
+
+Each run writes a uniquely timestamped, mode-0600 JSON report under the
+restricted directory (directory mode 0700); the report has counts and object
+keys, not credentials or public URLs. Retain reports through the rollback
+window and incident review under the restricted evidence retention policy.
+The job issues only database SELECT and S3 HEAD/LIST; it never uploads,
+deletes, or changes metadata. Any missing/unreadable object, size or SHA-256
+checksum mismatch, missing checksum/baseline, missing database row, unexpected
+object, or check error generates an SNS alert and a nonzero exit. Investigate
+the evidence and apply the rollback decision criteria below; do not auto-repair.
+Run once manually before enabling cron and exercise alert delivery with an
+isolated test fixture. After acceptance, set
+`ATTACHMENT_RECONCILE_ENABLED=false` and remove the cron entry; the UTC
+deadline also stops runs even if the entry is inadvertently left installed.
+
 ## Rollback
 
 Trigger rollback for any unexplained reconciliation difference, missing or

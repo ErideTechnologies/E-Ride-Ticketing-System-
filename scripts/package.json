@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "migration:attachments": "bash ./migration/attachments.sh",
+    "migration:reconcile-attachments": "node ./migration/reconcile-attachments.mjs",
     "migration:database": "bash ./migration/database-rehearsal.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
