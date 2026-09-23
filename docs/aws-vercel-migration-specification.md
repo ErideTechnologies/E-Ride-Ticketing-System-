@@ -201,11 +201,10 @@ POST  /api/support/templates/preview
 #### Restricted maintenance and diagnostics
 
 ```text
-POST /api/support/admin/purge-tickets
 GET  /api/_sentry-test
 ```
 
-The purge and Sentry test endpoints must remain disabled by default in production.
+The Sentry test endpoint must remain disabled by default in production.
 
 ### 4.5 Current authentication and authorization
 
@@ -729,7 +728,6 @@ SUPPORT_QA_EMAILS
 SUPPORT_VIEWER_EMAILS
 SUPPORT_REPORTER_EMAILS
 SUPPORT_PUBLIC_TICKET_SECRET
-SUPPORT_ENABLE_PURGE_ENDPOINT
 RESEND_API_KEY
 SUPPORT_EMAIL_FROM
 SUPPORT_EMAIL_REPLY_TO
