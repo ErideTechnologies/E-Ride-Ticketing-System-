@@ -78,7 +78,6 @@ import {
   PRIORITY_OPTIONS,
   PUBLIC_STATUS_LABELS,
   PUBLIC_STATUS_OPTIONS,
-  REPORTER_TYPE_LABELS,
   SEVERITY_LABELS,
   SEVERITY_OPTIONS,
   SLA_PHASE_LABELS,
@@ -313,7 +312,6 @@ function TicketDetail({ ticket }: { ticket: SupportTicketDetail }) {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <OverviewCard ticket={ticket} />
-          <ReporterCard ticket={ticket} />
           <IssueDetailsCard ticket={ticket} onSave={save} />
           <StatusManagementCard ticket={ticket} onSave={save} />
           <AttachmentsCard ticketId={ticket.id} />
@@ -453,31 +451,6 @@ function OverviewCard({ ticket }: { ticket: SupportTicketDetail }) {
           <FieldRow label="Environment" value={ticket.environment} />
           <FieldRow label="Created" value={formatDateTime(ticket.createdAt)} />
           <FieldRow label="Updated" value={formatDateTime(ticket.updatedAt)} />
-        </dl>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ReporterCard({ ticket }: { ticket: SupportTicketDetail }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Reporter</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <dl>
-          <FieldRow
-            label="Type"
-            value={humanLabel(REPORTER_TYPE_LABELS, ticket.reporterType)}
-          />
-          <FieldRow label="Name" value={ticket.reporterName} />
-          <FieldRow label="Email" value={ticket.reporterEmail} />
-          <FieldRow label="WhatsApp" value={ticket.reporterWhatsapp} />
-          <FieldRow label="User ID" value={ticket.userId} />
-          <FieldRow label="Company ID" value={ticket.companyId} />
-          <FieldRow label="Firm ID" value={ticket.firmId} />
-          <FieldRow label="Partner ID" value={ticket.partnerId} />
         </dl>
       </CardContent>
     </Card>
